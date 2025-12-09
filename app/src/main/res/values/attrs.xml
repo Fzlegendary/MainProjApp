@@ -1,0 +1,10 @@
+<resources>
+    <!-- Custom theme attributes -->
+    <attr name="inputStrokeColor" format="color" />
+    <attr name="buttonPrimary" format="color" />
+    <attr name="textSecondary" format="color" />
+
+    <attr name="buttonGoogleBg" format="color" />
+    <attr name="buttonGoogleText" format="color" />
+    <attr name="buttonGoogleStroke" format="color" />
+</resources>

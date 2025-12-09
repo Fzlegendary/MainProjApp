@@ -1,15 +1,12 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.MainProj" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <resources>
-            <color name="input_stroke_color">#8b9dff</color>
-            <color name="button_primary">#7c8fff</color>
-            <color name="text_secondary">#b0b0b0</color>
-            <color name="button_google_bg">#2d2d2d</color>
-            <color name="button_google_text">#e0e0e0</color>
-            <color name="button_google_stroke">#4a4a4a</color>
-        </resources>
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
-    </style>
-</resources>
+<!-- Base application theme. -->
+    <resources>
+        <style name="Theme.MainProj" parent="Theme.Material3.DayNight.NoActionBar">
+            <item name="inputStrokeColor">@color/input_stroke_color_dark</item>
+            <item name="buttonPrimary">@color/button_primary_dark</item>
+            <item name="textSecondary">@color/text_secondary_dark</item>
+
+            <item name="buttonGoogleBg">@color/button_google_bg_dark</item>
+            <item name="buttonGoogleText">@color/button_google_text_dark</item>
+            <item name="buttonGoogleStroke">@color/button_google_stroke_dark</item>
+        </style>
+    </resources>

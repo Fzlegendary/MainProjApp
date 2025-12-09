@@ -1,17 +1,12 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.MainProj" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <resources>
-            <color name="input_stroke_color">#667eea</color>
-            <color name="button_primary">#667eea</color>
-            <color name="text_secondary">#666666</color>
-            <color name="button_google_bg">#FFFFFF</color>
-            <color name="button_google_text">#333333</color>
-            <color name="button_google_stroke">#e0e0e0</color>
-        </resources>
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
-    </style>
+    <resources>
+        <style name="Theme.MainProj" parent="Theme.Material3.DayNight.NoActionBar">
+            <item name="inputStrokeColor">@color/input_stroke_color_light</item>
+            <item name="buttonPrimary">@color/button_primary_light</item>
+            <item name="textSecondary">@color/text_secondary_light</item>
 
-    <style name="Theme.MainProj" parent="Base.Theme.MainProj" />
-</resources>
+            <item name="buttonGoogleBg">@color/button_google_bg_light</item>
+            <item name="buttonGoogleText">@color/button_google_text_light</item>
+            <item name="buttonGoogleStroke">@color/button_google_stroke_light</item>
+        </style>
+    </resources>

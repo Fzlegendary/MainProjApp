@@ -1,7 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Common colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="input_stroke_color">#667eea</color>
+
+    <!-- Light theme colors -->
+    <color name="input_stroke_color_light">#667eea</color>
+    <color name="button_primary_light">#667eea</color>
+    <color name="text_secondary_light">#666666</color>
+    <color name="button_google_bg_light">#FFFFFF</color>
+    <color name="button_google_text_light">#333333</color>
+    <color name="button_google_stroke_light">#e0e0e0</color>
+
+    <!-- Dark theme colors -->
+    <color name="input_stroke_color_dark">#8b9dff</color>
+    <color name="button_primary_dark">#7c8fff</color>
+    <color name="text_secondary_dark">#b0b0b0</color>
+    <color name="button_google_bg_dark">#2d2d2d</color>
+    <color name="button_google_text_dark">#e0e0e0</color>
+    <color name="button_google_stroke_dark">#4a4a4a</color>
 
 </resources>

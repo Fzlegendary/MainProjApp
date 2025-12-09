@@ -3,15 +3,12 @@ package com.example.mainproj;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -37,6 +34,7 @@ import java.util.Map;
 
 public class sign_up_activity extends AppCompatActivity {
 
+    private TextView login;
     private TextInputEditText etUsername, etEmail, etPassword, etConfirmPassword;
     private MaterialButton btnSignUp, btnGoogleSignUp;
     private FirebaseAuth mAuth;
@@ -47,38 +45,39 @@ public class sign_up_activity extends AppCompatActivity {
                 try {
                     GoogleSignInAccount account = GoogleSignIn.getSignedInAccountFromIntent(result.getData()).getResult(ApiException.class);
                     firebaseAuthWithGoogle(account.getIdToken());
-                } catch (ApiException e) {
+                } catch (Exception e) {
                     Toast.makeText(this, "Google sign in failed", Toast.LENGTH_SHORT).show();
-                    e.printStackTrace();
                 }
             });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_sign_up);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        mAuth = FirebaseAuth.getInstance();
 
         etUsername = findViewById(R.id.etUsername);
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
+
         btnSignUp = findViewById(R.id.btnSignUp);
-        btnGoogleSignUp = findViewById(R.id.btnGoogleSignUp2); // Make sure ID matches your XML
+        btnGoogleSignUp = findViewById(R.id.btnGoogleSignUp2);
+        login = findViewById(R.id.tvLogin);
+        login.setOnClickListener(v -> {
+            Intent i = new Intent(this, Login_activity.class);
+            startActivity(i);
+            finish();
+        });
 
-        mAuth = FirebaseAuth.getInstance();
-
-        // Configure Google Sign-In
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id)) // your web client ID
+        // Google Sign-In initialization
+        GoogleSignInOptions gso = new GoogleSignInOptions
+                .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id)) // must match Firebase console
                 .requestEmail()
                 .build();
+
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         btnSignUp.setOnClickListener(v -> registerUser());
@@ -91,7 +90,8 @@ public class sign_up_activity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
         String confirmPassword = etConfirmPassword.getText().toString().trim();
 
-        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
+        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(email) ||
+                TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
             Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -101,74 +101,88 @@ public class sign_up_activity extends AppCompatActivity {
             return;
         }
 
-        String safeEmail = email.replace(".", "_");
+        // Create FirebaseAuth account first
+        mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnSuccessListener(authResult -> {
+                    String uid = mAuth.getCurrentUser().getUid();
+                    String safeEmail = email.replace(".", "_");
 
-        String passwordHash;
-        try {
-            passwordHash = sha256(password);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error hashing password", Toast.LENGTH_SHORT).show();
-            return;
-        }
+                    String passwordHash = hashPassword(password);
+                    String registrationTime = timestampNow();
 
-        String registrationTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+                    Map<String, Object> userData = new HashMap<>();
+                    userData.put("username", username);
+                    userData.put("email", email);
+                    userData.put("uid", uid);
+                    userData.put("role", "user");
+                    userData.put("password_hash", passwordHash);
+                    userData.put("registration_time", registrationTime);
 
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("username", username);
-        userData.put("email", email);
-        userData.put("password_hash", passwordHash);
-        userData.put("registration_time", registrationTime);
-
-        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
-        usersRef.child(safeEmail).setValue(userData).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
-                finish();
-            } else {
-                Toast.makeText(this, "Failed to create account", Toast.LENGTH_SHORT).show();
-            }
-        });
+                    FirebaseDatabase.getInstance()
+                            .getReference("users")
+                            .child(safeEmail)
+                            .setValue(userData)
+                            .addOnSuccessListener(unused -> {
+                                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
+                                startActivity(new Intent(sign_up_activity.this, HomeActivity.class));
+                                finish();
+                            })
+                            .addOnFailureListener(e -> Toast.makeText(this, "Failed to save user", Toast.LENGTH_SHORT).show());
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Signup failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
     }
+
 
     private void firebaseAuthWithGoogle(String idToken) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
-        mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
-            if (task.isSuccessful()) {
-                GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-                if (account != null) {
+
+        mAuth.signInWithCredential(credential)
+                .addOnSuccessListener(authResult -> {
+                    GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+                    if (account == null) return;
+
                     String safeEmail = account.getEmail().replace(".", "_");
-                    String registrationTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+                    String uid = mAuth.getCurrentUser().getUid();
+                    String registrationTime = timestampNow();
+
                     Map<String, Object> userData = new HashMap<>();
                     userData.put("username", account.getDisplayName());
                     userData.put("email", account.getEmail());
                     userData.put("registration_time", registrationTime);
+                    userData.put("role", "user");
+                    userData.put("uid", uid);
 
-                    DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
-                    usersRef.child(safeEmail).setValue(userData).addOnCompleteListener(task1 -> {
-                        if (task1.isSuccessful()) {
-                            Toast.makeText(this, "Signed in with Google successfully", Toast.LENGTH_SHORT).show();
-                            finish();
-                        } else {
-                            Toast.makeText(this, "Failed to save Google user", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            } else {
-                Toast.makeText(this, "Firebase authentication failed", Toast.LENGTH_SHORT).show();
-            }
-        });
+                    FirebaseDatabase.getInstance()
+                            .getReference("users")
+                            .child(safeEmail)
+                            .setValue(userData)
+                            .addOnSuccessListener(unused -> {
+                                Toast.makeText(this, "Google account created", Toast.LENGTH_SHORT).show();
+                                startActivity(new Intent(sign_up_activity.this, HomeActivity.class));
+                                finish();
+                            })
+                            .addOnFailureListener(e -> Toast.makeText(this, "Failed saving user", Toast.LENGTH_SHORT).show());
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Google authentication failed", Toast.LENGTH_SHORT).show());
     }
 
-    private String sha256(String input) throws NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
-            hexString.append(hex);
+    private String hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                String h = Integer.toHexString(0xff & b);
+                if (h.length() == 1) hex.append('0');
+                hex.append(h);
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            return "";
         }
-        return hexString.toString();
+    }
+
+    private String timestampNow() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
     }
 }
