@@ -60,10 +60,10 @@ public class HomeActivity extends AppCompatActivity {
 
         // Use adb reverse to map 127.0.0.1:8080 from PC to phone if needed
         Request request = new Request.Builder()
-                .url("http://192.168.21.48:8080/greet")
+                .url("https://delia-tiniest-preinsinuatingly.ngrok-free.dev")
                 .post(body)
                 .build();
-
+        Log.d("prog", "sendToServer: " + request);
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -76,9 +76,12 @@ public class HomeActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                Log.d("prog", "onResponse: response received");
                 if (!response.isSuccessful()) {
-                    runOnUiThread(() ->
-                            Toast.makeText(HomeActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
+                    runOnUiThread(() -> {
+                                Toast.makeText(HomeActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                                Log.d("prog", "response was not successful, server error:" + response.code());
+                            }
                     );
                     return;
                 }
