@@ -33,6 +33,8 @@ android {
 }
 
 dependencies {
+    //okhttp3
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth:22.1.1")
 // Google Sign-In

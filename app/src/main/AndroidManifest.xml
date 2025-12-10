@@ -13,7 +13,7 @@
         android:theme="@style/Theme.MainProj">
         <activity
             android:name=".HomeActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".sign_up_activity"
             android:exported="false" />
