@@ -60,7 +60,7 @@ public class HomeActivity extends AppCompatActivity {
 
         // Use adb reverse to map 127.0.0.1:8080 from PC to phone if needed
         Request request = new Request.Builder()
-                .url("https://delia-tiniest-preinsinuatingly.ngrok-free.dev")
+                .url("http://delia-tiniest-preinsinuatingly.ngrok-free.dev/")
                 .post(body)
                 .build();
         Log.d("prog", "sendToServer: " + request);
@@ -85,6 +85,7 @@ public class HomeActivity extends AppCompatActivity {
                     );
                     return;
                 }
+                Log.d("prog", "onResponse: response successful");
 
                 final String responseBody = response.body().string();
                 runOnUiThread(() -> {
