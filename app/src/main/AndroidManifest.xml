@@ -15,14 +15,20 @@
         android:theme="@style/Theme.MainProj"
         android:usesCleartextTraffic="true">
 
-        <activity android:name=".HomeActivity" android:exported="true" />
-        <activity android:name=".sign_up_activity" android:exported="false" />
-        <activity android:name=".Login_activity" android:exported="true">
+        <!-- HomeActivity becomes launcher -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Other activities -->
+        <activity android:name=".sign_up_activity" android:exported="false" />
+        <activity android:name=".Login_activity" android:exported="false" />
     </application>
+
 
 </manifest>
