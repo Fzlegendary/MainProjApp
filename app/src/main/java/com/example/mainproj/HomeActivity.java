@@ -35,7 +35,6 @@ public class HomeActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_home);
 
-        // Edge-to-edge padding
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -43,54 +42,53 @@ public class HomeActivity extends AppCompatActivity {
         });
 
         client = new OkHttpClient();
-
         btnSend = findViewById(R.id.sendToServer);
         textViewResponse = findViewById(R.id.textview);
 
-        // Button click listener
         btnSend.setOnClickListener(v -> sendToServer("Alice"));
     }
 
     private void sendToServer(String name) {
-        // JSON payload
         String json = "{\"name\":\"" + name + "\"}";
         Log.d("prog", "Sending JSON: " + json);
 
         RequestBody body = RequestBody.create(json, MediaType.get("application/json; charset=utf-8"));
 
-        // Use adb reverse to map 127.0.0.1:8080 from PC to phone if needed
+        // For REAL DEVICE with adb reverse: use 127.0.0.1
+        // For EMULATOR: use 10.0.2.2
         Request request = new Request.Builder()
-                .url("http://delia-tiniest-preinsinuatingly.ngrok-free.dev/")
+                .url("http://127.0.0.1:8080/greet")
                 .post(body)
                 .build();
-        Log.d("prog", "sendToServer: " + request);
+
+        Log.d("prog", "Sending to: " + request.url());
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.d("prog", "Failed to receive response");
-                e.printStackTrace();
+                Log.e("prog", "Request failed: " + e.getMessage(), e);
                 runOnUiThread(() ->
-                        Toast.makeText(HomeActivity.this, "Failed to connect to server", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(HomeActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show()
                 );
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                Log.d("prog", "onResponse: response received");
+                Log.d("prog", "Response code: " + response.code());
+
                 if (!response.isSuccessful()) {
-                    runOnUiThread(() -> {
-                                Toast.makeText(HomeActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
-                                Log.d("prog", "response was not successful, server error:" + response.code());
-                            }
+                    runOnUiThread(() ->
+                            Toast.makeText(HomeActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show()
                     );
                     return;
                 }
-                Log.d("prog", "onResponse: response successful");
 
                 final String responseBody = response.body().string();
+                Log.d("prog", "Success! Response: " + responseBody);
+
                 runOnUiThread(() -> {
                     textViewResponse.setText(responseBody);
-                    Log.d("prog", "Server response: " + responseBody);
+                    Toast.makeText(HomeActivity.this, "Success!", Toast.LENGTH_SHORT).show();
                 });
             }
         });
