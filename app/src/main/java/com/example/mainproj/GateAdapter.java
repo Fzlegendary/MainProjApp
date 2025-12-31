@@ -1,6 +1,5 @@
 package com.example.mainproj;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,10 +38,9 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
     public void onBindViewHolder(@NonNull GateViewHolder holder, int position) {
         Gate gate = gates.get(position);
 
-        holder.tvGateNumber.setText(gate.getGateNumber());
+        holder.tvGateNumber.setText(gate.getGateNumber().split("e")[0] + "e " + gate.getGateNumber().split("e")[1]);
         holder.tvActionStatus.setText(gate.getActionStatus());
 
-        // Status badge
         if (gate.isOpen()) {
             holder.tvGateStatus.setText("Open");
             holder.tvGateStatus.setBackgroundResource(R.drawable.status_badge_open);
@@ -59,11 +57,14 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
             );
         }
 
-        // Disable button if busy
         boolean busy = gate.getActionStatus().contains("Opening") || gate.getActionStatus().contains("Closing");
-        holder.btnToggleGate.setEnabled(!busy);
+        holder.btnToggleGate.setEnabled(!busy && gate.isClickable());
 
-        holder.btnToggleGate.setOnClickListener(v -> listener.onGateToggle(gate, position));
+        holder.btnToggleGate.setOnClickListener(v -> {
+            if (!busy && gate.isClickable()) {
+                listener.onGateToggle(gate, position);
+            }
+        });
     }
 
     @Override

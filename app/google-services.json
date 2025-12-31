@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "182056717412",
+    "firebase_url": "https://mainproj-5e50a-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "mainproj-5e50a",
     "storage_bucket": "mainproj-5e50a.firebasestorage.app"
   },
@@ -12,7 +13,12 @@
           "package_name": "com.example.mainproj"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "182056717412-ngejd56t1uaa3pir67uc3u4tttvrncsg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC_tIWfEuornyZzF5ID3AwLZO9EAN2dpRo"
@@ -20,7 +26,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "182056717412-ngejd56t1uaa3pir67uc3u4tttvrncsg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
