@@ -43,7 +43,10 @@ public class HomeActivity extends AppCompatActivity
         implements GateAdapter.OnGateClickListener {
 
     private static final String TAG = "HomeActivity";
-    private static final String SERVER_URL = "https://127.0.0.1:8080/gate/control";
+
+    // ❗ MUST be your PC IP
+    private static final String SERVER_URL =
+            "https://localhost:8080/gate/control";
 
     private OkHttpClient client;
     private final List<Gate> gateList = new ArrayList<>();
@@ -64,11 +67,11 @@ public class HomeActivity extends AppCompatActivity
         gatesRef = FirebaseDatabase.getInstance().getReference("gates");
 
         setupHttpsClient();
-        loadGatesFromFirebase();
+        subscribeToFirebase();
     }
 
     /**
-     * HTTPS client using BKS truststore from res/raw
+     * HTTPS client
      */
     private void setupHttpsClient() {
         try {
@@ -77,7 +80,8 @@ public class HomeActivity extends AppCompatActivity
             keyStore.load(ksStream, "killnoob200".toCharArray());
 
             TrustManagerFactory tmf =
-                    TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    TrustManagerFactory.getInstance(
+                            TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(keyStore);
 
             SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -87,38 +91,36 @@ public class HomeActivity extends AppCompatActivity
                     (X509TrustManager) tmf.getTrustManagers()[0];
 
             client = new OkHttpClient.Builder()
-                    .sslSocketFactory(sslContext.getSocketFactory(), trustManager)
+                    .sslSocketFactory(
+                            sslContext.getSocketFactory(),
+                            trustManager)
+                    .hostnameVerifier((h, s) -> true)
                     .build();
 
-            Log.d(TAG, "HTTPS client initialized");
-
         } catch (Exception e) {
-            Log.e(TAG, "SSL setup failed – using default client", e);
             client = new OkHttpClient();
         }
     }
 
     /**
-     * Firebase loader
+     * Firebase is SOURCE OF TRUTH
      */
-    private void loadGatesFromFirebase() {
-        gatesRef.addListenerForSingleValueEvent(new ValueEventListener() {
+    private void subscribeToFirebase() {
+        gatesRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 gateList.clear();
 
-                for (DataSnapshot gateSnap : snapshot.getChildren()) {
-                    String id = gateSnap.getKey();
-                    String state = gateSnap.child("state").getValue(String.class);
-                    Long ack = gateSnap.child("lastAckAt").getValue(Long.class);
-                    String cmd = gateSnap.child("lastCommandId").getValue(String.class);
+                for (DataSnapshot g : snapshot.getChildren()) {
+                    String id = g.getKey();
+                    String state = g.child("state").getValue(String.class);
 
                     gateList.add(new Gate(
                             id,
                             state != null ? state : "closed",
                             state != null ? state : "closed",
-                            ack != null ? ack : 0L,
-                            cmd != null ? cmd : ""
+                            0L,
+                            ""
                     ));
                 }
 
@@ -128,13 +130,14 @@ public class HomeActivity extends AppCompatActivity
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(HomeActivity.this,
-                        "Firebase load failed", Toast.LENGTH_SHORT).show();
+                        "Firebase error",
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     /**
-     * UI click handler
+     * UI click
      */
     @Override
     public void onGateToggle(Gate gate, int position) {
@@ -142,98 +145,73 @@ public class HomeActivity extends AppCompatActivity
 
         gate.setClickable(false);
 
-        boolean opening = !gate.isOpen();
-        String targetState = opening ? "open" : "closed";
+        String targetState =
+                gate.isOpen() ? "closed" : "open";
 
-        gate.setActionStatus(opening ? "Opening..." : "Closing...");
+        gate.setActionStatus(
+                targetState.equals("open")
+                        ? "Opening..."
+                        : "Closing...");
         adapter.updateGate(position, gate);
 
-        sendCommand(gate, position, targetState);
+        sendCommand(gate.getGateNumber(), targetState, position);
     }
 
     /**
-     * Network command
+     * Send command ONLY
      */
-    private void sendCommand(Gate gate, int position, String targetState) {
-        String commandId = UUID.randomUUID().toString();
+    private void sendCommand(
+            String gateId,
+            String targetState,
+            int position) {
 
         try {
             JSONObject json = new JSONObject();
-            json.put("gate", gate.getGateNumber());
+            json.put("gate", gateId);
             json.put("state", targetState);
-            json.put("commandId", commandId);
+            json.put("commandId", UUID.randomUUID().toString());
 
             Request request = new Request.Builder()
                     .url(SERVER_URL)
                     .post(RequestBody.create(
                             json.toString(),
-                            MediaType.get("application/json")
-                    ))
+                            MediaType.get("application/json")))
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
 
                 @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    Log.e(TAG, "Request failed", e);
-                    runOnUiThread(() -> rollback(position));
+                public void onFailure(
+                        @NonNull Call call,
+                        @NonNull IOException e) {
+
+                    runOnUiThread(() -> {
+                        Gate g = gateList.get(position);
+                        g.setActionStatus(g.getState());
+                        g.setClickable(true);
+                        adapter.updateGate(position, g);
+
+                        Toast.makeText(
+                                HomeActivity.this,
+                                "Server unreachable",
+                                Toast.LENGTH_SHORT).show();
+                    });
                 }
 
                 @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) {
-                    try {
-                        String body = response.body() != null
-                                ? response.body().string()
-                                : "";
-                        response.close();
+                public void onResponse(
+                        @NonNull Call call,
+                        @NonNull Response response) {
 
-                        JSONObject resp = new JSONObject(body);
-                        String status = resp.optString("status", "ok");
-
-                        runOnUiThread(() -> {
-                            if ("rejected".equals(status)) {
-                                rollback(position);
-                                return;
-                            }
-
-                            gate.setState(targetState);
-                            gate.setActionStatus(targetState);
-                            gate.setClickable(true);
-                            adapter.updateGate(position, gate);
-
-                            Map<String, Object> updates = new HashMap<>();
-                            updates.put("state", gate.getState());
-                            updates.put("lastAckAt", System.currentTimeMillis());
-                            updates.put("lastCommandId", commandId);
-
-                            gatesRef.child(gate.getGateNumber())
-                                    .updateChildren(updates);
-                        });
-
-                    } catch (Exception e) {
-                        Log.e(TAG, "Response error", e);
-                        runOnUiThread(() -> rollback(position));
-                    }
+                    response.close();
+                    // DO NOTHING — Firebase will update UI
                 }
             });
 
         } catch (Exception e) {
-            rollback(position);
+            Toast.makeText(this,
+                    "Command error",
+                    Toast.LENGTH_SHORT).show();
         }
-    }
-
-    /**
-     * Rollback UI
-     */
-    private void rollback(int position) {
-        Gate g = gateList.get(position);
-        g.setState(g.isOpen() ? "open" : "closed");
-        g.setActionStatus(g.getState());
-        g.setClickable(true);
-        adapter.updateGate(position, g);
-
-        Toast.makeText(this,
-                "Server unreachable, try again",
-                Toast.LENGTH_SHORT).show();
     }
 }
