@@ -15,7 +15,7 @@
         android:theme="@style/Theme.MainProj"
         android:usesCleartextTraffic="true" >
         <activity
-            android:name=".listsActivity"
+            android:name=".lists.listsActivity"
             android:exported="false" />
         <activity
             android:name=".ServerSettingsActivity"

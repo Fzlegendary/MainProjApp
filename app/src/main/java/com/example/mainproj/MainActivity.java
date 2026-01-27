@@ -9,6 +9,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.mainproj.lists.listsActivity;
 import com.google.android.material.button.MaterialButton;
 
 public class MainActivity extends AppCompatActivity {
@@ -37,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnServerSettings = findViewById(R.id.btnServerSettings);
         MaterialButton btnAccountManagement = findViewById(R.id.btnAccountManagement);
         MaterialButton btnBlacklist = findViewById(R.id.btnBlacklist);
-        MaterialButton btnWhitelist = findViewById(R.id.btnWhitelist);
 
         btnMessaging.setOnClickListener(v ->
                 startActivity(new Intent(this, MessagingActivity.class)));
