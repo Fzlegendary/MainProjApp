@@ -9,8 +9,14 @@ import java.util.*;
 public class ListFilter {
 
     private static final SimpleDateFormat DATE =
-            new SimpleDateFormat("dd/MM/yy", Locale.getDefault());
+            new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
+    /**
+     * Filters a list of PlaceholderItems based on the search query.
+     * - "by:username" filters by who added the item.
+     * - Free-text searches match the item's name.
+     * - Empty or invalid date inputs are ignored safely.
+     */
     public static List<PlaceholderContent.PlaceholderItem> apply(
             List<PlaceholderContent.PlaceholderItem> source,
             String query
@@ -24,36 +30,65 @@ public class ListFilter {
             String part = raw.trim();
 
             if (part.startsWith("by:")) {
-                out = filterBy(out, part.substring(3));
+                out = filterByWho(out, part.substring(3));
             } else if (part.startsWith("expiresBefore:")) {
-                out = filterExpiresBefore(out, part.substring(14));
+                Long d = safeParse(part.substring(14));
+                if (d != null) out = filterExpiresBefore(out, d);
             } else if (part.startsWith("expiresAfter:")) {
-                out = filterExpiresAfter(out, part.substring(13));
+                Long d = safeParse(part.substring(13));
+                if (d != null) out = filterExpiresAfter(out, d);
             } else if (part.startsWith("expires:")) {
-                out = filterExpiresOn(out, part.substring(8));
+                Long d = safeParse(part.substring(8));
+                if (d != null) out = filterExpiresOn(out, d);
             } else if (part.startsWith("addedBefore:")) {
-                out = filterAddedBefore(out, part.substring(12));
+                Long d = safeParse(part.substring(12));
+                if (d != null) out = filterAddedBefore(out, d);
             } else if (part.startsWith("addedAfter:")) {
-                out = filterAddedAfter(out, part.substring(11));
+                Long d = safeParse(part.substring(11));
+                if (d != null) out = filterAddedAfter(out, d);
             } else if (part.startsWith("added:")) {
-                out = filterAddedOn(out, part.substring(6));
+                Long d = safeParse(part.substring(6));
+                if (d != null) out = filterAddedOn(out, d);
+            } else {
+                // Free-text search → filter by name
+                String lower = part.toLowerCase();
+                List<PlaceholderContent.PlaceholderItem> filtered = new ArrayList<>();
+                for (PlaceholderContent.PlaceholderItem item : out) {
+                    if (item.name.toLowerCase().contains(lower)) {
+                        filtered.add(item);
+                    }
+                }
+                out = filtered;
             }
         }
         return out;
     }
 
-    // ---------- BY ----------
-    private static List<PlaceholderContent.PlaceholderItem> filterBy(
+    // ---------- HELPER: SAFE PARSE ----------
+    private static Long safeParse(String s) {
+        s = s.trim();
+        if (s.isEmpty()) return null;
+        try {
+            return DATE.parse(s).getTime();
+        } catch (ParseException e) {
+            // ignore invalid dates
+            return null;
+        }
+    }
+
+    // ---------- FILTER BY WHO ----------
+    private static List<PlaceholderContent.PlaceholderItem> filterByWho(
             List<PlaceholderContent.PlaceholderItem> src,
             String csv
     ) {
         Set<String> allowed = new HashSet<>();
         for (String s : csv.split(",")) {
-            allowed.add(s.trim().toLowerCase());
+            s = s.trim();
+            if (!s.isEmpty()) allowed.add(s.toLowerCase());
         }
 
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
-        for (var i : src) {
+        for (PlaceholderContent.PlaceholderItem i : src) {
             if (allowed.contains(i.byWho.toLowerCase())) {
                 out.add(i);
             }
@@ -61,95 +96,64 @@ public class ListFilter {
         return out;
     }
 
-    // ---------- EXPIRES ----------
+    // ---------- FILTER EXPIRES ----------
     private static List<PlaceholderContent.PlaceholderItem> filterExpiresBefore(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long date
     ) {
-        long d = parse(date);
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
         for (var i : src) {
-            if (i.timestampExpiresAt != -1 && i.timestampExpiresAt < d) {
-                out.add(i);
-            }
+            if (i.timestampExpiresAt != -1 && i.timestampExpiresAt < date) out.add(i);
         }
         return out;
     }
 
     private static List<PlaceholderContent.PlaceholderItem> filterExpiresAfter(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long date
     ) {
-        long d = parse(date);
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
         for (var i : src) {
-            if (i.timestampExpiresAt != -1 && i.timestampExpiresAt > d) {
-                out.add(i);
-            }
+            if (i.timestampExpiresAt == -1 || i.timestampExpiresAt > date) out.add(i);
         }
         return out;
     }
 
     private static List<PlaceholderContent.PlaceholderItem> filterExpiresOn(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long day
     ) {
-        long day = parse(date);
         long next = day + 86_400_000L;
-
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
         for (var i : src) {
-            if (i.timestampExpiresAt >= day && i.timestampExpiresAt < next) {
+            if (i.timestampExpiresAt != -1 &&
+                    i.timestampExpiresAt >= day && i.timestampExpiresAt < next) {
                 out.add(i);
             }
         }
         return out;
     }
 
-    // ---------- ADDED ----------
+    // ---------- FILTER ADDED ----------
     private static List<PlaceholderContent.PlaceholderItem> filterAddedBefore(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long date
     ) {
-        long d = parse(date);
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
-        for (var i : src) {
-            if (i.timestampWhenAdded < d) {
-                out.add(i);
-            }
-        }
+        for (var i : src) if (i.timestampWhenAdded < date) out.add(i);
         return out;
     }
 
     private static List<PlaceholderContent.PlaceholderItem> filterAddedAfter(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long date
     ) {
-        long d = parse(date);
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
-        for (var i : src) {
-            if (i.timestampWhenAdded > d) {
-                out.add(i);
-            }
-        }
+        for (var i : src) if (i.timestampWhenAdded > date) out.add(i);
         return out;
     }
 
     private static List<PlaceholderContent.PlaceholderItem> filterAddedOn(
-            List<PlaceholderContent.PlaceholderItem> src, String date
+            List<PlaceholderContent.PlaceholderItem> src, long day
     ) {
-        long day = parse(date);
         long next = day + 86_400_000L;
-
         List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
-        for (var i : src) {
-            if (i.timestampWhenAdded >= day && i.timestampWhenAdded < next) {
-                out.add(i);
-            }
-        }
+        for (var i : src) if (i.timestampWhenAdded >= day && i.timestampWhenAdded < next) out.add(i);
         return out;
-    }
-
-    private static long parse(String s) {
-        try {
-            return DATE.parse(s.trim()).getTime();
-        } catch (ParseException e) {
-            throw new RuntimeException("Bad date: " + s);
-        }
     }
 }

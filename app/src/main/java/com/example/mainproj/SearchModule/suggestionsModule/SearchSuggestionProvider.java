@@ -1,4 +1,4 @@
-package com.example.mainproj.SearchModule;
+package com.example.mainproj.SearchModule.suggestionsModule;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,7 +7,7 @@ import java.util.List;
 public class SearchSuggestionProvider {
 
     private static final List<String> BY_VALUES =
-            Arrays.asList("system", "s1", "s2", "admin");
+            Arrays.asList("system", "System");
 
     public static List<SearchSuggestion> getSuggestions(String input) {
         List<SearchSuggestion> out = new ArrayList<>();

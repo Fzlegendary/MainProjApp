@@ -1,4 +1,4 @@
-package com.example.mainproj;
+package com.example.mainproj.userSystem;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -10,6 +10,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.mainproj.MainActivity;
+import com.example.mainproj.R;
 import com.google.android.gms.auth.api.signin.*;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.material.button.MaterialButton;
@@ -53,7 +55,7 @@ public class Login_activity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
+        setContentView(com.example.mainproj.R.layout.activity_login);
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -64,11 +66,11 @@ public class Login_activity extends AppCompatActivity {
             return;
         }
 
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        btnLogin = findViewById(R.id.btnLogin);
-        btnGoogleLogin = findViewById(R.id.btnGoogleLogin);
-        tvSignUp = findViewById(R.id.tvSignUp);
+        etEmail = findViewById(com.example.mainproj.R.id.etEmail);
+        etPassword = findViewById(com.example.mainproj.R.id.etPassword);
+        btnLogin = findViewById(com.example.mainproj.R.id.btnLogin);
+        btnGoogleLogin = findViewById(com.example.mainproj.R.id.btnGoogleLogin);
+        tvSignUp = findViewById(com.example.mainproj.R.id.tvSignUp);
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(
                 GoogleSignInOptions.DEFAULT_SIGN_IN)

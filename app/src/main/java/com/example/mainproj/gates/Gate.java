@@ -1,4 +1,4 @@
-package com.example.mainproj;
+package com.example.mainproj.gates;
 
 public class Gate {
 

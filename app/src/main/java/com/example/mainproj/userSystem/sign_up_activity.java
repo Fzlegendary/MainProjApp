@@ -1,4 +1,4 @@
-package com.example.mainproj;
+package com.example.mainproj.userSystem;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -10,6 +10,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.mainproj.gatesMain;
+import com.example.mainproj.R;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -20,12 +22,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -124,7 +124,7 @@ public class sign_up_activity extends AppCompatActivity {
                             .setValue(userData)
                             .addOnSuccessListener(unused -> {
                                 Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, HomeActivity.class));
+                                startActivity(new Intent(sign_up_activity.this, gatesMain.class));
                                 finish();
                             })
                             .addOnFailureListener(e -> Toast.makeText(this, "Failed to save user", Toast.LENGTH_SHORT).show());
@@ -158,7 +158,7 @@ public class sign_up_activity extends AppCompatActivity {
                             .setValue(userData)
                             .addOnSuccessListener(unused -> {
                                 Toast.makeText(this, "Google account created", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, HomeActivity.class));
+                                startActivity(new Intent(sign_up_activity.this, gatesMain.class));
                                 finish();
                             })
                             .addOnFailureListener(e -> Toast.makeText(this, "Failed saving user", Toast.LENGTH_SHORT).show());

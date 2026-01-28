@@ -1,4 +1,4 @@
-package com.example.mainproj.SearchModule;
+package com.example.mainproj.SearchModule.suggestionsModule;
 
 public class SearchSuggestion {
     public final String display; // what shows to user

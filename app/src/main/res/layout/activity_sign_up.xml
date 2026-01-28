@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:background="#FAFAFA"
     android:padding="24dp"
-    tools:context=".sign_up_activity">
+    tools:context=".userSystem.sign_up_activity">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardView"

@@ -1,7 +1,6 @@
 package com.example.mainproj;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -9,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.gates.Gate;
+import com.example.mainproj.gates.GateAdapter;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -22,9 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import javax.net.ssl.SSLContext;
@@ -39,10 +38,10 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class HomeActivity extends AppCompatActivity
+public class gatesMain extends AppCompatActivity
         implements GateAdapter.OnGateClickListener {
 
-    private static final String TAG = "HomeActivity";
+    private static final String TAG = "gatesMain";
 
     // ❗ MUST be your PC IP
     private static final String SERVER_URL =
@@ -129,7 +128,7 @@ public class HomeActivity extends AppCompatActivity
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(HomeActivity.this,
+                Toast.makeText(gatesMain.this,
                         "Firebase error",
                         Toast.LENGTH_SHORT).show();
             }
@@ -192,7 +191,7 @@ public class HomeActivity extends AppCompatActivity
                         adapter.updateGate(position, g);
 
                         Toast.makeText(
-                                HomeActivity.this,
+                                gatesMain.this,
                                 "Server unreachable",
                                 Toast.LENGTH_SHORT).show();
                     });

@@ -25,9 +25,9 @@
             android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="false" /> <!-- HomeActivity becomes launcher -->
+            android:exported="false" /> <!-- gatesMain becomes launcher -->
         <activity
-            android:name=".Login_activity"
+            android:name=".userSystem.Login_activity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -36,10 +36,10 @@
             </intent-filter>
         </activity> <!-- Other activities -->
         <activity
-            android:name=".sign_up_activity"
+            android:name=".userSystem.sign_up_activity"
             android:exported="false" />
         <activity
-            android:name=".HomeActivity"
+            android:name=".gatesMain"
             android:exported="false" />
     </application>
 

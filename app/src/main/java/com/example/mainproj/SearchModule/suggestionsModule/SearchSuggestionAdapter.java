@@ -1,7 +1,6 @@
-package com.example.mainproj.SearchModule;
+package com.example.mainproj.SearchModule.suggestionsModule;
 
 import android.view.Gravity;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -25,15 +24,24 @@ public class SearchSuggestionAdapter
         this.callback = cb;
     }
 
+    // Update suggestions dynamically
     public void setItems(List<SearchSuggestion> newItems) {
         items.clear();
-        items.addAll(newItems);
+        if (newItems != null && !newItems.isEmpty()) {
+            items.addAll(newItems);
+        }
+        notifyDataSetChanged();
+    }
+
+    // Clear all suggestions
+    public void clearSuggestions() {
+        items.clear();
         notifyDataSetChanged();
     }
 
     @Override
     public VH onCreateViewHolder(ViewGroup parent, int viewType) {
-        // Wrap TextView inside a LinearLayout
+        // Create container LinearLayout
         LinearLayout container = new LinearLayout(parent.getContext());
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setPadding(32, 24, 32, 24);
@@ -43,6 +51,7 @@ public class SearchSuggestionAdapter
         ));
         container.setGravity(Gravity.CENTER_VERTICAL);
 
+        // Create TextView inside container
         TextView tv = new TextView(parent.getContext());
         tv.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -55,15 +64,21 @@ public class SearchSuggestionAdapter
     }
 
     @Override
-    public void onBindViewHolder(VH h, int p) {
-        SearchSuggestion s = items.get(p);
+    public void onBindViewHolder(VH h, int position) {
+        SearchSuggestion s = items.get(position);
         h.text.setText(s.display);
 
-        // Set click listener on the entire row (LinearLayout)
-        h.container.setOnClickListener(v -> callback.onClick(s));
+        // Click listener on the entire row
+        h.container.setOnClickListener(v -> {
+            callback.onClick(s);     // Trigger suggestion action
+            clearSuggestions();      // Remove all suggestions from view
+        });
     }
 
-    @Override public int getItemCount() { return items.size(); }
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
 
     static class VH extends RecyclerView.ViewHolder {
         LinearLayout container;

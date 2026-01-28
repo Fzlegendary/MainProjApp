@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#FAFAFA"
-    tools:context=".HomeActivity">
+    tools:context=".gatesMain">
 
     <!-- Header -->
     <LinearLayout

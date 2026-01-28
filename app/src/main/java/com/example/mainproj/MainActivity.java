@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(this, MessagingActivity.class)));
 
         btnGateControl.setOnClickListener(v ->
-                startActivity(new Intent(this, HomeActivity.class)));
+                startActivity(new Intent(this, gatesMain.class)));
 
         btnServerSettings.setOnClickListener(v ->
                 startActivity(new Intent(this, ServerSettingsActivity.class)));
