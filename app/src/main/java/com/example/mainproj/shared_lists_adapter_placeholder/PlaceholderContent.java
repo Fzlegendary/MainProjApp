@@ -17,6 +17,7 @@ public class PlaceholderContent {
         // Initialize Whitelist items
         for (int i = 1; i <= 7; i++) {
             ITEMS.add(new PlaceholderItem(
+                    null,                       // id (will be set after server add)
                     false,                      // isRemoved
                     now,                        // timestampWhenAdded
                     "Whitelist Item " + i,      // name
@@ -29,6 +30,7 @@ public class PlaceholderContent {
         // Initialize Blacklist items
         for (int i = 1; i <= 5; i++) {
             BLACKLIST_ITEMS.add(new PlaceholderItem(
+                    null,
                     false,
                     now,
                     "Blacklist Item " + i,
@@ -42,6 +44,7 @@ public class PlaceholderContent {
     /** Represents a single list item (Whitelist or Blacklist) */
     public static class PlaceholderItem {
 
+        public String id;                       // Firebase key (added for server sync)
         public boolean isRemoved;
         public long timestampWhenAdded;
         public String name;
@@ -50,6 +53,7 @@ public class PlaceholderContent {
         public long timestampExpiresAt; // -1 = never expires
 
         public PlaceholderItem(
+                String id,
                 boolean isRemoved,
                 long timestampWhenAdded,
                 String name,
@@ -57,6 +61,7 @@ public class PlaceholderContent {
                 String reason,
                 long timestampExpiresAt
         ) {
+            this.id = id;
             this.isRemoved = isRemoved;
             this.timestampWhenAdded = timestampWhenAdded;
             this.name = name;

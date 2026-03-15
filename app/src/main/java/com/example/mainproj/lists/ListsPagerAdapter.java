@@ -10,9 +10,12 @@ import java.util.Map;
 public class ListsPagerAdapter extends FragmentStateAdapter {
 
     private final Map<Integer, FragmentBaseList> fragmentMap = new HashMap<>();
+    private final ListRequestManager apiClient; // store the client
 
-    public ListsPagerAdapter(@NonNull FragmentActivity activity) {
+    // Updated constructor – now takes two arguments
+    public ListsPagerAdapter(@NonNull FragmentActivity activity, ListRequestManager apiClient) {
         super(activity);
+        this.apiClient = apiClient;
     }
 
     @NonNull
@@ -24,6 +27,8 @@ public class ListsPagerAdapter extends FragmentStateAdapter {
         } else {
             fragment = new FragmentBlacklist();
         }
+        // Pass the apiClient to the fragment (requires a setter in FragmentBaseList)
+        fragment.setApiClient(apiClient);
         fragmentMap.put(position, fragment);
         return fragment;
     }
