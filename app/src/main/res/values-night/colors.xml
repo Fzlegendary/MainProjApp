@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#42A5F5</color>
+    <color name="colorPrimaryDark">#1E88E5</color>
+    <color name="colorAccent">#64B5F6</color>
+    <color name="colorBackground">#0F1117</color>
+    <color name="colorSurface">#1A1D27</color>
+    <color name="colorCardBackground">#1E2130</color>
+    <color name="colorTextPrimary">#F0F2F8</color>
+    <color name="colorTextSecondary">#9AA0B4</color>
+    <color name="colorTextHint">#5A6070</color>
+    <color name="colorTimestamp">#6B7280</color>
+    <color name="colorDivider">#252836</color>
+    <color name="colorCardBorder">#2A2E3F</color>
+    <color name="colorSearchBackground">#1E2130</color>
+    <color name="colorSearchStroke">#2A2E3F</color>
+    <color name="colorFab">#42A5F5</color>
+    <color name="colorFabIcon">#0F1117</color>
+    <color name="colorCardShadow">#33000000</color>
+    <color name="colorAvatarBackground">#1A3A5C</color>
+    <color name="colorAvatarIcon">#64B5F6</color>
+</resources>

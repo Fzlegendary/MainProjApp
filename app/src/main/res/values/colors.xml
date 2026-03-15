@@ -20,4 +20,25 @@
     <color name="button_google_text_dark">#e0e0e0</color>
     <color name="button_google_stroke_dark">#4a4a4a</color>
 
+
+    <color name="colorPrimary">#1E88E5</color>
+    <color name="colorPrimaryDark">#1565C0</color>
+    <color name="colorAccent">#42A5F5</color>
+    <color name="colorBackground">#F5F7FA</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorCardBackground">#FFFFFF</color>
+    <color name="colorTextPrimary">#1A1A2E</color>
+    <color name="colorTextSecondary">#6B7280</color>
+    <color name="colorTextHint">#9CA3AF</color>
+    <color name="colorTimestamp">#9CA3AF</color>
+    <color name="colorDivider">#E5E7EB</color>
+    <color name="colorCardBorder">#E9ECF0</color>
+    <color name="colorSearchBackground">#FFFFFF</color>
+    <color name="colorSearchStroke">#D1D5DB</color>
+    <color name="colorFab">#1E88E5</color>
+    <color name="colorFabIcon">#FFFFFF</color>
+    <color name="colorCardShadow">#1A000000</color>
+    <color name="colorAvatarBackground">#DBEAFE</color>
+    <color name="colorAvatarIcon">#1E88E5</color>
+
 </resources>

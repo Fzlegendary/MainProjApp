@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    bottom_sheet_user_profile.xml
+    Starts at 2/3 screen height, draggable to full screen.
+    Tap outside or drag down to dismiss.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorSurface"
+    android:paddingBottom="32dp">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="24dp"
+        android:background="@color/colorDivider"/>
+
+    <!-- Profile picture -->
+    <ImageView
+        android:id="@+id/bsProfileImage"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_avatar_circle"
+        android:src="@android:drawable/sym_def_app_icon"
+        android:tint="@color/colorAvatarIcon"
+        android:padding="20dp"
+        android:scaleType="centerInside"
+        android:contentDescription="Profile picture"/>
+
+    <!-- Username -->
+    <TextView
+        android:id="@+id/bsUsername"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:text="Username"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/colorTextPrimary"/>
+
+    <!-- View Full Profile — small outlined pill button under username -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/bsBtnViewProfile"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="6dp"
+        android:text="View Full Profile"
+        android:textSize="11sp"
+        android:textColor="@color/colorPrimary"
+        android:paddingHorizontal="14dp"
+        app:backgroundTint="@android:color/transparent"
+        app:strokeColor="@color/colorPrimary"
+        app:strokeWidth="1dp"
+        app:cornerRadius="20dp"
+        app:iconSize="14dp"/>
+
+    <!-- Online status row -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <View
+            android:id="@+id/bsOnlineDot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_avatar_circle"
+            android:backgroundTint="#4CAF50"
+            android:layout_marginEnd="6dp"/>
+
+        <TextView
+            android:id="@+id/bsLastSeen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Online"
+            android:textSize="13sp"
+            android:textColor="@color/colorTextSecondary"/>
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/colorDivider"/>
+
+    <!-- Bio -->
+    <TextView
+        android:id="@+id/bsBio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginHorizontal="40dp"
+        android:text="Hey there! I am using this app."
+        android:textSize="14sp"
+        android:textColor="@color/colorTextSecondary"
+        android:gravity="center"
+        android:maxLines="3"
+        android:ellipsize="end"/>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"
+        android:background="@color/colorDivider"/>
+
+    <!-- Send Message -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/bsBtnSendMessage"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginHorizontal="24dp"
+        android:text="Send Message"
+        android:textSize="15sp"
+        android:textColor="@color/colorFabIcon"
+        app:backgroundTint="@color/colorFab"
+        app:cornerRadius="12dp"
+        app:strokeWidth="0dp"/>
+
+    <!-- Block user -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/bsBtnBlock"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="6dp"
+        android:text="Block User"
+        android:textSize="13sp"
+        android:textColor="#EF5350"
+        app:backgroundTint="@android:color/transparent"
+        app:rippleColor="#1AEF5350"/>
+
+</LinearLayout>
