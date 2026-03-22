@@ -26,6 +26,8 @@ import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestion;
 import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestionAdapter;
 import com.example.mainproj.lists.ListRequestManager;
 import com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import org.json.JSONObject;
 
@@ -304,7 +306,7 @@ public class listsActivity extends AppCompatActivity {
     }
 
     private String getCurrentUserName() {
-        // TODO: return real user name from SharedPreferences or FirebaseAuth
-        return "Admin";
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        return user != null ? user.getEmail() : "unknown";
     }
 }

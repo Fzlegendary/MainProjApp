@@ -41,40 +41,58 @@ public class ListRequestManager {
 
     public void addItem(String listType, PlaceholderContent.PlaceholderItem item, String userName, ListCallback callback) {
         String commandId = UUID.randomUUID().toString();
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("listType", listType);
-        payload.put("userName", userName);
-        payload.put("commandId", commandId);
-        Map<String, Object> itemMap = new HashMap<>();
-        itemMap.put("name", item.name);
-        itemMap.put("reason", item.reason);
-        itemMap.put("expiresAt", item.timestampExpiresAt);
-        payload.put("item", itemMap);
-        executeRequest("list/add", payload, callback, commandId);
+        try {
+            JSONObject itemJson = new JSONObject();
+            itemJson.put("name", item.name);
+            itemJson.put("reason", item.reason);
+            itemJson.put("expiresAt", item.timestampExpiresAt);
+
+            JSONObject payload = new JSONObject();
+            payload.put("listType", listType);
+            payload.put("userName", userName);
+            payload.put("commandId", commandId);
+            payload.put("item", itemJson);
+
+            executeRequest("list/add", payload, callback, commandId);
+        } catch (Exception e) {
+            postError(callback, "JSON build error: " + e.getMessage());
+        }
     }
 
     public void removeItem(String listType, String itemId, String userName, ListCallback callback) {
         String commandId = UUID.randomUUID().toString();
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("listType", listType);
-        payload.put("itemId", itemId);
-        payload.put("userName", userName);
-        payload.put("commandId", commandId);
-        executeRequest("list/remove", payload, callback, commandId);
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("listType", listType);
+            payload.put("itemId", itemId);
+            payload.put("userName", userName);
+            payload.put("commandId", commandId);
+
+            executeRequest("list/remove", payload, callback, commandId);
+        } catch (Exception e) {
+            postError(callback, "JSON build error: " + e.getMessage());
+        }
     }
 
     public void updateItem(String listType, String itemId, Map<String, Object> updates, String userName, ListCallback callback) {
         String commandId = UUID.randomUUID().toString();
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("listType", listType);
-        payload.put("itemId", itemId);
-        payload.put("userName", userName);
-        payload.put("commandId", commandId);
-        payload.put("updates", updates);
-        executeRequest("list/update", payload, callback, commandId);
+        try {
+            JSONObject updatesJson = new JSONObject(updates);
+
+            JSONObject payload = new JSONObject();
+            payload.put("listType", listType);
+            payload.put("itemId", itemId);
+            payload.put("userName", userName);
+            payload.put("commandId", commandId);
+            payload.put("updates", updatesJson);
+
+            executeRequest("list/update", payload, callback, commandId);
+        } catch (Exception e) {
+            postError(callback, "JSON build error: " + e.getMessage());
+        }
     }
 
-    private void executeRequest(String endpoint, Map<String, Object> payload, ListCallback callback, String commandId) {
+    private void executeRequest(String endpoint, JSONObject jsonPayload, ListCallback callback, String commandId) {
         executor.execute(() -> {
             try {
                 URL url = new URL(baseUrl + endpoint);
@@ -85,7 +103,6 @@ public class ListRequestManager {
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
 
-                JSONObject jsonPayload = new JSONObject(payload);
                 DataOutputStream os = new DataOutputStream(conn.getOutputStream());
                 os.writeBytes(jsonPayload.toString());
                 os.flush();

@@ -40,7 +40,9 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
     public void onBindViewHolder(@NonNull GateViewHolder holder, int position) {
         Gate gate = gates.get(position);
 
-        holder.tvGateNumber.setText(gate.getGateNumber().split("e")[0] + "e " + gate.getGateNumber().split("e")[1]);
+        String[] parts = gate.getGateNumber().split("e");
+        String displayName = parts.length >= 2 ? parts[0] + "e " + parts[1] : gate.getGateNumber();
+        holder.tvGateNumber.setText(displayName);
         holder.tvActionStatus.setText(gate.getActionStatus());
 
         if (gate.isOpen()) {
@@ -63,12 +65,12 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
         holder.btnToggleGate.setEnabled(!busy && gate.isClickable());
 
         holder.btnToggleGate.setOnClickListener(v -> {
-            if (!busy && gate.isClickable()) {
-                listener.onGateToggle(gate, position);
-            }
+            int pos = holder.getBindingAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION) return;
+            Gate g = gates.get(pos);
+            if (g.isClickable()) listener.onGateToggle(g, pos);
         });
     }
-
     @Override
     public int getItemCount() {
         return gates.size();

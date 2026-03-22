@@ -10,6 +10,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.mainproj.MainActivity;
 import com.example.mainproj.gatesMain;
 import com.example.mainproj.R;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -42,6 +43,10 @@ public class sign_up_activity extends AppCompatActivity {
 
     private final ActivityResultLauncher<Intent> googleSignInLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) {
+                    Toast.makeText(this, "Google sign-in cancelled", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 try {
                     GoogleSignInAccount account = GoogleSignIn.getSignedInAccountFromIntent(result.getData()).getResult(ApiException.class);
                     firebaseAuthWithGoogle(account.getIdToken());
@@ -101,22 +106,16 @@ public class sign_up_activity extends AppCompatActivity {
             return;
         }
 
-        // Create FirebaseAuth account first
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
                     String uid = mAuth.getCurrentUser().getUid();
                     String safeEmail = email.replace(".", "_");
-
-                    String passwordHash = hashPassword(password);
-                    String registrationTime = timestampNow();
 
                     Map<String, Object> userData = new HashMap<>();
                     userData.put("username", username);
                     userData.put("email", email);
                     userData.put("uid", uid);
                     userData.put("role", "user");
-                    userData.put("password_hash", passwordHash);
-                    userData.put("registration_time", registrationTime);
 
                     FirebaseDatabase.getInstance()
                             .getReference("users")
@@ -124,14 +123,13 @@ public class sign_up_activity extends AppCompatActivity {
                             .setValue(userData)
                             .addOnSuccessListener(unused -> {
                                 Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, gatesMain.class));
+                                startActivity(new Intent(sign_up_activity.this, MainActivity.class));
                                 finish();
                             })
                             .addOnFailureListener(e -> Toast.makeText(this, "Failed to save user", Toast.LENGTH_SHORT).show());
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Signup failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
     }
-
 
     private void firebaseAuthWithGoogle(String idToken) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
@@ -143,12 +141,10 @@ public class sign_up_activity extends AppCompatActivity {
 
                     String safeEmail = account.getEmail().replace(".", "_");
                     String uid = mAuth.getCurrentUser().getUid();
-                    String registrationTime = timestampNow();
 
                     Map<String, Object> userData = new HashMap<>();
                     userData.put("username", account.getDisplayName());
                     userData.put("email", account.getEmail());
-                    userData.put("registration_time", registrationTime);
                     userData.put("role", "user");
                     userData.put("uid", uid);
 
@@ -158,14 +154,13 @@ public class sign_up_activity extends AppCompatActivity {
                             .setValue(userData)
                             .addOnSuccessListener(unused -> {
                                 Toast.makeText(this, "Google account created", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, gatesMain.class));
+                                startActivity(new Intent(sign_up_activity.this, MainActivity.class));
                                 finish();
                             })
                             .addOnFailureListener(e -> Toast.makeText(this, "Failed saving user", Toast.LENGTH_SHORT).show());
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Google authentication failed", Toast.LENGTH_SHORT).show());
     }
-
     private String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
