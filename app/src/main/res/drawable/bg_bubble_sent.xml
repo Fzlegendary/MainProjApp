@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/colorPrimary"/>
+    <!--
+        All corners fully rounded except bottom-right which has a tiny radius.
+        That tiny corner acts as the "tail" pointing toward the right side
+        (away from the sender, toward the conversation partner).
+    -->
+    <corners
+        android:topLeftRadius="16dp"
+        android:topRightRadius="16dp"
+        android:bottomLeftRadius="16dp"
+        android:bottomRightRadius="4dp"/>
+</shape>

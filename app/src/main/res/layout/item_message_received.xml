@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    item_message_received.xml
+    Layout for a message received from the other person.
+    Profile picture sits to the LEFT of the bubble; the bubble's bottom-left
+    corner has a 4 dp radius (the "tail") that points back toward the avatar.
+    Tapping the avatar opens the UserProfileBottomSheet.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="bottom"
+    android:paddingStart="8dp"
+    android:paddingEnd="56dp"
+    android:paddingTop="3dp"
+    android:paddingBottom="3dp">
+
+    <!-- ── Profile picture ── -->
+    <!-- Clickable; the adapter attaches the OnClickListener that opens the sheet -->
+    <ImageView
+        android:id="@+id/msgReceivedAvatar"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="6dp"
+        android:background="@drawable/bg_avatar_circle"
+        android:src="@android:drawable/sym_def_app_icon"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:tint="@color/colorAvatarIcon"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="Profile picture" />
+
+    <!-- ── Bubble with tail pointing left toward the avatar ── -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_bubble_received"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/msgReceivedText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="15sp"
+            android:maxWidth="220dp"
+            android:lineSpacingExtra="2dp"/>
+
+        <TextView
+            android:id="@+id/msgReceivedTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            android:layout_marginTop="3dp"/>
+
+    </LinearLayout>
+
+</LinearLayout>
