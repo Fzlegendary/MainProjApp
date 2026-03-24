@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -38,7 +37,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class gatesMain extends AppCompatActivity
+public class gatesMain extends BaseActivity
         implements GateAdapter.OnGateClickListener {
 
     private static final String TAG = "gatesMain";

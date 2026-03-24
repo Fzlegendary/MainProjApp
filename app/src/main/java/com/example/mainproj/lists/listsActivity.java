@@ -1,9 +1,14 @@
 package com.example.mainproj.lists;
 
+import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,6 +24,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.BaseActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListFilter;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
@@ -26,6 +32,7 @@ import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestion;
 import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestionAdapter;
 import com.example.mainproj.lists.ListRequestManager;
 import com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -33,13 +40,16 @@ import org.json.JSONObject;
 
 import java.io.DataOutputStream;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class listsActivity extends AppCompatActivity {
+public class listsActivity extends BaseActivity {
 
     private ViewPager2 viewPager;
     private View indicatorSlider, indicatorBar;
@@ -52,19 +62,22 @@ public class listsActivity extends AppCompatActivity {
     private ListsSearchViewModel searchViewModel;
     private ListRequestManager apiClient;
 
+    private ImageButton btnFilter;
+    private TextView filterBadge;
+    private SearchView searchView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_lists);
 
-        // Initialize API client with localhost (works with adb reverse)
         String baseUrl = "https://localhost:8080";
-        apiClient = new ListRequestManager(baseUrl, true); // true = trust self‑signed cert (dev only)
+        apiClient = new ListRequestManager(baseUrl, true);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
 
@@ -73,8 +86,10 @@ public class listsActivity extends AppCompatActivity {
         indicatorBar = findViewById(R.id.indicatorBar);
         indicatorButtons = findViewById(R.id.indicatorButtons);
         fragmentTitle = findViewById(R.id.fragmentTitle);
-        SearchView searchView = findViewById(R.id.searchView);
+        searchView = findViewById(R.id.searchView);
         searchSuggestions = findViewById(R.id.searchSuggestions);
+        btnFilter = findViewById(R.id.btnFilter);
+        filterBadge = findViewById(R.id.filterBadge);
 
         searchViewModel = new ViewModelProvider(this).get(ListsSearchViewModel.class);
 
@@ -96,12 +111,14 @@ public class listsActivity extends AppCompatActivity {
             public boolean onQueryTextSubmit(String query) {
                 searchViewModel.setSearchQuery(query);
                 searchSuggestions.setVisibility(View.GONE);
+                updateFilterBadge();
                 return true;
             }
 
             @Override
             public boolean onQueryTextChange(String newText) {
                 searchViewModel.setSearchQuery(newText);
+                updateFilterBadge();
                 List<String> knownUsers = List.of("System");
                 if (newText.toLowerCase().contains("by:")) {
                     String afterBy = newText.substring(newText.toLowerCase().lastIndexOf("by:") + 3).trim();
@@ -121,7 +138,8 @@ public class listsActivity extends AppCompatActivity {
             }
         });
 
-        // Pass apiClient to the adapter
+        btnFilter.setOnClickListener(v -> showFilterMenu(v));
+
         adapter = new ListsPagerAdapter(this, apiClient);
         viewPager.setAdapter(adapter);
         int pageCount = adapter.getItemCount();
@@ -156,7 +174,6 @@ public class listsActivity extends AppCompatActivity {
             }
         });
 
-        // Search query observer: filter all fragments
         searchViewModel.getSearchQuery().observe(this, query -> {
             for (int i = 0; i < adapter.getItemCount(); i++) {
                 FragmentBaseList fragment = adapter.getFragmentAt(i);
@@ -167,23 +184,130 @@ public class listsActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Called by fragments to add an item.
-     */
+    private void showFilterMenu(View anchor) {
+        androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(this, anchor);
+        popup.getMenuInflater().inflate(R.menu.menu_filter, popup.getMenu());
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.menu_by_user) {
+                showByUserDialog();
+                return true;
+            } else if (id == R.id.menu_expires_before) {
+                showDateFilterDialog("expiresBefore:");
+                return true;
+            } else if (id == R.id.menu_expires_after) {
+                showDateFilterDialog("expiresAfter:");
+                return true;
+            } else if (id == R.id.menu_expires_on) {
+                showDateFilterDialog("expires:");
+                return true;
+            } else if (id == R.id.menu_added_before) {
+                showDateFilterDialog("addedBefore:");
+                return true;
+            } else if (id == R.id.menu_added_after) {
+                showDateFilterDialog("addedAfter:");
+                return true;
+            } else if (id == R.id.menu_added_on) {
+                showDateFilterDialog("added:");
+                return true;
+            } else if (id == R.id.menu_clear_filters) {
+                clearFilters();
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
+    private void showByUserDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_filter_input, null);
+        TextInputEditText etValue = dialogView.findViewById(R.id.etFilterValue);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Filter by User")
+                .setView(dialogView)
+                .setPositiveButton("Apply", (dialog, which) -> {
+                    String value = etValue.getText() != null ? etValue.getText().toString().trim() : "";
+                    if (!value.isEmpty()) {
+                        appendFilter("by:" + value);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showDateFilterDialog(String prefix) {
+        Calendar calendar = Calendar.getInstance();
+        DatePickerDialog datePicker = new DatePickerDialog(
+                this,
+                (view, year, month, dayOfMonth) -> {
+                    Calendar selected = Calendar.getInstance();
+                    selected.set(year, month, dayOfMonth);
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                    String dateStr = sdf.format(selected.getTime());
+                    appendFilter(prefix + dateStr);
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+        );
+        datePicker.show();
+    }
+
+    private void appendFilter(String filter) {
+        String current = searchViewModel.getSearchQuery().getValue();
+        if (current == null) current = "";
+        current = current.trim();
+        if (current.isEmpty()) {
+            searchView.setQuery(filter, false);
+        } else {
+            searchView.setQuery(current + ", " + filter, false);
+        }
+        searchViewModel.setSearchQuery(searchView.getQuery().toString());
+        updateFilterBadge();
+    }
+
+    private void clearFilters() {
+        searchView.setQuery("", false);
+        searchViewModel.setSearchQuery("");
+        updateFilterBadge();
+    }
+
+    private void updateFilterBadge() {
+        String query = searchViewModel.getSearchQuery().getValue();
+        if (query == null || query.trim().isEmpty()) {
+            filterBadge.setVisibility(View.GONE);
+        } else {
+            String[] parts = query.split(",");
+            int filterCount = 0;
+            for (String part : parts) {
+                String trimmed = part.trim();
+                if (trimmed.contains(":") && !trimmed.startsWith("by:") ||
+                        (trimmed.startsWith("by:") && trimmed.length() > 3)) {
+                    filterCount++;
+                }
+            }
+            if (filterCount > 0) {
+                filterBadge.setText(String.valueOf(filterCount));
+                filterBadge.setVisibility(View.VISIBLE);
+            } else {
+                filterBadge.setVisibility(View.GONE);
+            }
+        }
+    }
+
     public void addItem(String listType, PlaceholderContent.PlaceholderItem item, int position) {
         String userName = getCurrentUserName();
         apiClient.addItem(listType, item, userName, new ListRequestManager.ListCallback() {
             @Override
             public void onSuccess(String commandId, String itemId) {
-                item.id = itemId; // set the server-generated id
+                item.id = itemId;
                 runOnUiThread(() -> {
                     List<PlaceholderContent.PlaceholderItem> targetList =
                             listType.equals("whitelist") ? PlaceholderContent.ITEMS : PlaceholderContent.BLACKLIST_ITEMS;
                     targetList.add(item);
                     refreshFragment(listType);
                     Toast.makeText(listsActivity.this, "Item added", Toast.LENGTH_SHORT).show();
-
-                    // Send a log to the server's /lists/log endpoint
                     sendItemLog(listType, item, userName);
                 });
             }
@@ -202,9 +326,6 @@ public class listsActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Called by fragments to remove an item.
-     */
     public void removeItem(String listType, PlaceholderContent.PlaceholderItem item, int position) {
         if (item.id == null) {
             Toast.makeText(this, "Item not synced", Toast.LENGTH_SHORT).show();
@@ -237,9 +358,6 @@ public class listsActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Send a log entry to the server's /lists/log endpoint.
-     */
     private void sendItemLog(String listType, PlaceholderContent.PlaceholderItem item, String userName) {
         Log.d("ItemLog", "Preparing to send log for item: " + item.name);
         new Thread(() -> {
@@ -279,7 +397,6 @@ public class listsActivity extends AppCompatActivity {
                 if (responseCode == 200) {
                     Log.d("ItemLog", "Log sent successfully for item: " + item.name);
                 } else {
-                    // Read error response
                     String errorResponse = "";
                     if (conn.getErrorStream() != null) {
                         java.util.Scanner s = new java.util.Scanner(conn.getErrorStream()).useDelimiter("\\A");
@@ -294,6 +411,7 @@ public class listsActivity extends AppCompatActivity {
             }
         }).start();
     }
+
     private void refreshFragment(String listType) {
         int index = listType.equals("whitelist") ? 0 : 1;
         FragmentBaseList fragment = adapter.getFragmentAt(index);

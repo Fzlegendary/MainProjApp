@@ -4,21 +4,30 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.BaseActivity;
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.friendRequest.FriendRequest;
+import com.example.mainproj.messaging.friendRequest.IncomingRequestsActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -29,8 +38,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-public class MessagingActivity extends AppCompatActivity {
+public class MessagingActivity extends BaseActivity {
 
     private RecyclerView chatRecyclerView;
     private ChatAdapter chatAdapter;
@@ -38,32 +49,28 @@ public class MessagingActivity extends AppCompatActivity {
 
     private EditText searchChats;
     private FloatingActionButton addChatButton;
+    private ImageButton btnFriendRequests;
 
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private Toolbar toolbar;
 
-    // ─── Cache ────────────────────────────────────────────────────────────────
     private static final String PREFS_NAME = "chat_prefs";
     private static final String CACHE_KEY  = "cached_chats";
 
-    // ─── Firebase ─────────────────────────────────────────────────────────────
     private DatabaseReference  chatsRef;
     private ValueEventListener chatsListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
-
         EdgeToEdge.enable(this);
-
         setContentView(R.layout.activity_messaging);
 
-        // initialize views
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
         searchChats = findViewById(R.id.searchChats);
         addChatButton = findViewById(R.id.addChatButton);
+        btnFriendRequests = findViewById(R.id.btnFriendRequests);
 
         drawerLayout = findViewById(R.id.drawerLayout);
         navigationView = findViewById(R.id.navigationDrawer);
@@ -71,7 +78,6 @@ public class MessagingActivity extends AppCompatActivity {
 
         setSupportActionBar(toolbar);
 
-        // drawer toggle
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this,
                 drawerLayout,
@@ -83,38 +89,106 @@ public class MessagingActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        // chat list
         chatList = new ArrayList<>();
 
         chatRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         chatAdapter = new ChatAdapter(chatList, this);
         chatRecyclerView.setAdapter(chatAdapter);
 
-        // Show cached chats immediately (instant UI), then overwrite from Firebase
         loadFromCache();
 
-        // TODO: replace "chats" with your actual Firebase path, e.g. "users/" + uid + "/chats"
         chatsRef     = FirebaseDatabase.getInstance().getReference("chats");
         chatsListener = buildFirebaseListener();
 
-        addChatButton.setOnClickListener(v -> {
+        addChatButton.setOnClickListener(v -> showAddUserDialog());
 
-            Toast.makeText(this,"Open Add User Screen",Toast.LENGTH_SHORT).show();
+        btnFriendRequests.setOnClickListener(v ->
+                startActivity(new Intent(this, IncomingRequestsActivity.class)));
 
+        navigationView.setNavigationItemSelectedListener(item -> {
+            if(item.getItemId()==R.id.menu_logout){
+                Toast.makeText(this,"Logging out",Toast.LENGTH_SHORT).show();
+                finish();
+            }
+            return true;
         });
 
-        // drawer menu clicks
-        navigationView.setNavigationItemSelectedListener(item -> {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
+            return insets;
+        });
+    }
 
-            if(item.getItemId()==R.id.menu_logout){
+    private void showAddUserDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_user, null);
+        EditText etUsername = dialogView.findViewById(R.id.etUsername);
 
-                Toast.makeText(this,"Logging out",Toast.LENGTH_SHORT).show();
+        new AlertDialog.Builder(this)
+                .setTitle("Add Friend")
+                .setView(dialogView)
+                .setPositiveButton("Send Request", (dialog, which) -> {
+                    String username = etUsername.getText().toString().trim();
+                    if (!username.isEmpty()) {
+                        sendFriendRequest(username);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
 
-                finish();
+    private void sendFriendRequest(String targetUsername) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
+        String currentEmail = currentUser.getEmail();
+        String safeCurrentEmail = currentEmail != null ? currentEmail.replace(".", "_") : "";
+
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
+        
+        usersRef.orderByChild("username").equalTo(targetUsername).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    for (DataSnapshot userSnap : snapshot.getChildren()) {
+                        String targetEmail = userSnap.child("email").getValue(String.class);
+                        if (targetEmail != null) {
+                            sendRequestToUser(targetEmail, safeCurrentEmail, targetUsername);
+                            return;
+                        }
+                    }
+                }
+                Toast.makeText(MessagingActivity.this, "User not found: " + targetUsername, Toast.LENGTH_SHORT).show();
             }
 
-            return true;
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(MessagingActivity.this, "Error finding user", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername) {
+        String safeTargetEmail = targetEmail.replace(".", "_");
+        DatabaseReference requestsRef = FirebaseDatabase.getInstance()
+                .getReference("friendRequests")
+                .child(safeTargetEmail);
+
+        Map<String, Object> requestData = new HashMap<>();
+        requestData.put("from", fromEmail);
+        requestData.put("fromUsername", fromUsername);
+        requestData.put("timestamp", System.currentTimeMillis());
+        requestData.put("status", "pending");
+
+        requestsRef.push().setValue(requestData).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                Toast.makeText(MessagingActivity.this, "Friend request sent to " + fromUsername, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(MessagingActivity.this, "Failed to send request", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 

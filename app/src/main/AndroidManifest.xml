@@ -44,6 +44,15 @@
         <activity
             android:name=".gatesMain"
             android:exported="false" />
+        <activity
+            android:name=".ProfileDisplayerActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".messaging.friendRequest.IncomingRequestsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

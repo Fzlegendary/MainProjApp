@@ -50,7 +50,7 @@
             android:padding="8dp"
             android:background="@color/colorSurface"
             android:elevation="4dp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/bottomNav"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
@@ -78,6 +78,15 @@
                 app:cornerRadius="12dp" />
 
         </LinearLayout>
+
+        <include
+            layout="@layout/bottom_nav"
+            android:id="@+id/bottomNav"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
