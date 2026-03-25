@@ -40,6 +40,7 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_incoming_requests);
+        clearActiveNav();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

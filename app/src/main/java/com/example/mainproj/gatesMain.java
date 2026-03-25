@@ -55,6 +55,7 @@ public class gatesMain extends BaseActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+        clearActiveNav();
 
         RecyclerView recyclerView = findViewById(R.id.recyclerViewGates);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));

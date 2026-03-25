@@ -2,46 +2,58 @@ package com.example.mainproj.userSystem;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mainproj.MainActivity;
-import com.example.mainproj.gatesMain;
 import com.example.mainproj.R;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
-public class sign_up_activity extends AppCompatActivity {
+public class sign_up_activity extends AppCompatActivity implements
+        FragmentSignUpEntry.OnEntryCompleteListener,
+        FragmentStep1Phone.OnPhoneCompleteListener,
+        FragmentStep2Username.OnUsernameCompleteListener,
+        FragmentStep3Age.OnAgeCompleteListener,
+        FragmentStep4Verify.OnVerificationCompleteListener {
 
-    private TextView login;
-    private TextInputEditText etUsername, etEmail, etPassword, etConfirmPassword;
-    private MaterialButton btnSignUp, btnGoogleSignUp;
+    private ProgressBar progressBar;
+    private TextView tvStepIndicator;
+
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
 
-    private final ActivityResultLauncher<Intent> googleSignInLauncher =
+    private int currentStep = 0;
+    private String email, password;
+    private String phone = "";
+    private boolean phoneSkipped = false;
+    private String username = "";
+    private String nickname = "";
+    private int age = 0;
+    private boolean phoneVerified = false;
+
+    private final ActivityResultLauncher<Intent> googleLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() != RESULT_OK || result.getData() == null) {
                     Toast.makeText(this, "Google sign-in cancelled", Toast.LENGTH_SHORT).show();
@@ -62,122 +74,212 @@ public class sign_up_activity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        etUsername = findViewById(R.id.etUsername);
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        progressBar = findViewById(R.id.progressBar);
+        tvStepIndicator = findViewById(R.id.tvStepIndicator);
 
-        btnSignUp = findViewById(R.id.btnSignUp);
-        btnGoogleSignUp = findViewById(R.id.btnGoogleSignUp2);
-        login = findViewById(R.id.tvLogin);
-        login.setOnClickListener(v -> {
-            Intent i = new Intent(this, Login_activity.class);
-            startActivity(i);
-            finish();
-        });
-
-        // Google Sign-In initialization
-        GoogleSignInOptions gso = new GoogleSignInOptions
-                .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id)) // must match Firebase console
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
-
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        btnSignUp.setOnClickListener(v -> registerUser());
-        btnGoogleSignUp.setOnClickListener(v -> googleSignInLauncher.launch(mGoogleSignInClient.getSignInIntent()));
+        showEntryScreen();
     }
 
-    private void registerUser() {
-        String username = etUsername.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String confirmPassword = etConfirmPassword.getText().toString().trim();
+    private void updateProgress(int step) {
+        currentStep = step;
+        progressBar.setProgress(step);
+        tvStepIndicator.setText("Step " + step + " of 4");
+    }
 
-        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(email) ||
-                TextUtils.isEmpty(password) || TextUtils.isEmpty(confirmPassword)) {
-            Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void showEntryScreen() {
+        updateProgress(1);
+        FragmentSignUpEntry fragment = new FragmentSignUpEntry();
+        fragment.setOnEntryCompleteListener(this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
+    }
 
-        if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    @Override
+    public void onEmailPasswordContinue(String email, String password) {
+        this.email = email;
+        this.password = password;
 
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
-                    String uid = mAuth.getCurrentUser().getUid();
-                    String safeEmail = email.replace(".", "_");
-
-                    Map<String, Object> userData = new HashMap<>();
-                    userData.put("username", username);
-                    userData.put("email", email);
-                    userData.put("uid", uid);
-                    userData.put("role", "user");
-
-                    FirebaseDatabase.getInstance()
-                            .getReference("users")
-                            .child(safeEmail)
-                            .setValue(userData)
-                            .addOnSuccessListener(unused -> {
-                                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, MainActivity.class));
-                                finish();
-                            })
-                            .addOnFailureListener(e -> Toast.makeText(this, "Failed to save user", Toast.LENGTH_SHORT).show());
+                    mAuth.getCurrentUser().sendEmailVerification();
+                    startStep1Phone();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this, "Signup failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Sign up failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+    }
+
+    @Override
+    public void onGoogleSignUp() {
+        googleLauncher.launch(mGoogleSignInClient.getSignInIntent());
     }
 
     private void firebaseAuthWithGoogle(String idToken) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
-
         mAuth.signInWithCredential(credential)
                 .addOnSuccessListener(authResult -> {
                     GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-                    if (account == null) return;
-
-                    String safeEmail = account.getEmail().replace(".", "_");
-                    String uid = mAuth.getCurrentUser().getUid();
-
-                    Map<String, Object> userData = new HashMap<>();
-                    userData.put("username", account.getDisplayName());
-                    userData.put("email", account.getEmail());
-                    userData.put("role", "user");
-                    userData.put("uid", uid);
-
-                    FirebaseDatabase.getInstance()
-                            .getReference("users")
-                            .child(safeEmail)
-                            .setValue(userData)
-                            .addOnSuccessListener(unused -> {
-                                Toast.makeText(this, "Google account created", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(sign_up_activity.this, MainActivity.class));
-                                finish();
-                            })
-                            .addOnFailureListener(e -> Toast.makeText(this, "Failed saving user", Toast.LENGTH_SHORT).show());
+                    if (account != null) {
+                        email = account.getEmail();
+                        username = account.getDisplayName();
+                    }
+                    checkIfUserExistsAndProceed();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this, "Google authentication failed", Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Google authentication failed", Toast.LENGTH_SHORT).show());
     }
-    private String hashPassword(String password) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                String h = Integer.toHexString(0xff & b);
-                if (h.length() == 1) hex.append('0');
-                hex.append(h);
+
+    private void checkIfUserExistsAndProceed() {
+        if (email == null) return;
+        String safeEmail = email.replace(".", "_");
+
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
+        usersRef.child(safeEmail).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Toast.makeText(sign_up_activity.this, "Account already exists", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(sign_up_activity.this, MainActivity.class));
+                    finish();
+                } else {
+                    startStep1Phone();
+                }
             }
-            return hex.toString();
-        } catch (Exception e) {
-            return "";
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                startStep1Phone();
+            }
+        });
+    }
+
+    @Override
+    public void onLoginClick() {
+        startActivity(new Intent(this, Login_activity.class));
+        finish();
+    }
+
+    private void startStep1Phone() {
+        updateProgress(2);
+        FragmentStep1Phone fragment = new FragmentStep1Phone();
+        fragment.setOnPhoneCompleteListener(this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
+    }
+
+    @Override
+    public void onPhoneNext(String phone) {
+        this.phone = phone;
+        this.phoneSkipped = false;
+        startStep2Username();
+    }
+
+    @Override
+    public void onPhoneSkip() {
+        this.phone = "";
+        this.phoneSkipped = true;
+        startStep2Username();
+    }
+
+    private void startStep2Username() {
+        updateProgress(3);
+        FragmentStep2Username fragment = new FragmentStep2Username();
+        fragment.setOnUsernameCompleteListener(this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
+    }
+
+    @Override
+    public void onUsernameNext(String username, String nickname) {
+        this.username = username;
+        this.nickname = nickname;
+        startStep3Age();
+    }
+
+    private void startStep3Age() {
+        updateProgress(4);
+        FragmentStep3Age fragment = new FragmentStep3Age();
+        fragment.setOnAgeCompleteListener(this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
+    }
+
+    @Override
+    public void onAgeNext(int age) {
+        this.age = age;
+
+        if (phone.isEmpty() || phoneSkipped) {
+            saveUserData();
+        } else {
+            startStep4Verify();
         }
     }
 
-    private String timestampNow() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+    private void startStep4Verify() {
+        FragmentStep4Verify fragment = new FragmentStep4Verify();
+        fragment.setPhoneNumber(phone);
+        fragment.setOnVerificationCompleteListener(this);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
+    }
+
+    @Override
+    public void onVerificationComplete(boolean verified) {
+        this.phoneVerified = verified;
+        saveUserData();
+    }
+
+    private void saveUserData() {
+        if (mAuth.getCurrentUser() == null || email == null) {
+            Toast.makeText(this, "Error: Not authenticated", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String safeEmail = email.replace(".", "_");
+        String uid = mAuth.getCurrentUser().getUid();
+
+        if (!username.isEmpty()) {
+            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                    .setDisplayName(username)
+                    .build();
+            mAuth.getCurrentUser().updateProfile(profileUpdates);
+        }
+
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("email", email);
+        userData.put("username", username);
+        if (!nickname.isEmpty()) {
+            userData.put("nickname", nickname);
+        }
+        if (!phone.isEmpty()) {
+            userData.put("phone", phone);
+        }
+        userData.put("phoneVerified", phoneVerified);
+        userData.put("age", age);
+        userData.put("uid", uid);
+        userData.put("role", "user");
+
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
+        usersRef.child(safeEmail).setValue(userData)
+                .addOnSuccessListener(unused -> {
+                    DatabaseReference usernamesRef = FirebaseDatabase.getInstance().getReference("usernames");
+                    usernamesRef.child(username.toLowerCase()).setValue(true);
+
+                    Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(sign_up_activity.this, MainActivity.class));
+                    finish();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Failed to save user: " + e.getMessage(), Toast.LENGTH_LONG).show());
     }
 }

@@ -77,9 +77,10 @@
             app:backgroundTint="@color/colorFab"
             app:tint="@color/colorFabIcon"
             android:contentDescription="Start new chat"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/bottomNav"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_margin="20dp"/>
+            android:layout_marginBottom="16dp"
+            android:layout_marginEnd="20dp"/>
 
         <include
             layout="@layout/bottom_nav"

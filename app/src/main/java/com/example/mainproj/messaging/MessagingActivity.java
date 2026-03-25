@@ -78,6 +78,8 @@ public class MessagingActivity extends BaseActivity {
 
         setSupportActionBar(toolbar);
 
+        clearActiveNav();
+
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this,
                 drawerLayout,
@@ -145,8 +147,29 @@ public class MessagingActivity extends BaseActivity {
         }
 
         String currentEmail = currentUser.getEmail();
-        String safeCurrentEmail = currentEmail != null ? currentEmail.replace(".", "_") : "";
+        final String safeCurrentEmail = currentEmail != null ? currentEmail.replace(".", "_") : "";
 
+        FirebaseDatabase.getInstance()
+                .getReference("users").child(safeCurrentEmail).child("username")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String myUsername = snapshot.getValue(String.class);
+                        if (myUsername != null && myUsername.equalsIgnoreCase(targetUsername)) {
+                            Toast.makeText(MessagingActivity.this, "You can't send a friend request to yourself", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        proceedWithFriendRequest(targetUsername, safeCurrentEmail);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        proceedWithFriendRequest(targetUsername, safeCurrentEmail);
+                    }
+                });
+    }
+
+    private void proceedWithFriendRequest(String targetUsername, String safeCurrentEmail) {
         DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
         
         usersRef.orderByChild("username").equalTo(targetUsername).addListenerForSingleValueEvent(new ValueEventListener() {

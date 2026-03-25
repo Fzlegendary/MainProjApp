@@ -3,11 +3,15 @@ package com.example.mainproj.userSystem;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mainproj.MainActivity;
@@ -17,7 +21,10 @@ import com.google.android.gms.common.api.ApiException;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.*;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class Login_activity extends AppCompatActivity {
 
@@ -59,7 +66,6 @@ public class Login_activity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // Auto-login
         if (mAuth.getCurrentUser() != null) {
             startActivity(new Intent(this, MainActivity.class));
             finish();
@@ -100,7 +106,13 @@ public class Login_activity extends AppCompatActivity {
         }
 
         mAuth.signInWithEmailAndPassword(email, password)
-                .addOnSuccessListener(result -> ensureUserNodeAndProceed(email))
+                .addOnSuccessListener(result -> {
+                    FirebaseUser user = result.getUser();
+                    if (user != null && !user.isEmailVerified()) {
+                        showVerificationToast();
+                    }
+                    ensureUserNodeAndProceed(email, true);
+                })
                 .addOnFailureListener(e ->
                         Toast.makeText(this,
                                 "Login failed: " + e.getMessage(),
@@ -116,7 +128,7 @@ public class Login_activity extends AppCompatActivity {
                 .addOnSuccessListener(result -> {
                     String email = result.getUser().getEmail();
                     if (email != null) {
-                        ensureUserNodeAndProceed(email);
+                        checkGoogleUserAndProceed(email);
                     }
                 })
                 .addOnFailureListener(e ->
@@ -126,7 +138,34 @@ public class Login_activity extends AppCompatActivity {
                 );
     }
 
-    private void ensureUserNodeAndProceed(String email) {
+    private void checkGoogleUserAndProceed(String email) {
+        String safeEmail = email.replace(".", "_");
+
+        FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(safeEmail)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            ensureUserNodeAndProceed(email, false);
+                        } else {
+                            Toast.makeText(Login_activity.this, "Account not found, please sign up", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(Login_activity.this, sign_up_activity.class);
+                            intent.putExtra("google_email", email);
+                            startActivity(intent);
+                            finish();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        ensureUserNodeAndProceed(email, false);
+                    }
+                });
+    }
+
+    private void ensureUserNodeAndProceed(String email, boolean checkVerification) {
         String safeEmail = email.replace(".", "_");
 
         FirebaseDatabase.getInstance()
@@ -135,8 +174,23 @@ public class Login_activity extends AppCompatActivity {
                 .child("email")
                 .setValue(email)
                 .addOnCompleteListener(task -> {
+                    if (checkVerification) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null && !user.isEmailVerified()) {
+                            showVerificationToast();
+                        }
+                    }
                     startActivity(new Intent(this, MainActivity.class));
                     finish();
                 });
+    }
+
+    private void showVerificationToast() {
+        View toastView = LayoutInflater.from(this).inflate(R.layout.toast_verify_email, null);
+        Toast toast = new Toast(this);
+        toast.setView(toastView);
+        toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0);
+        toast.setDuration(Toast.LENGTH_LONG);
+        toast.show();
     }
 }

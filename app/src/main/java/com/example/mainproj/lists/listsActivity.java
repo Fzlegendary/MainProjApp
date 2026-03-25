@@ -71,6 +71,7 @@ public class listsActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_lists);
+        clearActiveNav();
 
         String baseUrl = "https://localhost:8080";
         apiClient = new ListRequestManager(baseUrl, true);
