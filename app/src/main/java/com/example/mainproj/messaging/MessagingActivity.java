@@ -44,8 +44,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.firebase.database.ChildEventListener;
-
 public class MessagingActivity extends BaseActivity implements ChatAdapter.OnChatActionListener {
 
     private RecyclerView chatRecyclerView;
@@ -348,6 +346,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
             chatsRef.addValueEventListener(chatsListener);
         }
         startListeningForClosedChats();
+        startMessageNotificationService();
     }
 
     @Override
@@ -355,6 +354,26 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
         super.onStop();
         if (chatsRef != null && chatsListener != null) {
             chatsRef.removeEventListener(chatsListener);
+        }
+    }
+
+    private void startMessageNotificationService() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1001);
+                return;
+            }
+        }
+        MessageNotificationService.startService(this);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1001) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                MessageNotificationService.startService(this);
+            }
         }
     }
 

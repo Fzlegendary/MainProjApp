@@ -1,5 +1,8 @@
 package com.example.mainproj.messaging;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -48,14 +51,24 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                     return;
                 }
 
-                NotificationHelper.showMessageNotification(
-                        this,
-                        chatId,
-                        senderUsername,
-                        messageText,
-                        messageTime != null ? messageTime : "",
-                        messageKey != null ? messageKey : ""
-                );
+                MutedChatManager mutedChatManager = MutedChatManager.getInstance(this);
+                if (mutedChatManager.isMuted(chatId)) {
+                    Log.d(TAG, "Chat is muted, suppressing notification for: " + chatId);
+                    return;
+                }
+
+                if (ChatCacheApplication.isAppInForeground()) {
+                    showInAppDialog(chatId, senderUsername, messageText);
+                } else {
+                    NotificationHelper.showMessageNotification(
+                            this,
+                            chatId,
+                            senderUsername,
+                            messageText,
+                            messageTime != null ? messageTime : "",
+                            messageKey != null ? messageKey : ""
+                    );
+                }
             }
         }
 
@@ -67,6 +80,32 @@ public class NotificationHandlerService extends FirebaseMessagingService {
     private boolean isChatCurrentlyOpen(String chatId) {
         return ChatCacheApplication.getCurrentOpenChatId() != null
                 && ChatCacheApplication.getCurrentOpenChatId().equals(chatId);
+    }
+
+    private void showInAppDialog(String chatId, String senderUsername, String messageText) {
+        Activity foregroundActivity = ChatCacheApplication.getCurrentForegroundActivity();
+        if (foregroundActivity == null || foregroundActivity.isFinishing()) {
+            return;
+        }
+
+        String displayTitle = "New message from " + senderUsername;
+        String displayMessage = messageText.length() > 100 ? messageText.substring(0, 100) + "..." : messageText;
+
+        new AlertDialog.Builder(foregroundActivity)
+                .setTitle(displayTitle)
+                .setMessage(displayMessage)
+                .setPositiveButton("View Chat", (dialog, which) -> {
+                    Intent intent = new Intent(foregroundActivity, ChatActivity.class);
+                    intent.putExtra("chatId", chatId);
+                    intent.putExtra("username", senderUsername);
+                    foregroundActivity.startActivity(intent);
+                })
+                .setNegativeButton("Mute", (dialog, which) -> {
+                    MutedChatManager.getInstance(this).muteChat(chatId);
+                })
+                .setNeutralButton("Dismiss", null)
+                .setCancelable(true)
+                .show();
     }
 
     private boolean isMessageFromCurrentUser(String senderUsername) {

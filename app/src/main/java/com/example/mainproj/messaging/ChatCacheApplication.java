@@ -8,9 +8,10 @@ import com.google.firebase.messaging.FirebaseMessaging;
 
 public class ChatCacheApplication extends Application implements Application.ActivityLifecycleCallbacks {
 
-    private int activityCount = 0;
+    private static int activityCount = 0;
     private static String currentOpenChatId = null;
     private static String currentUsername = null;
+    private static Activity currentForegroundActivity = null;
 
     @Override
     public void onCreate() {
@@ -46,6 +47,18 @@ public class ChatCacheApplication extends Application implements Application.Act
         return currentUsername;
     }
 
+    public static void setCurrentForegroundActivity(Activity activity) {
+        currentForegroundActivity = activity;
+    }
+
+    public static Activity getCurrentForegroundActivity() {
+        return currentForegroundActivity;
+    }
+
+    public static boolean isAppInForeground() {
+        return activityCount > 0;
+    }
+
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
         activityCount++;
@@ -57,10 +70,16 @@ public class ChatCacheApplication extends Application implements Application.Act
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {}
+    public void onActivityResumed(Activity activity) {
+        currentForegroundActivity = activity;
+    }
 
     @Override
-    public void onActivityPaused(Activity activity) {}
+    public void onActivityPaused(Activity activity) {
+        if (currentForegroundActivity == activity) {
+            currentForegroundActivity = null;
+        }
+    }
 
     @Override
     public void onActivityStopped(Activity activity) {
@@ -73,9 +92,13 @@ public class ChatCacheApplication extends Application implements Application.Act
     @Override
     public void onActivityDestroyed(Activity activity) {
         activityCount--;
+        if (currentForegroundActivity == activity) {
+            currentForegroundActivity = null;
+        }
         if (activityCount <= 0) {
             activityCount = 0;
             ChatCacheManager.getInstance(this).clearAll();
+            MutedChatManager.getInstance(this).clearAll();
         }
     }
 }
