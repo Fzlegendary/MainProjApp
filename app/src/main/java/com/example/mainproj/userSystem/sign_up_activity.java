@@ -20,6 +20,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DataSnapshot;
@@ -124,10 +125,10 @@ public class sign_up_activity extends AppCompatActivity implements
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         mAuth.signInWithCredential(credential)
                 .addOnSuccessListener(authResult -> {
-                    GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-                    if (account != null) {
-                        email = account.getEmail();
-                        username = account.getDisplayName();
+                    FirebaseUser user = authResult.getUser();
+                    if (user != null) {
+                        email = user.getEmail();
+                        username = user.getDisplayName();
                     }
                     checkIfUserExistsAndProceed();
                 })

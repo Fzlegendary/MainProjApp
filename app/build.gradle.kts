@@ -38,6 +38,8 @@ android {
 dependencies {
     //okhttp3
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
+    // Glide for image loading
+    implementation("com.github.bumptech.glide:glide:4.16.0")
     //m
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth:24.0.1")
@@ -53,6 +55,7 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.firebase.database)
+    implementation("com.google.firebase:firebase-messaging:24.1.1")
     implementation(libs.legacy.support.v4)
     implementation(libs.ui.graphics)
     testImplementation(libs.junit)

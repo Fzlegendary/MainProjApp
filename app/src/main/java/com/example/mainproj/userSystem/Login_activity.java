@@ -66,12 +66,6 @@ public class Login_activity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        if (mAuth.getCurrentUser() != null) {
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-            return;
-        }
-
         etEmail = findViewById(com.example.mainproj.R.id.etEmail);
         etPassword = findViewById(com.example.mainproj.R.id.etPassword);
         btnLogin = findViewById(com.example.mainproj.R.id.btnLogin);
@@ -87,9 +81,10 @@ public class Login_activity extends AppCompatActivity {
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         btnLogin.setOnClickListener(v -> loginWithEmail());
-        btnGoogleLogin.setOnClickListener(v ->
-                googleLauncher.launch(mGoogleSignInClient.getSignInIntent())
-        );
+        btnGoogleLogin.setOnClickListener(v -> {
+            mGoogleSignInClient.signOut();
+            googleLauncher.launch(mGoogleSignInClient.getSignInIntent());
+        });
 
         tvSignUp.setOnClickListener(v ->
                 startActivity(new Intent(this, sign_up_activity.class))

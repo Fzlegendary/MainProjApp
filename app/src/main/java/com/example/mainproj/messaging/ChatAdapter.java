@@ -1,6 +1,7 @@
 package com.example.mainproj.messaging;
 
 // Android imports for context, intents, views, and layouts
+import android.app.AlertDialog;
 import android.content.Context;        // used to access app resources and start activities
 import android.content.Intent;         // used to navigate between activities
 import android.view.LayoutInflater;    // inflates (converts) XML layout files into View objects
@@ -23,6 +24,17 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
     private ArrayList<ChatModel> chatList; // holds all chat items to display
     private final Context context;               // used to inflate views and start activities
+
+    public interface OnChatActionListener {
+        void onOpenProfile(ChatModel chat);
+        void onCloseDM(ChatModel chat);
+    }
+
+    private OnChatActionListener actionListener;
+
+    public void setOnChatActionListener(OnChatActionListener listener) {
+        this.actionListener = listener;
+    }
 
     // Constructor — called when creating the adapter, receives the data list and context
     public ChatAdapter(ArrayList<ChatModel> chatList, Context context) {
@@ -50,16 +62,40 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
         // Short tap — opens the chat conversation screen
         holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(context, ChatActivity.class); // create intent to open ChatActivity
-            intent.putExtra("username", chat.getUsername());          // pass the username to the next screen
-            context.startActivity(intent);                            // launch ChatActivity
+            Intent intent = new Intent(context, ChatActivity.class);
+            intent.putExtra("username", chat.getUsername());
+            intent.putExtra("chatId", chat.getChatId());
+            context.startActivity(intent);
         });
 
-        // Long press — opens the user profile bottom sheet dialog
+        // Long press — opens the options dialog
         holder.itemView.setOnLongClickListener(v -> {
-            showProfileSheet(chat); // call helper method to build and show the bottom sheet
-            return true;            // return true to consume the event (prevents short tap also firing)
+            showChatOptionsDialog(chat);
+            return true;
         });
+    }
+
+    private void showChatOptionsDialog(ChatModel chat) {
+        String[] options = {"Open Profile", "Close DM"};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(chat.getUsername());
+
+        builder.setItems(options, (dialog, which) -> {
+            if (which == 0) {
+                if (actionListener != null) {
+                    actionListener.onOpenProfile(chat);
+                } else {
+                    showProfileSheet(chat);
+                }
+            } else if (which == 1) {
+                if (actionListener != null) {
+                    actionListener.onCloseDM(chat);
+                }
+            }
+        });
+
+        builder.show();
     }
 
     // Builds and shows the UserProfileBottomSheet for the given chat item
@@ -82,10 +118,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
             @Override
             public void onSendMessage(String username) {
-                // "Send Message" button tapped — open the chat, same as a short tap
-                Intent intent = new Intent(context, ChatActivity.class); // intent to open ChatActivity
-                intent.putExtra("username", username);                    // pass the username
-                context.startActivity(intent);                            // launch the chat screen
+                Intent intent = new Intent(context, ChatActivity.class);
+                intent.putExtra("username", username);
+                intent.putExtra("chatId", chat.getChatId());
+                context.startActivity(intent);
             }
 
             @Override

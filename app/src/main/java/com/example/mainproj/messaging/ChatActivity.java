@@ -1,11 +1,12 @@
 package com.example.mainproj.messaging;
 
-import android.content.SharedPreferences;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -21,32 +22,62 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.BaseActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.userSystem.Login_activity;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import java.util.HashSet;
+import java.util.Set;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 public class ChatActivity extends BaseActivity {
-
-    private static final String PREFS_NAME = "chat_prefs";
-    private static final String CACHE_KEY  = "cached_chats";
 
     private DrawerLayout drawerLayout;
     private Toolbar chatToolbar;
 
-    private ArrayList<ChatModel> chatList;
-    private ChatAdapter chatAdapter;
+    private RecyclerView messagesRecyclerView;
+    private MessageAdapter messageAdapter;
+    private ArrayList<MessageModel> messagesList;
+    private EditText messageInput;
+    private MaterialButton sendButton;
 
-    private DatabaseReference chatsRef;
-    private ValueEventListener chatsListener;
+    private final String chatId = initChatId();
+    private String partnerUsername;
+    private String currentUsername;
 
-    // ✅ NEW: Profile drawer views
+    private String initChatId() {
+        try {
+            Intent intent = getIntent();
+            if (intent != null) {
+                String id = intent.getStringExtra("chatId");
+                if (id != null) {
+                    return id;
+                }
+            }
+            throw new IllegalStateException("No chat ID provided");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private DatabaseReference messagesRef;
+    private ChildEventListener messagesListener;
+
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
+    private GoogleSignInClient mGoogleSignInClient;
+    private ChatCacheManager cacheManager;
+    private Set<Long> loadedTimestamps = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,18 +95,39 @@ public class ChatActivity extends BaseActivity {
         chatToolbar  = findViewById(R.id.chatToolbar);
         setSupportActionBar(chatToolbar);
 
-        String partnerUsername = getIntent().getStringExtra("username");
-        if (partnerUsername != null && getSupportActionBar() != null) {
+        partnerUsername = getIntent().getStringExtra("username");
+
+        if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(partnerUsername);
         }
 
-        // ✅ CHANGED: open RIGHT drawer instead of LEFT
         chatToolbar.setNavigationOnClickListener(v ->
                 drawerLayout.openDrawer(Gravity.END)
         );
 
-        chatList    = new ArrayList<>();
-        chatAdapter = new ChatAdapter(chatList, this);
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
+        messageInput = findViewById(R.id.messageInput);
+        sendButton = findViewById(R.id.sendButton);
+
+        messagesList = new ArrayList<>();
+        messageAdapter = new MessageAdapter(messagesList, this);
+        messagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        messagesRecyclerView.setAdapter(messageAdapter);
+
+        cacheManager = ChatCacheManager.getInstance(this);
+        loadCachedMessages();
+
+        loadCurrentUsername();
+
+        if (chatId != null) {
+            ChatCacheApplication.setCurrentOpenChatId(chatId);
+        }
 
         // ✅ CHANGED: back press handles RIGHT drawer
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -97,25 +149,132 @@ public class ChatActivity extends BaseActivity {
         profileUsername = findViewById(R.id.profileUsername);
         profileEmail = findViewById(R.id.profileEmail);
 
-        loadUserProfile(); // ✅ NEW
+        loadUserProfile();
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
+            mGoogleSignInClient.signOut();
 
             Intent intent = new Intent(ChatActivity.this, Login_activity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         });
 
-        // ─── Existing logic (UNCHANGED) ───────────────────────
+        sendButton.setOnClickListener(v -> sendMessage());
 
-        loadFromCache();
+        if (chatId == null) {
+            Toast.makeText(this, "Error: No chat ID", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
-        chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-        chatsListener = buildFirebaseListener();
+        messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+        messagesListener = buildMessagesListener();
     }
 
-    // ✅ NEW FUNCTION: load user data into drawer
+    private void loadCurrentUsername() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        String safeEmail = user.getEmail().replace(".", "_");
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(safeEmail);
+
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                currentUsername = snapshot.child("username").getValue(String.class);
+                if (currentUsername != null) {
+                    ChatCacheApplication.setCurrentUsername(currentUsername);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private void sendMessage() {
+        String text = messageInput.getText().toString().trim();
+        if (text.isEmpty() || chatId == null || currentUsername == null) return;
+
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("text", text);
+        messageData.put("senderUsername", currentUsername);
+        messageData.put("timestamp", ServerValue.TIMESTAMP);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        messageData.put("time", sdf.format(new Date()));
+
+        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                messageInput.setText("");
+
+                Map<String, Object> lastMessageUpdate = new HashMap<>();
+                lastMessageUpdate.put("lastMessage", text);
+                lastMessageUpdate.put("time", sdf.format(new Date()));
+
+                FirebaseDatabase.getInstance().getReference("chats").child(chatId).updateChildren(lastMessageUpdate);
+            } else {
+                Toast.makeText(ChatActivity.this, "Failed to send message", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadCachedMessages() {
+        if (chatId == null) return;
+        ArrayList<MessageModel> cached = cacheManager.loadMessages(chatId);
+        for (MessageModel msg : cached) {
+            messagesList.add(msg);
+            loadedTimestamps.add(msg.getTimestampLong());
+        }
+        messageAdapter.notifyDataSetChanged();
+        if (!messagesList.isEmpty()) {
+            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+        }
+    }
+
+    private void saveToCache() {
+        if (chatId != null) {
+            cacheManager.saveMessages(chatId, messagesList);
+        }
+    }
+
+    private ChildEventListener buildMessagesListener() {
+        return new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
+                String text = snapshot.child("text").getValue(String.class);
+                String senderUsername = snapshot.child("senderUsername").getValue(String.class);
+                String time = snapshot.child("time").getValue(String.class);
+                Long timestampLong = snapshot.child("timestamp").getValue(Long.class);
+
+                if (text != null && senderUsername != null && timestampLong != null) {
+                    if (loadedTimestamps.contains(timestampLong)) {
+                        return;
+                    }
+                    loadedTimestamps.add(timestampLong);
+                    boolean sentByMe = senderUsername.equals(currentUsername);
+                    messagesList.add(new MessageModel(text, senderUsername, time, timestampLong, sentByMe));
+                    messageAdapter.notifyItemInserted(messagesList.size() - 1);
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {}
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+    }
+
     private void loadUserProfile() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
@@ -141,93 +300,21 @@ public class ChatActivity extends BaseActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (chatsRef != null && chatsListener != null) {
-            chatsRef.addValueEventListener(chatsListener);
+        if (chatId != null) {
+            ChatCacheApplication.setCurrentOpenChatId(chatId);
+        }
+        if (messagesRef != null && messagesListener != null) {
+            messagesRef.addChildEventListener(messagesListener);
         }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (chatsRef != null && chatsListener != null) {
-            chatsRef.removeEventListener(chatsListener);
+        saveToCache();
+        ChatCacheApplication.setCurrentOpenChatId(null);
+        if (messagesRef != null && messagesListener != null) {
+            messagesRef.removeEventListener(messagesListener);
         }
-    }
-
-    private ValueEventListener buildFirebaseListener() {
-        return new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                chatList.clear();
-
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    String username = child.child("username").getValue(String.class);
-                    String lastMessage = child.child("lastMessage").getValue(String.class);
-                    String time = child.child("time").getValue(String.class);
-                    String bio = child.child("bio").getValue(String.class);
-                    String lastSeen = child.child("lastSeen").getValue(String.class);
-                    Boolean online = child.child("online").getValue(Boolean.class);
-
-                    if (username != null) {
-                        chatList.add(new ChatModel(
-                                username,
-                                lastMessage != null ? lastMessage : "",
-                                time != null ? time : "",
-                                bio != null ? bio : "",
-                                lastSeen != null ? lastSeen : "",
-                                online != null && online
-                        ));
-                    }
-                }
-
-                chatAdapter.notifyDataSetChanged();
-                saveToCache(chatList);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        };
-    }
-
-    private void loadFromCache() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String json = prefs.getString(CACHE_KEY, null);
-        if (json == null) return;
-
-        try {
-            JSONArray array = new JSONArray(json);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                chatList.add(new ChatModel(
-                        obj.optString("username"),
-                        obj.optString("lastMessage"),
-                        obj.optString("time"),
-                        obj.optString("bio"),
-                        obj.optString("lastSeen"),
-                        obj.optBoolean("online", false)
-                ));
-            }
-            chatAdapter.notifyDataSetChanged();
-        } catch (Exception ignored) {}
-    }
-
-    private void saveToCache(ArrayList<ChatModel> list) {
-        try {
-            JSONArray array = new JSONArray();
-            for (ChatModel chat : list) {
-                JSONObject obj = new JSONObject();
-                obj.put("username", chat.getUsername());
-                obj.put("lastMessage", chat.getLastMessage());
-                obj.put("time", chat.getTime());
-                obj.put("bio", chat.getBio());
-                obj.put("lastSeen", chat.getLastSeen());
-                obj.put("online", chat.isOnline());
-                array.put(obj);
-            }
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                    .edit()
-                    .putString(CACHE_KEY, array.toString())
-                    .apply();
-        } catch (Exception ignored) {}
     }
 }

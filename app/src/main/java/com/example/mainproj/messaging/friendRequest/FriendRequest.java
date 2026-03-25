@@ -4,6 +4,7 @@ public class FriendRequest {
     private String key;
     private String from;
     private String fromUsername;
+    private String fromImageUrl;
     private long timestamp;
     private String status;
 
@@ -24,6 +25,9 @@ public class FriendRequest {
 
     public String getFromUsername() { return fromUsername; }
     public void setFromUsername(String fromUsername) { this.fromUsername = fromUsername; }
+
+    public String getFromImageUrl() { return fromImageUrl; }
+    public void setFromImageUrl(String fromImageUrl) { this.fromImageUrl = fromImageUrl; }
 
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }

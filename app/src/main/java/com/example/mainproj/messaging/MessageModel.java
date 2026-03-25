@@ -11,18 +11,21 @@ public class MessageModel {
 
     private final String  text;
     private final String  senderUsername;
-    private final String  timestamp;     // display string e.g. "14:32"
-    private final boolean sentByMe;      // determined at load time by comparing senderUsername with current user
+    private final String  timestamp;
+    private final long    timestampLong;
+    private final boolean sentByMe;
 
-    public MessageModel(String text, String senderUsername, String timestamp, boolean sentByMe) {
+    public MessageModel(String text, String senderUsername, String timestamp, long timestampLong, boolean sentByMe) {
         this.text           = text;
         this.senderUsername = senderUsername;
         this.timestamp      = timestamp;
+        this.timestampLong  = timestampLong;
         this.sentByMe       = sentByMe;
     }
 
     public String  getText()           { return text; }
     public String  getSenderUsername() { return senderUsername; }
     public String  getTimestamp()      { return timestamp; }
+    public long    getTimestampLong()  { return timestampLong; }
     public boolean isSentByMe()        { return sentByMe; }
 }

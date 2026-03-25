@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.firebase.database.ServerValue;
+
 public class IncomingRequestsActivity extends BaseActivity implements FriendRequestAdapter.OnRequestActionListener {
 
     private RecyclerView recyclerView;
@@ -57,7 +59,7 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new FriendRequestAdapter(this);
+        adapter = new FriendRequestAdapter(this, this);
         recyclerView.setAdapter(adapter);
 
         loadRequests();
@@ -127,6 +129,12 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
         chatData.put("bio", "");
         chatData.put("lastSeen", "");
         chatData.put("online", false);
+        chatData.put("createdAt", ServerValue.TIMESTAMP);
+
+        Map<String, Object> participants = new HashMap<>();
+        participants.put(myEmail, true);
+        participants.put(fromEmail, true);
+        chatData.put("participants", participants);
 
         chatsRef.child(chatId).setValue(chatData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {

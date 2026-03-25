@@ -13,6 +13,9 @@ import androidx.core.view.WindowInsetsCompat;
 import com.example.mainproj.lists.listsActivity;
 import com.example.mainproj.messaging.MessagingActivity;
 import com.example.mainproj.userSystem.Login_activity;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
@@ -21,6 +24,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private Toolbar toolbar;
     private FirebaseAuth mAuth;
+    private GoogleSignInClient mGoogleSignInClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +35,12 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         setActiveNav(R.id.nav_home);
 
         mAuth = FirebaseAuth.getInstance();
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -84,6 +94,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         if (id == R.id.nav_logout) {
             mAuth.signOut();
+            mGoogleSignInClient.signOut();
             startActivity(new Intent(this, Login_activity.class));
             finish();
         }
