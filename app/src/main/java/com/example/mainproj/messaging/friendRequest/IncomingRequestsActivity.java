@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.mainproj.messaging.ChatUtils;
 import com.google.firebase.database.ServerValue;
 
 public class IncomingRequestsActivity extends BaseActivity implements FriendRequestAdapter.OnRequestActionListener {
@@ -118,12 +119,81 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
         String myEmail = currentUser.getEmail().replace(".", "_");
         String fromEmail = request.getFrom().replace(".", "_");
 
+        String myUsername = ChatCacheApplication.getCurrentUsername();
+        if (myUsername == null) {
+            Toast.makeText(this, "Unable to get your username", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String partnerUsername = request.getFromUsername();
+        String chatId = ChatUtils.generateChatId(myUsername, partnerUsername);
+        if (chatId == null) {
+            Toast.makeText(this, "Error generating chat ID", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
+        
+        usersRef.child(myEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String myNickname = snapshot.getValue(String.class);
+                
+                usersRef.child(fromEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String partnerNickname = snapshot.getValue(String.class);
+                        
+                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, 
+                                         myNickname != null ? myNickname : "", partnerNickname != null ? partnerNickname : "");
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(IncomingRequestsActivity.this, "Error fetching partner nickname", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(IncomingRequestsActivity.this, "Error fetching your nickname", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        requestsRef.child(request.getKey()).removeValue();
+    }
+
+    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, 
+                                    String partnerUsername, String myNickname, String partnerNickname) {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-        String chatId = chatsRef.push().getKey();
-        if (chatId == null) return;
+        DatabaseReference specificChatRef = chatsRef.child(chatId);
+
+        specificChatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Toast.makeText(IncomingRequestsActivity.this, "Chat already exists with " + partnerUsername, Toast.LENGTH_SHORT).show();
+                } else {
+                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, myNickname, partnerNickname);
+                }
+                specificChatRef.removeEventListener(this);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(IncomingRequestsActivity.this, "Error checking for existing chat", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, 
+                               String partnerUsername, String myNickname, String partnerNickname) {
+        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
 
         Map<String, Object> chatData = new HashMap<>();
-        chatData.put("username", request.getFromUsername());
+        chatData.put("username", partnerUsername);
         chatData.put("lastMessage", "");
         chatData.put("time", "");
         chatData.put("bio", "");
@@ -138,9 +208,20 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
 
         chatsRef.child(chatId).setValue(chatData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                requestsRef.child(request.getKey()).removeValue().addOnCompleteListener(task2 -> {
-                    Toast.makeText(IncomingRequestsActivity.this, "Chat created with " + request.getFromUsername(), Toast.LENGTH_SHORT).show();
-                });
+                Map<String, Object> myChatData = new HashMap<>(chatData);
+                myChatData.put("username", partnerUsername);
+                myChatData.put("nickname", partnerNickname);
+                myChatData.remove("participants");
+                
+                Map<String, Object> partnerChatData = new HashMap<>(chatData);
+                partnerChatData.put("username", myUsername);
+                partnerChatData.put("nickname", myNickname);
+                partnerChatData.remove("participants");
+                
+                usersRef.child(myEmail).child("chats").child(chatId).setValue(myChatData);
+                usersRef.child(fromEmail).child("chats").child(chatId).setValue(partnerChatData);
+                
+                Toast.makeText(IncomingRequestsActivity.this, "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(IncomingRequestsActivity.this, "Failed to create chat", Toast.LENGTH_SHORT).show();
             }

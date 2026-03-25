@@ -119,7 +119,8 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
 
         loadFromCache();
 
-        chatsRef     = FirebaseDatabase.getInstance().getReference("chats");
+        chatsRef     = FirebaseDatabase.getInstance().getReference("users")
+                           .child(currentUserSafeEmail).child("chats");
         chatsListener = buildFirebaseListener();
 
         addChatButton.setOnClickListener(v -> showAddUserDialog());
@@ -392,12 +393,8 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                         continue;
                     }
 
-                    DataSnapshot participantsSnap = child.child("participants");
-                    if (currentUserSafeEmail != null && !participantsSnap.hasChild(currentUserSafeEmail)) {
-                        continue;
-                    }
-
                     String  username    = child.child("username").getValue(String.class);
+                    String  nickname   = child.child("nickname").getValue(String.class);
                     String  lastMessage = child.child("lastMessage").getValue(String.class);
                     String  time        = child.child("time").getValue(String.class);
                     String  bio         = child.child("bio").getValue(String.class);
@@ -408,6 +405,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                         chatList.add(new ChatModel(
                                 chatId,
                                 username,
+                                nickname   != null ? nickname   : "",
                                 lastMessage != null ? lastMessage : "",
                                 time        != null ? time        : "",
                                 bio         != null ? bio         : "",
@@ -444,6 +442,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                 chatList.add(new ChatModel(
                         chatId,
                         obj.optString("username"),
+                        obj.optString("nickname"),
                         obj.optString("lastMessage"),
                         obj.optString("time"),
                         obj.optString("bio"),
@@ -462,6 +461,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                 JSONObject obj = new JSONObject();
                 obj.put("chatId",     chat.getChatId());
                 obj.put("username",   chat.getUsername());
+                obj.put("nickname",   chat.getNickname());
                 obj.put("lastMessage", chat.getLastMessage());
                 obj.put("time",       chat.getTime());
                 obj.put("bio",        chat.getBio());

@@ -56,7 +56,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
         ChatModel chat = chatList.get(position); // get the chat data for this row's position
 
-        holder.chatName.setText(chat.getUsername());       // set the username text
+        String displayName = chat.getNickname() != null && !chat.getNickname().isEmpty()
+                ? chat.getNickname() : chat.getUsername();
+        holder.chatName.setText(displayName);
         holder.lastMessage.setText(chat.getLastMessage()); // set the last message preview text
         holder.chatTime.setText(chat.getTime());           // set the timestamp text
 
@@ -77,9 +79,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
     private void showChatOptionsDialog(ChatModel chat) {
         String[] options = {"Open Profile", "Close DM"};
+        
+        String displayName = chat.getNickname() != null && !chat.getNickname().isEmpty()
+                ? chat.getNickname() : chat.getUsername();
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle(chat.getUsername());
+        builder.setTitle(displayName);
 
         builder.setItems(options, (dialog, which) -> {
             if (which == 0) {
