@@ -172,6 +172,10 @@ public class MessageNotificationService extends Service {
                     Intent intent = new Intent(foregroundActivity, ChatActivity.class);
                     intent.putExtra("chatId", chatId);
                     intent.putExtra("username", senderUsername);
+                    intent.putExtra("nickname", senderUsername);
+                    intent.putExtra("bio", "");
+                    intent.putExtra("lastSeen", "");
+                    intent.putExtra("online", false);
                     foregroundActivity.startActivity(intent);
                 })
                 .setNegativeButton("Mute", (dialog, which) -> {

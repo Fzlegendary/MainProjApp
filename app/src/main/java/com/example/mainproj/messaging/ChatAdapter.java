@@ -7,6 +7,7 @@ import android.content.Intent;         // used to navigate between activities
 import android.view.LayoutInflater;    // inflates (converts) XML layout files into View objects
 import android.view.View;              // base class for all UI components
 import android.view.ViewGroup;         // a view that can contain other views (the list container)
+import android.widget.ImageView;       // displays images (profile pictures)
 import android.widget.TextView;        // displays text in the UI
 
 // AndroidX imports for fragment support and RecyclerView
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView; // scrollable list component
 
 // App-specific imports
 import com.example.mainproj.R; // gives access to resources like layouts, ids, colors
+import com.bumptech.glide.Glide; // image loading library
 
 // Java utility
 import java.util.ArrayList; // dynamic list to hold chat items
@@ -59,14 +61,42 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         String displayName = chat.getNickname() != null && !chat.getNickname().isEmpty()
                 ? chat.getNickname() : chat.getUsername();
         holder.chatName.setText(displayName);
+
+        // Load profile image with Glide
+        Glide.with(context)
+                .load(android.R.drawable.sym_def_app_icon)
+                .placeholder(android.R.drawable.sym_def_app_icon)
+                .circleCrop()
+                .into(holder.profileImage);
+
         holder.lastMessage.setText(chat.getLastMessage()); // set the last message preview text
         holder.chatTime.setText(chat.getTime());           // set the timestamp text
+
+        // Online indicator
+        if (chat.isOnline()) {
+            holder.onlineIndicator.setVisibility(View.VISIBLE);
+        } else {
+            holder.onlineIndicator.setVisibility(View.GONE);
+        }
+
+        // Unread badge
+        int unreadCount = chat.getUnreadCount();
+        if (unreadCount > 0) {
+            holder.unreadBadge.setText(String.valueOf(unreadCount > 99 ? "99+" : unreadCount));
+            holder.unreadBadge.setVisibility(View.VISIBLE);
+        } else {
+            holder.unreadBadge.setVisibility(View.GONE);
+        }
 
         // Short tap — opens the chat conversation screen
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ChatActivity.class);
             intent.putExtra("username", chat.getUsername());
             intent.putExtra("chatId", chat.getChatId());
+            intent.putExtra("nickname", chat.getNickname());
+            intent.putExtra("bio", chat.getBio());
+            intent.putExtra("lastSeen", chat.getLastSeen());
+            intent.putExtra("online", chat.isOnline());
             context.startActivity(intent);
         });
 
@@ -126,6 +156,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
                 Intent intent = new Intent(context, ChatActivity.class);
                 intent.putExtra("username", username);
                 intent.putExtra("chatId", chat.getChatId());
+                intent.putExtra("nickname", chat.getNickname());
+                intent.putExtra("bio", chat.getBio());
+                intent.putExtra("lastSeen", chat.getLastSeen());
+                intent.putExtra("online", chat.isOnline());
                 context.startActivity(intent);
             }
 
@@ -164,16 +198,22 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     // -------------------------------------------------------------------------
     public static class ChatViewHolder extends RecyclerView.ViewHolder {
 
-        TextView chatName;    // displays the chat username
-        TextView lastMessage; // displays the last message preview
-        TextView chatTime;    // displays the time of the last message
+        ImageView profileImage;
+        View onlineIndicator;
+        TextView chatName;
+        TextView lastMessage;
+        TextView chatTime;
+        TextView unreadBadge;
 
         // Constructor — finds and stores each view by its ID from the inflated layout
         public ChatViewHolder(View itemView) {
             super(itemView);                                          // pass itemView to parent ViewHolder
-            chatName    = itemView.findViewById(R.id.chatName);    // find the username TextView
-            lastMessage = itemView.findViewById(R.id.lastMessage); // find the last message TextView
-            chatTime    = itemView.findViewById(R.id.chatTime);    // find the timestamp TextView
+            profileImage   = itemView.findViewById(R.id.profileImage);
+            onlineIndicator = itemView.findViewById(R.id.onlineIndicator);
+            chatName      = itemView.findViewById(R.id.chatName);    // find the username TextView
+            lastMessage   = itemView.findViewById(R.id.lastMessage); // find the last message TextView
+            chatTime      = itemView.findViewById(R.id.chatTime);    // find the timestamp TextView
+            unreadBadge   = itemView.findViewById(R.id.unreadBadge);
         }
     }
 }

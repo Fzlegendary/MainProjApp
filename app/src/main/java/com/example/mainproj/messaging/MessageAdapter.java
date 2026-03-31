@@ -18,16 +18,18 @@ import java.util.ArrayList;
 /**
  * MessageAdapter
  *
- * Two view types:
- *   VIEW_TYPE_SENT     → item_message_sent.xml     (blue bubble, right-aligned, no avatar)
- *   VIEW_TYPE_RECEIVED → item_message_received.xml (white bubble, left-aligned, avatar on left)
+ * Three view types:
+ *   VIEW_TYPE_SENT          → item_message_sent.xml     (blue bubble, right-aligned, no avatar)
+ *   VIEW_TYPE_RECEIVED     → item_message_received.xml (white bubble, left-aligned, avatar on left)
+ *   VIEW_TYPE_DATE_SEPARATOR → item_date_separator.xml   (centered date pill)
  *
  * Tapping the avatar in a received message opens UserProfileBottomSheet.
  */
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private static final int VIEW_TYPE_SENT     = 1;
-    private static final int VIEW_TYPE_RECEIVED = 2;
+    private static final int VIEW_TYPE_SENT          = 1;
+    private static final int VIEW_TYPE_RECEIVED      = 2;
+    private static final int VIEW_TYPE_DATE_SEPARATOR = 3;
 
     private final ArrayList<MessageModel> messages;
     private final Context                 context;
@@ -41,7 +43,11 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
     @Override
     public int getItemViewType(int position) {
-        return messages.get(position).isSentByMe() ? VIEW_TYPE_SENT : VIEW_TYPE_RECEIVED;
+        MessageModel msg = messages.get(position);
+        if (msg.isDateSeparator()) {
+            return VIEW_TYPE_DATE_SEPARATOR;
+        }
+        return msg.isSentByMe() ? VIEW_TYPE_SENT : VIEW_TYPE_RECEIVED;
     }
 
     // ── Inflation ─────────────────────────────────────────────────────────────
@@ -53,9 +59,12 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         if (viewType == VIEW_TYPE_SENT) {
             View v = inf.inflate(R.layout.item_message_sent, parent, false);
             return new SentViewHolder(v);
-        } else {
+        } else if (viewType == VIEW_TYPE_RECEIVED) {
             View v = inf.inflate(R.layout.item_message_received, parent, false);
             return new ReceivedViewHolder(v);
+        } else {
+            View v = inf.inflate(R.layout.item_date_separator, parent, false);
+            return new DateSeparatorViewHolder(v);
         }
     }
 
@@ -65,11 +74,13 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         MessageModel msg = messages.get(position);
 
-        if (holder instanceof SentViewHolder) {
+        if (holder instanceof DateSeparatorViewHolder) {
+            DateSeparatorViewHolder vh = (DateSeparatorViewHolder) holder;
+            vh.dateLabel.setText(msg.getDateLabel());
+        } else if (holder instanceof SentViewHolder) {
             SentViewHolder vh = (SentViewHolder) holder;
             vh.text.setText(msg.getText());
             vh.time.setText(msg.getTimestamp());
-
         } else if (holder instanceof ReceivedViewHolder) {
             ReceivedViewHolder vh = (ReceivedViewHolder) holder;
             vh.text.setText(msg.getText());
@@ -86,10 +97,8 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     // ── Profile sheet helper ──────────────────────────────────────────────────
 
     private void openProfileSheet(String username) {
-        if (!(context instanceof FragmentActivity)) return;
+        if (!(context instanceof FragmentActivity) || username == null) return;
 
-        // bio / lastSeen / online are fetched from Firebase — pass defaults here;
-        // you can enrich this later by loading the sender's profile data first.
         UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
                 username, "", "", false
         );
@@ -127,6 +136,15 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             avatar = v.findViewById(R.id.msgReceivedAvatar);
             text   = v.findViewById(R.id.msgReceivedText);
             time   = v.findViewById(R.id.msgReceivedTime);
+        }
+    }
+
+    static class DateSeparatorViewHolder extends RecyclerView.ViewHolder {
+        TextView dateLabel;
+
+        DateSeparatorViewHolder(View v) {
+            super(v);
+            dateLabel = v.findViewById(R.id.tvDateSeparator);
         }
     }
 }

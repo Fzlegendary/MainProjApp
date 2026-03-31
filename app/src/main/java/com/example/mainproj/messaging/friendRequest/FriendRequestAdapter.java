@@ -53,17 +53,20 @@ public class FriendRequestAdapter extends RecyclerView.Adapter<FriendRequestAdap
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         FriendRequest request = requests.get(position);
         holder.tvUsername.setText(request.getFromUsername());
-        
-        if (request.getFromImageUrl() != null && !request.getFromImageUrl().isEmpty()) {
+        /*
+        if (image != null && !image.isEmpty()) {
             Glide.with(context)
-                    .load(request.getFromImageUrl())
+                    .load(image)
                     .apply(com.bumptech.glide.request.RequestOptions.circleCropTransform()
-                            .placeholder(R.drawable.bg_avatar_circle)
+                            .placeholder(R.drawable.bg_avatar_circle
                             .error(R.drawable.bg_avatar_circle))
                     .into(holder.ivProfilePicture);
-        } else {
-            holder.ivProfilePicture.setImageResource(android.R.drawable.sym_def_app_icon);
-        }
+
+    }                                                   // load from firebase "image" via username
+        else {
+         */
+            holder.ivProfilePicture.setImageResource(android.R.drawable.sym_def_app_icon); // load default
+      //  }
         
         holder.ivProfilePicture.setOnClickListener(v -> {
             if (context instanceof FragmentActivity) {
