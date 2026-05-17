@@ -3,6 +3,7 @@ package com.example.mainproj;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.MotionEvent;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -95,6 +96,19 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         });
 
         viewPager.setOffscreenPageLimit(1);
+
+        viewPager.setOnTouchListener((v, event) -> {
+            int height = v.getHeight();
+            if (height <= 0) return false;
+
+            float touchY = event.getY();
+            float threshold = height * 0.33f;
+
+            if (touchY <= threshold) {
+                return true;
+            }
+            return false;
+        });
     }
 
     private void setupBottomNav() {
