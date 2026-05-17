@@ -1,6 +1,7 @@
 package com.example.mainproj;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
@@ -22,9 +23,13 @@ import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends BaseActivity implements NavigationView.OnNavigationItemSelectedListener {
 
+    private static final String PREFS_NAME = "MainProjPrefs";
+    private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
+
     private Toolbar toolbar;
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +38,8 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         setContentView(R.layout.activity_main);
 
         setActiveNav(R.id.nav_home);
+
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -95,6 +102,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         if (id == R.id.nav_logout) {
             mAuth.signOut();
             mGoogleSignInClient.signOut();
+            prefs.edit().remove(KEY_LOGGED_IN_EMAIL).apply();
             startActivity(new Intent(this, Login_activity.class));
             finish();
         }

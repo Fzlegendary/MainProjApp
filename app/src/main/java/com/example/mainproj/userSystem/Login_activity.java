@@ -1,6 +1,7 @@
 package com.example.mainproj.userSystem;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -26,7 +27,10 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-public class Login_activity extends AppCompatActivity {
+public class  Login_activity extends AppCompatActivity {
+
+    private static final String PREFS_NAME = "MainProjPrefs";
+    private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
 
     private TextInputEditText etEmail, etPassword;
     private MaterialButton btnLogin, btnGoogleLogin;
@@ -34,6 +38,7 @@ public class Login_activity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
+    private SharedPreferences prefs;
 
     private final ActivityResultLauncher<Intent> googleLauncher =
             registerForActivityResult(
@@ -64,7 +69,15 @@ public class Login_activity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(com.example.mainproj.R.layout.activity_login);
 
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         mAuth = FirebaseAuth.getInstance();
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null && currentUser.getEmail() != null) {
+            startActivity(new Intent(this, MainActivity.class));
+            finish();
+            return;
+        }
 
         etEmail = findViewById(com.example.mainproj.R.id.etEmail);
         etPassword = findViewById(com.example.mainproj.R.id.etPassword);
@@ -162,6 +175,8 @@ public class Login_activity extends AppCompatActivity {
 
     private void ensureUserNodeAndProceed(String email, boolean checkVerification) {
         String safeEmail = email.replace(".", "_");
+
+        prefs.edit().putString(KEY_LOGGED_IN_EMAIL, email).apply();
 
         FirebaseDatabase.getInstance()
                 .getReference("users")
