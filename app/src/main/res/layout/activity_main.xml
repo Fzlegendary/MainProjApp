@@ -29,8 +29,8 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ViewPager2 for fragments -->
-        <androidx.viewpager2.widget.ViewPager2
+        <!-- ViewPager for fragments -->
+        <com.example.mainproj.views.MainNavViewPager
             android:id="@+id/viewPager"
             android:layout_width="0dp"
             android:layout_height="0dp"

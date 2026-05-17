@@ -3,7 +3,6 @@ package com.example.mainproj;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.MotionEvent;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -13,7 +12,7 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
-import androidx.viewpager2.widget.ViewPager2;
+import androidx.viewpager.widget.ViewPager;
 
 import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
@@ -33,7 +32,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
 
     private Toolbar toolbar;
-    private ViewPager2 viewPager;
+    private ViewPager viewPager;
     private BottomNavigationView bottomNav;
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
@@ -83,31 +82,21 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
     private void setupViewPager() {
         viewPager = findViewById(R.id.viewPager);
-        pagerAdapter = new MainPagerAdapter(this);
+        pagerAdapter = new MainPagerAdapter(getSupportFragmentManager());
         viewPager.setAdapter(pagerAdapter);
 
-        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {}
+
             @Override
             public void onPageSelected(int position) {
-                super.onPageSelected(position);
                 updateBottomNavSelection(position);
                 lastSelectedPosition = position;
             }
-        });
 
-        viewPager.setOffscreenPageLimit(1);
-
-        viewPager.setOnTouchListener((v, event) -> {
-            int height = v.getHeight();
-            if (height <= 0) return false;
-
-            float touchY = event.getY();
-            float threshold = height * 0.33f;
-
-            if (touchY <= threshold) {
-                return true;
-            }
-            return false;
+            @Override
+            public void onPageScrollStateChanged(int state) {}
         });
     }
 
