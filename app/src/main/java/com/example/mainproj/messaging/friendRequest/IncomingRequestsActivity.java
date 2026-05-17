@@ -163,6 +163,22 @@ public class IncomingRequestsActivity extends BaseActivity implements FriendRequ
         });
 
         requestsRef.child(request.getKey()).removeValue();
+
+        String fromEmail1 = request.getFrom().replace(".", "_");
+        DatabaseReference sentRef = FirebaseDatabase.getInstance()
+                .getReference("sentRequests").child(fromEmail1);
+        sentRef.orderByChild("to").equalTo(request.getFrom())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot snap : snapshot.getChildren()) {
+                            snap.getRef().child("status").setValue("accepted");
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
     }
 
     private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, 

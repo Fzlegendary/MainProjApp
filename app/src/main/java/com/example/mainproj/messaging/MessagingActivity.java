@@ -301,7 +301,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                     for (DataSnapshot userSnap : snapshot.getChildren()) {
                         String targetEmail = userSnap.child("email").getValue(String.class);
                         if (targetEmail != null) {
-                            sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl);
+                            sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl, targetUsername);
                             return;
                         }
                     }
@@ -316,7 +316,7 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
         });
     }
 
-    private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername, String fromImageUrl) {
+    private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername, String fromImageUrl, String targetUsername) {
         String safeTargetEmail = targetEmail.replace(".", "_");
         DatabaseReference requestsRef = FirebaseDatabase.getInstance()
                 .getReference("friendRequests")
@@ -331,7 +331,17 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
 
         requestsRef.push().setValue(requestData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                Toast.makeText(MessagingActivity.this, "Friend request sent to " + targetEmail, Toast.LENGTH_SHORT).show();
+                DatabaseReference sentRef = FirebaseDatabase.getInstance()
+                        .getReference("sentRequests").child(fromEmail);
+                Map<String, Object> sentData = new HashMap<>();
+                sentData.put("to", targetEmail);
+                sentData.put("toUsername", targetUsername);
+                sentData.put("toImageUrl", fromImageUrl);
+                sentData.put("timestamp", System.currentTimeMillis());
+                sentData.put("status", "pending");
+                sentRef.push().setValue(sentData);
+
+                Toast.makeText(MessagingActivity.this, "Friend request sent to " + targetUsername, Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(MessagingActivity.this, "Failed to send request", Toast.LENGTH_SHORT).show();
             }

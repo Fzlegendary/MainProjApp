@@ -31,4 +31,32 @@ public class ChatModel {
     public String getBio()         { return bio; }
     public String getLastSeen()    { return lastSeen; }
     public boolean isOnline()      { return online; }
+
+    public void setChatId(String chatId) {
+        this.chatId = chatId;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void setLastMessage(String lastMessage) {
+        this.lastMessage = lastMessage;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
 }
