@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#E3F2FD">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        app:tabTextColor="@android:color/white"
+        app:tabSelectedTextColor="@android:color/white"
+        app:tabIndicatorColor="@android:color/white"
+        app:tabMode="scrollable" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Gate Control -->
+            <LinearLayout
+                android:id="@+id/gateControlContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGateControl"
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp"
+                    android:text="Gate Control"
+                    android:textColor="#2196F3"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="#FFFFFF"
+                    app:icon="@drawable/ic_gate"
+                    app:iconTint="#2196F3"
+                    app:iconGravity="start"
+                    app:iconPadding="16dp"
+                    app:iconSize="28dp"
+                    app:cornerRadius="16dp"
+                    app:strokeColor="#2196F3"
+                    app:strokeWidth="2dp" />
+
+            </LinearLayout>
+
+            <!-- Server Settings -->
+            <LinearLayout
+                android:id="@+id/serverSettingsContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnServerSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp"
+                    android:text="Server Settings"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="#2196F3"
+                    app:icon="@drawable/ic_settings"
+                    app:iconTint="#FFFFFF"
+                    app:iconGravity="start"
+                    app:iconPadding="16dp"
+                    app:iconSize="28dp"
+                    app:cornerRadius="16dp" />
+
+            </LinearLayout>
+
+            <!-- Account Management -->
+            <LinearLayout
+                android:id="@+id/accountManagementContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAccountManagement"
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp"
+                    android:text="Account Management"
+                    android:textColor="#2196F3"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="#FFFFFF"
+                    app:icon="@drawable/ic_account"
+                    app:iconTint="#2196F3"
+                    app:iconGravity="start"
+                    app:iconPadding="16dp"
+                    app:iconSize="28dp"
+                    app:cornerRadius="16dp"
+                    app:strokeColor="#2196F3"
+                    app:strokeWidth="2dp" />
+
+            </LinearLayout>
+
+            <!-- Blacklist -->
+            <LinearLayout
+                android:id="@+id/blacklistContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBlacklist"
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp"
+                    android:text="Blacklist"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="#2196F3"
+                    app:icon="@drawable/ic_block"
+                    app:iconTint="#FFFFFF"
+                    app:iconGravity="start"
+                    app:iconPadding="16dp"
+                    app:iconSize="28dp"
+                    app:cornerRadius="16dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

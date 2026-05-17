@@ -15,7 +15,7 @@ public class SettingsActivity extends BaseActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_settings);
 
-        setActiveNav(R.id.nav_settings);
+        setActiveNav(R.id.nav_profile);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

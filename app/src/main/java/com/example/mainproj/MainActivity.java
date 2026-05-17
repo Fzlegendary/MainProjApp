@@ -5,19 +5,24 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import androidx.viewpager2.widget.ViewPager2;
 
+import com.example.mainproj.adapters.MainPagerAdapter;
+import com.example.mainproj.fragments.ProfileFragment;
 import com.example.mainproj.lists.listsActivity;
 import com.example.mainproj.messaging.MessagingActivity;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.material.button.MaterialButton;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
@@ -27,17 +32,20 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
 
     private Toolbar toolbar;
+    private ViewPager2 viewPager;
+    private BottomNavigationView bottomNav;
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
     private SharedPreferences prefs;
+    private MainPagerAdapter pagerAdapter;
+    private int lastSelectedPosition = 0;
+    private boolean isInSettingsNav = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-
-        setActiveNav(R.id.nav_home);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -52,16 +60,14 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        setupViewPager();
+        setupBottomNav();
+
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.main),
                 (v, insets) -> {
-                    Insets bars = insets.getInsets(
-                            WindowInsetsCompat.Type.systemBars());
-                    v.setPadding(
-                            bars.left,
-                            bars.top,
-                            bars.right,
-                            0);
+                    Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    v.setPadding(bars.left, bars.top, bars.right, 0);
                     return insets;
                 });
 
@@ -72,31 +78,94 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         NavigationView navigationView = findViewById(R.id.navigationView);
         navigationView.setNavigationItemSelectedListener(this);
+    }
 
-        MaterialButton btnMessaging = findViewById(R.id.btnMessaging);
-        MaterialButton btnGateControl = findViewById(R.id.btnGateControl);
-        MaterialButton btnServerSettings = findViewById(R.id.btnServerSettings);
-        MaterialButton btnAccountManagement = findViewById(R.id.btnAccountManagement);
-        MaterialButton btnBlacklist = findViewById(R.id.btnBlacklist);
+    private void setupViewPager() {
+        viewPager = findViewById(R.id.viewPager);
+        pagerAdapter = new MainPagerAdapter(this);
+        viewPager.setAdapter(pagerAdapter);
 
-        btnMessaging.setOnClickListener(v ->
-                startActivity(new Intent(this, MessagingActivity.class)));
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                updateBottomNavSelection(position);
+                lastSelectedPosition = position;
+            }
+        });
 
-        btnGateControl.setOnClickListener(v ->
-                startActivity(new Intent(this, gatesMain.class)));
+        viewPager.setOffscreenPageLimit(1);
+    }
 
-        btnServerSettings.setOnClickListener(v ->
-                startActivity(new Intent(this, ServerSettingsActivity.class)));
+    private void setupBottomNav() {
+        bottomNav = findViewById(R.id.bottomNav);
 
-        btnAccountManagement.setOnClickListener(v ->
-                startActivity(new Intent(this, AccountManagementActivity.class)));
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
 
-        btnBlacklist.setOnClickListener(v ->
-                startActivity(new Intent(this, listsActivity.class)));
+            if (itemId == R.id.nav_home) {
+                viewPager.setCurrentItem(0, true);
+                return true;
+            } else if (itemId == R.id.nav_messages) {
+                viewPager.setCurrentItem(1, true);
+                return true;
+            } else if (itemId == R.id.nav_profile) {
+                ProfileFragment pf = getProfileFragment();
+                if (pf != null) {
+                    if (isInSettingsNav) {
+                        pf.showProfile();
+                        isInSettingsNav = false;
+                    } else {
+                        pf.showSettingsInstead();
+                        isInSettingsNav = true;
+                    }
+                }
+                viewPager.setCurrentItem(2, true);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private void updateBottomNavSelection(int position) {
+        switch (position) {
+            case 0:
+                bottomNav.setSelectedItemId(R.id.nav_home);
+                isInSettingsNav = false;
+                break;
+            case 1:
+                bottomNav.setSelectedItemId(R.id.nav_messages);
+                isInSettingsNav = false;
+                break;
+            case 2:
+                bottomNav.setSelectedItemId(R.id.nav_profile);
+                break;
+        }
+    }
+
+    private ProfileFragment getProfileFragment() {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.viewPager);
+        if (currentFragment instanceof ProfileFragment) {
+            return (ProfileFragment) currentFragment;
+        }
+        return null;
     }
 
     @Override
-    public boolean onNavigationItemSelected(android.view.MenuItem item) {
+    public void onBackPressed() {
+        if (viewPager.getCurrentItem() == 2 && isInSettingsNav) {
+            ProfileFragment pf = getProfileFragment();
+            if (pf != null) {
+                pf.showProfile();
+                isInSettingsNav = false;
+            }
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull android.view.MenuItem item) {
         int id = item.getItemId();
 
         if (id == R.id.nav_logout) {
