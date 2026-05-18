@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
-import com.example.mainproj.messaging.ChatCacheApplication;
 import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.messaging.friendRequest.FriendRequest;
 import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
@@ -33,10 +32,12 @@ import java.util.Map;
 public class IncomingRequestsFragment extends Fragment implements FriendRequestAdapter.OnRequestActionListener {
 
     private RecyclerView recyclerView;
+    private String TAG = "fq";
     private FriendRequestAdapter adapter;
     private List<FriendRequest> requests = new ArrayList<>();
     private DatabaseReference requestsRef;
     private ValueEventListener requestsListener;
+    private String requestKey;
 
     @Nullable
     @Override
@@ -93,40 +94,134 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
     @Override
     public void onAccept(FriendRequest request) {
         if (request.getKey() == null) return;
+        requestKey = request.getKey();
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null || currentUser.getEmail() == null) return;
+        if (currentUser == null || currentUser.getEmail() == null) {
+            Toast.makeText(requireContext(), "Not logged in", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         String myEmail = currentUser.getEmail().replace(".", "_");
         String fromEmail = request.getFrom().replace(".", "_");
-
-        String myUsername = ChatCacheApplication.getCurrentUsername();
-        if (myUsername == null) {
-            Toast.makeText(requireContext(), "Unable to get your username", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         String partnerUsername = request.getFromUsername();
-        String chatId = ChatUtils.generateChatId(myUsername, partnerUsername);
-        if (chatId == null) {
-            Toast.makeText(requireContext(), "Error generating chat ID", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
+        FirebaseDatabase.getInstance().getReference("users").child(myEmail).child("username")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String myUsername = snapshot.getValue(String.class);
+                        if (myUsername == null) {
+                            Toast.makeText(requireContext(), "Unable to get your username", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        String chatId = ChatUtils.generateChatId(myUsername, partnerUsername);
+                        if (chatId == null) {
+                            Toast.makeText(requireContext(), "Error generating chat ID", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(requireContext(), "Error fetching your username", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername) {
+        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+        DatabaseReference specificChatRef = chatsRef.child(chatId);
+
+        specificChatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Toast.makeText(requireContext(), "Chat already exists with " + partnerUsername, Toast.LENGTH_SHORT).show();
+                } else {
+                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername);
+                }
+                specificChatRef.removeEventListener(this);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(requireContext(), "Error checking for existing chat", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername) {
+        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
 
         usersRef.child(myEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                String myNickname = snapshot.getValue(String.class);
+            public void onDataChange(@NonNull DataSnapshot myNickSnap) {
+                String myNickname = myNickSnap.getValue(String.class);
+                String myNick = myNickname != null ? myNickname : "";
 
                 usersRef.child(fromEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String partnerNickname = snapshot.getValue(String.class);
+                    public void onDataChange(@NonNull DataSnapshot partnerNickSnap) {
+                        String partnerNickname = partnerNickSnap.getValue(String.class);
+                        String partnerNick = partnerNickname != null ? partnerNickname : "nickname";
 
-                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername,
-                                myNickname != null ? myNickname : "", partnerNickname != null ? partnerNickname : "");
+                        Map<String, Object> chatData = new HashMap<>();
+                        chatData.put("username", partnerUsername);
+                        chatData.put("lastMessage", "lastmsg");
+                        chatData.put("time", System.currentTimeMillis());
+                        chatData.put("bio", "bio");
+                        chatData.put("lastSeen", "lastseen");
+                        chatData.put("online", false);
+                        chatData.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+
+                        Map<String, Object> participants = new HashMap<>();
+                        participants.put(myEmail, true);
+                        participants.put(fromEmail, true);
+                        chatData.put("participants", participants);
+
+                        chatsRef.child(chatId).setValue(chatData).addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                Map<String, Object> myChatData = new HashMap<>(chatData);
+                                myChatData.put("username", partnerUsername);
+                                myChatData.put("nickname", partnerNick);
+                                myChatData.remove("participants");
+
+                                Map<String, Object> partnerChatData = new HashMap<>(chatData);
+                                partnerChatData.put("username", myUsername);
+                                partnerChatData.put("nickname", myNick);
+                                partnerChatData.remove("participants");
+
+                                usersRef.child(myEmail).child("chats").child(chatId).setValue(myChatData);
+                                usersRef.child(fromEmail).child("chats").child(chatId).setValue(partnerChatData);
+
+                                requestsRef.child(requestKey).removeValue();
+                                Toast.makeText(requireContext(), "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
+
+                            } else {
+                                Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+                        String safeMyEmail = myEmail;
+                        DatabaseReference sentRef = FirebaseDatabase.getInstance()
+                                .getReference("sentRequests").child(fromEmail);
+                        sentRef.orderByChild("to").equalTo(safeMyEmail)
+                                .addListenerForSingleValueEvent(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                        for (DataSnapshot snap : snapshot.getChildren()) {
+                                            snap.getRef().removeValue();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError error) {}
+                                });
                     }
 
                     @Override
@@ -141,87 +236,6 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 Toast.makeText(requireContext(), "Error fetching your nickname", Toast.LENGTH_SHORT).show();
             }
         });
-
-        requestsRef.child(request.getKey()).removeValue();
-    }
-
-    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername,
-                                    String partnerUsername, String myNickname, String partnerNickname) {
-        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-        DatabaseReference specificChatRef = chatsRef.child(chatId);
-
-        specificChatRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    Toast.makeText(requireContext(), "Chat already exists with " + partnerUsername, Toast.LENGTH_SHORT).show();
-                } else {
-                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, myNickname, partnerNickname);
-                }
-                specificChatRef.removeEventListener(this);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(requireContext(), "Error checking for existing chat", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername,
-                               String partnerUsername, String myNickname, String partnerNickname) {
-        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
-
-        Map<String, Object> chatData = new HashMap<>();
-        chatData.put("username", partnerUsername);
-        chatData.put("lastMessage", "");
-        chatData.put("time", "");
-        chatData.put("bio", "");
-        chatData.put("lastSeen", "");
-        chatData.put("online", false);
-        chatData.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
-
-        Map<String, Object> participants = new HashMap<>();
-        participants.put(myEmail, true);
-        participants.put(fromEmail, true);
-        chatData.put("participants", participants);
-
-        chatsRef.child(chatId).setValue(chatData).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Map<String, Object> myChatData = new HashMap<>(chatData);
-                myChatData.put("username", partnerUsername);
-                myChatData.put("nickname", partnerNickname);
-                myChatData.remove("participants");
-
-                Map<String, Object> partnerChatData = new HashMap<>(chatData);
-                partnerChatData.put("username", myUsername);
-                partnerChatData.put("nickname", myNickname);
-                partnerChatData.remove("participants");
-
-                usersRef.child(myEmail).child("chats").child(chatId).setValue(myChatData);
-                usersRef.child(fromEmail).child("chats").child(chatId).setValue(partnerChatData);
-
-                Toast.makeText(requireContext(), "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        DatabaseReference sentRef = FirebaseDatabase.getInstance()
-                .getReference("sentRequests").child(fromEmail);
-        sentRef.orderByChild("to").equalTo(myEmail.replace("_", "."))
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        for (DataSnapshot snap : snapshot.getChildren()) {
-                            snap.getRef().child("status").setValue("accepted");
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
     }
 
     @Override

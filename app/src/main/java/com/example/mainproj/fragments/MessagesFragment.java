@@ -262,7 +262,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 DatabaseReference sentRef = FirebaseDatabase.getInstance()
                         .getReference("sentRequests").child(fromEmail);
                 Map<String, Object> sentData = new HashMap<>();
-                sentData.put("to", targetEmail);
+                sentData.put("to", targetEmail.replace(".", "_"));
                 sentData.put("toUsername", targetUsername);
                 sentData.put("timestamp", System.currentTimeMillis());
                 sentData.put("status", "pending");
