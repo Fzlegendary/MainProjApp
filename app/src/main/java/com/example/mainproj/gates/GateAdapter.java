@@ -80,7 +80,7 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
         holder.btnToggleGate.setEnabled(!busy && gate.isClickable());
 
         // Admin gear icon: shown for roleLevel >= 1 always
-        if (SessionManager.getRoleLevel() >= gate.getControlLevel()) {
+        if (SessionManager.getRoleLevel() >= gate.getControlLevel() && SessionManager.getRoleLevel() != 0) {
             holder.btnGateAdminSettings.setVisibility(View.VISIBLE);
         } else {
             holder.btnGateAdminSettings.setVisibility(View.GONE);
