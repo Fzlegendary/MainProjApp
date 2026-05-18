@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="gate_level_options">
+        <item>Level 0 (All Users)</item>
+        <item>Level 1 (Admin)</item>
+        <item>Level 2 (Super Admin)</item>
+    </string-array>
+
+    <string-array name="permission_level_options">
+        <item>View (Level 1)</item>
+        <item>Control (Level 2)</item>
+    </string-array>
+</resources>

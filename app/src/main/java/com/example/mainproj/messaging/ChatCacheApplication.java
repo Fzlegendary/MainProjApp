@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 
+import com.example.mainproj.auth.SessionManager;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class ChatCacheApplication extends Application implements Application.ActivityLifecycleCallbacks {
@@ -19,6 +20,7 @@ public class ChatCacheApplication extends Application implements Application.Act
         registerActivityLifecycleCallbacks(this);
         NotificationHelper.createChannel(this);
         fetchFCMToken();
+        SessionManager.init();
     }
 
     private void fetchFCMToken() {

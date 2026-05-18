@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mainproj.MainActivity;
 import com.example.mainproj.R;
+import com.example.mainproj.auth.SessionManager;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -276,6 +277,7 @@ public class sign_up_activity extends AppCompatActivity implements
                     DatabaseReference usernamesRef = FirebaseDatabase.getInstance().getReference("usernames");
                     usernamesRef.child(username.toLowerCase()).setValue(true);
 
+                    SessionManager.refresh();
                     Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(sign_up_activity.this, MainActivity.class));
                     finish();

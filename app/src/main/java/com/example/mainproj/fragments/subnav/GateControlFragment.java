@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
+import com.example.mainproj.admin.AdminGatePermissionSheet;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.gates.Gate;
 import com.example.mainproj.gates.GateAdapter;
 import com.google.firebase.database.DataSnapshot;
@@ -126,13 +128,31 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                 for (DataSnapshot g : snapshot.getChildren()) {
                     String id = g.getKey();
                     String state = g.child("state").getValue(String.class);
-                    gateList.add(new Gate(
+                    Integer visLevel = g.child("visibilityLevel").getValue(Integer.class);
+                    Integer openLevel = g.child("openableLevel").getValue(Integer.class);
+                    Integer ctrlLevel = g.child("controlLevel").getValue(Integer.class);
+                    Boolean disabledVal = g.child("disabled").getValue(Boolean.class);
+
+                    int vLevel = visLevel != null ? visLevel : 0;
+                    int oLevel = openLevel != null ? openLevel : 0;
+                    int cLevel = ctrlLevel != null ? ctrlLevel : 0;
+                    boolean isDisabled = disabledVal != null && disabledVal;
+
+                    if (isDisabled && SessionManager.getRoleLevel() < 2) continue;
+                    if (!SessionManager.canViewGate(vLevel)) continue;
+
+                    Gate gate = new Gate(
                             id,
                             state != null ? state : "closed",
                             state != null ? state : "closed",
                             0L,
-                            ""
-                    ));
+                            "",
+                            vLevel,
+                            oLevel,
+                            cLevel
+                    );
+                    gate.setDisabled(isDisabled);
+                    gateList.add(gate);
                 }
                 if (adapter != null) {
                     adapter.notifyDataSetChanged();
@@ -198,6 +218,14 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     @Override
     public void onGateToggle(Gate gate, int position) {
         if (!gate.isClickable()) return;
+        if (!SessionManager.canOpenGate(gate.getOpenableLevel())) {
+            Toast.makeText(requireContext(), "You don't have permission to open this gate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!SessionManager.canControlGate(gate.getControlLevel())) {
+            Toast.makeText(requireContext(), "You don't have permission to control this gate", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         gate.setClickable(false);
         String targetState = gate.isOpen() ? "closed" : "open";
@@ -205,6 +233,17 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         adapter.updateGate(position, gate);
 
         sendCommand(gate.getGateNumber(), targetState, position);
+    }
+
+    @Override
+    public void onGateAdminSettings(Gate gate, int position) {
+        AdminGatePermissionSheet sheet = AdminGatePermissionSheet.newInstance(
+                gate.getGateNumber(),
+                gate.getVisibilityLevel(),
+                gate.getControlLevel(),
+                gate.isDisabled()
+        );
+        sheet.show(requireActivity().getSupportFragmentManager(), AdminGatePermissionSheet.TAG);
     }
 
     private void sendCommand(String gateId, String targetState, int position) {

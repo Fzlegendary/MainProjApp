@@ -7,10 +7,12 @@ import android.content.Intent;         // used to navigate between activities
 import android.view.LayoutInflater;    // inflates (converts) XML layout files into View objects
 import android.view.View;              // base class for all UI components
 import android.view.ViewGroup;         // a view that can contain other views (the list container)
+import android.view.animation.AnimationUtils;
 import android.widget.TextView;        // displays text in the UI
 
 // AndroidX imports for fragment support and RecyclerView
 import androidx.fragment.app.FragmentActivity; // needed to get a FragmentManager for the bottom sheet
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView; // scrollable list component
 
 // App-specific imports

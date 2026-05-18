@@ -1,12 +1,14 @@
 package com.example.mainproj;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.gates.Gate;
 import com.example.mainproj.gates.GateAdapter;
 import com.google.firebase.FirebaseApp;
@@ -42,7 +44,7 @@ public class gatesMain extends BaseActivity
 
     private static final String TAG = "gatesMain";
 
-    // ❗ MUST be your PC IP
+    // ❗ MUST be localhost IP
     private static final String SERVER_URL =
             "https://localhost:8080/gate/control";
 
@@ -104,6 +106,7 @@ public class gatesMain extends BaseActivity
     /**
      * Firebase is SOURCE OF TRUTH
      */
+
     private void subscribeToFirebase() {
         gatesRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -113,14 +116,32 @@ public class gatesMain extends BaseActivity
                 for (DataSnapshot g : snapshot.getChildren()) {
                     String id = g.getKey();
                     String state = g.child("state").getValue(String.class);
+                    Integer visLevel = g.child("visibilityLevel").getValue(Integer.class);
+                    Integer openLevel = g.child("openableLevel").getValue(Integer.class);
+                    Integer ctrlLevel = g.child("controlLevel").getValue(Integer.class);
+                    Boolean disabledVal = g.child("disabled").getValue(Boolean.class);
 
-                    gateList.add(new Gate(
+                    Log.d(TAG, "gateID: " + id + " vislevel: " + visLevel + " openablelevel: " + openLevel + " ctrllevel: " + ctrlLevel + " disabled: " + disabledVal);
+                    int vLevel = visLevel != null ? visLevel : 0;
+                    int oLevel = openLevel != null ? openLevel : 0;
+                    int cLevel = ctrlLevel != null ? ctrlLevel : 0;
+                    boolean isDisabled = disabledVal != null && disabledVal;
+
+                    if (isDisabled && SessionManager.getRoleLevel() < 2) continue;
+                    if (!SessionManager.canViewGate(vLevel)) continue;
+
+                    Gate gate = new Gate(
                             id,
                             state != null ? state : "closed",
                             state != null ? state : "closed",
                             0L,
-                            ""
-                    ));
+                            "",
+                            vLevel,
+                            oLevel,
+                            cLevel
+                    );
+                    gate.setDisabled(isDisabled);
+                    gateList.add(gate);
                 }
 
                 adapter.notifyDataSetChanged();
@@ -133,6 +154,10 @@ public class gatesMain extends BaseActivity
                         Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onGateAdminSettings(Gate gate, int position) {
     }
 
     /**

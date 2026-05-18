@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mainproj.MainActivity;
 import com.example.mainproj.R;
+import com.example.mainproj.auth.SessionManager;
 import com.google.android.gms.auth.api.signin.*;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.material.button.MaterialButton;
@@ -177,6 +178,7 @@ public class  Login_activity extends AppCompatActivity {
         String safeEmail = email.replace(".", "_");
 
         prefs.edit().putString(KEY_LOGGED_IN_EMAIL, email).apply();
+        SessionManager.refresh();
 
         FirebaseDatabase.getInstance()
                 .getReference("users")

@@ -68,6 +68,7 @@ public class FragmentWhitelist extends FragmentBaseList {
                     PlaceholderContent.PlaceholderItem item = parseItem(child);
                     fullList.add(item);
                 }
+                fullList.sort((a, b) -> Long.compare(b.timestampWhenAdded, a.timestampWhenAdded));
                 adapter.update(fullList);
                 refreshFilteredList();
             }
@@ -207,6 +208,8 @@ public class FragmentWhitelist extends FragmentBaseList {
         String query = vm.getSearchQuery().getValue();
         if (query != null && !query.isEmpty()) {
             adapter.update(ListFilter.apply(fullList, query));
+        } else {
+            adapter.update(fullList);
         }
     }
 
