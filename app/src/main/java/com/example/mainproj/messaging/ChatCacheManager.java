@@ -55,7 +55,7 @@ public class ChatCacheManager {
                         obj.optString("text"),
                         obj.optString("senderUsername"),
                         obj.optString("timestamp"),
-                        obj.optLong("timestampLong", 0),
+                        obj.optLong("timestampLong", -1),
                         obj.optBoolean("sentByMe", false)
                 ));
             }

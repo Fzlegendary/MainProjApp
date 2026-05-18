@@ -125,7 +125,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
         }
 
         currentUserSafeEmail = user.getEmail().replace(".", "_");
-        DatabaseReference userChatsRef = FirebaseDatabase.getInstance()
+        chatsRef = FirebaseDatabase.getInstance()
                 .getReference("users").child(currentUserSafeEmail).child("chats");
 
         chatsListener = new ChildEventListener() {
@@ -170,7 +170,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 Toast.makeText(requireContext(), "Error loading chats", Toast.LENGTH_SHORT).show();
             }
         };
-        userChatsRef.addChildEventListener(chatsListener);
+        chatsRef.addChildEventListener(chatsListener);
     }
 
     private void showAddUserDialog() {
@@ -201,27 +201,28 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
         String safeCurrentEmail = currentEmail.replace(".", "_");
 
         FirebaseDatabase.getInstance()
-                .getReference("users").child(safeCurrentEmail).child("username")
+                .getReference("users").child(safeCurrentEmail)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String myUsername = snapshot.getValue(String.class);
+                        String myUsername = snapshot.child("username").getValue(String.class);
+                        String myImageUrl = snapshot.child("imageUrl").getValue(String.class);
                         if (myUsername != null && myUsername.equalsIgnoreCase(targetUsername)) {
                             Toast.makeText(requireContext(), "You can't send a friend request to yourself", Toast.LENGTH_SHORT).show();
                             return;
                         }
 
-                        proceedWithFriendRequest(targetUsername, safeCurrentEmail, myUsername);
+                        proceedWithFriendRequest(targetUsername, safeCurrentEmail, myUsername, myImageUrl);
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        proceedWithFriendRequest(targetUsername, safeCurrentEmail, null);
+                        proceedWithFriendRequest(targetUsername, safeCurrentEmail, null, null);
                     }
                 });
     }
 
-    private void proceedWithFriendRequest(String targetUsername, String safeCurrentEmail, String myUsername) {
+    private void proceedWithFriendRequest(String targetUsername, String safeCurrentEmail, String myUsername, String myImageUrl) {
         FirebaseDatabase.getInstance().getReference("users")
                 .orderByChild("username").equalTo(targetUsername)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -231,7 +232,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                             for (DataSnapshot userSnap : snapshot.getChildren()) {
                                 String targetEmail = userSnap.child("email").getValue(String.class);
                                 if (targetEmail != null) {
-                                    sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, targetUsername);
+                                    sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl, targetUsername);
                                     return;
                                 }
                             }
@@ -246,7 +247,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 });
     }
 
-    private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername, String targetUsername) {
+    private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername, String fromImageUrl, String targetUsername) {
         String safeTargetEmail = targetEmail.replace(".", "_");
         DatabaseReference requestsRef = FirebaseDatabase.getInstance()
                 .getReference("friendRequests").child(safeTargetEmail);
@@ -254,10 +255,11 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
         Map<String, Object> requestData = new HashMap<>();
         requestData.put("from", fromEmail);
         requestData.put("fromUsername", fromUsername != null ? fromUsername : "Unknown");
+        requestData.put("fromImageUrl", fromImageUrl != null ? fromImageUrl : "");
         requestData.put("timestamp", System.currentTimeMillis());
         requestData.put("status", "pending");
 
-        requestsRef.push().setValue(requestData).addOnCompleteListener(task -> {
+        requestsRef.child(fromUsername).setValue(requestData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 DatabaseReference sentRef = FirebaseDatabase.getInstance()
                         .getReference("sentRequests").child(fromEmail);
@@ -266,7 +268,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 sentData.put("toUsername", targetUsername);
                 sentData.put("timestamp", System.currentTimeMillis());
                 sentData.put("status", "pending");
-                sentRef.push().setValue(sentData);
+                sentRef.child(targetUsername).setValue(sentData);
 
                 Toast.makeText(requireContext(), "Friend request sent to " + targetUsername, Toast.LENGTH_SHORT).show();
             } else {

@@ -67,6 +67,7 @@ public class OutgoingRequestsFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 requests.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
+                    if (!"pending".equals(snap.child("status").getValue(String.class))) continue;
                     SentRequest request = snap.getValue(SentRequest.class);
                     if (request != null) {
                         request.setKey(snap.getKey());

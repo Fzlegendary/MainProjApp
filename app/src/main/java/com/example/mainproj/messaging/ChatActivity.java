@@ -283,7 +283,7 @@ public class ChatActivity extends BaseActivity {
 
         DatabaseReference userRef = FirebaseDatabase.getInstance()
                 .getReference("users")
-                .child(user.getUid());
+                .child(user.getEmail().replace(".", "_"));
 
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override

@@ -42,5 +42,7 @@
     <color name="colorCardShadow">#1A000000</color>
     <color name="colorAvatarBackground">#DBEAFE</color>
     <color name="colorAvatarIcon">#1E88E5</color>
+    <color name="colorStatusAccepted">#43A047</color>
+    <color name="colorStatusDeclined">#E53935</color>
 
 </resources>

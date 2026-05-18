@@ -1,5 +1,6 @@
 package com.example.mainproj.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.ChatActivity;
 import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.messaging.friendRequest.FriendRequest;
 import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
@@ -168,14 +170,14 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                     @Override
                     public void onDataChange(@NonNull DataSnapshot partnerNickSnap) {
                         String partnerNickname = partnerNickSnap.getValue(String.class);
-                        String partnerNick = partnerNickname != null ? partnerNickname : "nickname";
+                        String partnerNick = partnerNickname != null ? partnerNickname : "";
 
                         Map<String, Object> chatData = new HashMap<>();
                         chatData.put("username", partnerUsername);
-                        chatData.put("lastMessage", "lastmsg");
-                        chatData.put("time", System.currentTimeMillis());
-                        chatData.put("bio", "bio");
-                        chatData.put("lastSeen", "lastseen");
+                        chatData.put("lastMessage", "");
+                        chatData.put("time", "");
+                        chatData.put("bio", "");
+                        chatData.put("lastSeen", "");
                         chatData.put("online", false);
                         chatData.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
 
@@ -200,28 +202,25 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                                 usersRef.child(fromEmail).child("chats").child(chatId).setValue(partnerChatData);
 
                                 requestsRef.child(requestKey).removeValue();
+
+                                FirebaseDatabase.getInstance()
+                                        .getReference("sentRequests").child(fromEmail).child(partnerUsername)
+                                        .removeValue();
+                                FirebaseDatabase.getInstance()
+                                        .getReference("sentRequests").child(myEmail).child(partnerUsername)
+                                        .removeValue();
+
                                 Toast.makeText(requireContext(), "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
+
+                                Intent intent = new Intent(requireContext(), ChatActivity.class);
+                                intent.putExtra("username", partnerUsername);
+                                intent.putExtra("chatId", chatId);
+                                startActivity(intent);
 
                             } else {
                                 Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();
                             }
                         });
-
-                        String safeMyEmail = myEmail;
-                        DatabaseReference sentRef = FirebaseDatabase.getInstance()
-                                .getReference("sentRequests").child(fromEmail);
-                        sentRef.orderByChild("to").equalTo(safeMyEmail)
-                                .addListenerForSingleValueEvent(new ValueEventListener() {
-                                    @Override
-                                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                        for (DataSnapshot snap : snapshot.getChildren()) {
-                                            snap.getRef().removeValue();
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onCancelled(@NonNull DatabaseError error) {}
-                                });
                     }
 
                     @Override
@@ -241,9 +240,39 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
     @Override
     public void onReject(FriendRequest request) {
         if (request.getKey() == null) return;
-        requestsRef.child(request.getKey()).removeValue().addOnCompleteListener(task -> {
-            Toast.makeText(requireContext(), "Request rejected", Toast.LENGTH_SHORT).show();
-        });
+
+        String senderEmail = request.getFrom();
+        String senderSafe = senderEmail.replace(".", "_");
+        String senderUsername = request.getFromUsername();
+
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null || currentUser.getEmail() == null) return;
+        String myEmail = currentUser.getEmail().replace(".", "_");
+
+        FirebaseDatabase.getInstance().getReference("users").child(myEmail).child("username")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String myUsername = snapshot.getValue(String.class);
+                        String myUsernameSafe = myUsername != null ? myUsername : "";
+
+                        requestsRef.child(request.getKey()).removeValue();
+
+                        FirebaseDatabase.getInstance()
+                                .getReference("sentRequests").child(senderSafe).child(senderUsername)
+                                .removeValue();
+                        FirebaseDatabase.getInstance()
+                                .getReference("sentRequests").child(myEmail).child(senderUsername)
+                                .removeValue();
+
+                        Toast.makeText(requireContext(), "Request rejected", Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(requireContext(), "Error rejecting request", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Override

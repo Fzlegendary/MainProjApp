@@ -19,4 +19,6 @@
     <color name="colorCardShadow">#33000000</color>
     <color name="colorAvatarBackground">#1A3A5C</color>
     <color name="colorAvatarIcon">#64B5F6</color>
+    <color name="colorStatusAccepted">#66BB6A</color>
+    <color name="colorStatusDeclined">#EF5350</color>
 </resources>

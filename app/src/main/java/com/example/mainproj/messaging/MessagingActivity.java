@@ -334,12 +334,11 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
                 DatabaseReference sentRef = FirebaseDatabase.getInstance()
                         .getReference("sentRequests").child(fromEmail);
                 Map<String, Object> sentData = new HashMap<>();
-                sentData.put("to", targetEmail);
+                sentData.put("to", targetEmail.replace(".", "_"));
                 sentData.put("toUsername", targetUsername);
-                sentData.put("toImageUrl", fromImageUrl);
                 sentData.put("timestamp", System.currentTimeMillis());
                 sentData.put("status", "pending");
-                sentRef.push().setValue(sentData);
+                sentRef.child(targetUsername).setValue(sentData);
 
                 Toast.makeText(MessagingActivity.this, "Friend request sent to " + targetUsername, Toast.LENGTH_SHORT).show();
             } else {

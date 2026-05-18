@@ -49,10 +49,10 @@ public class SentRequestAdapter extends RecyclerView.Adapter<SentRequestAdapter.
         int statusColor;
         switch (status.toLowerCase()) {
             case "accepted":
-                statusColor = android.R.color.holo_green_dark;
+                statusColor = R.color.colorStatusAccepted;
                 break;
             case "declined":
-                statusColor = android.R.color.holo_red_dark;
+                statusColor = R.color.colorStatusDeclined;
                 break;
             default:
                 statusColor = R.color.colorPrimary;
