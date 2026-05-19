@@ -16,8 +16,6 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
-import com.example.mainproj.lists.listsActivity;
-import com.example.mainproj.messaging.MessagingActivity;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;

@@ -54,6 +54,7 @@ public class ChatActivity extends BaseActivity {
     private final String chatId = initChatId();
     private String partnerUsername;
     private String currentUsername;
+    private String currentUserUid;
 
     private String initChatId() {
         try {
@@ -77,7 +78,9 @@ public class ChatActivity extends BaseActivity {
     private TextView profileName, profileUsername, profileEmail;
     private GoogleSignInClient mGoogleSignInClient;
     private ChatCacheManager cacheManager;
+    private ChatMetadataManager metadataManager;
     private Set<Long> loadedTimestamps = new HashSet<>();
+    private ChatModel currentChat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,9 +124,20 @@ public class ChatActivity extends BaseActivity {
         messagesRecyclerView.setAdapter(messageAdapter);
 
         cacheManager = ChatCacheManager.getInstance(this);
+        metadataManager = ChatMetadataManager.getInstance(this);
         loadCachedMessages();
 
         loadCurrentUsername();
+
+        // Store the current user's Firebase UID for use in unread count tracking.
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (firebaseUser != null) {
+            currentUserUid = firebaseUser.getUid();
+        }
+
+        // Load the chat model from SharedPreferences so we can track and reset unread count.
+        // Reset unread count to 0 when the user opens this chat.
+        loadChatMetadata();
 
         if (chatId != null) {
             ChatCacheApplication.setCurrentOpenChatId(chatId);
@@ -194,6 +208,26 @@ public class ChatActivity extends BaseActivity {
         });
     }
 
+    private void loadChatMetadata() {
+        if (chatId == null || currentUserUid == null) return;
+
+        // Load all cached chats and find the one matching the current chatId.
+        ArrayList<ChatModel> allChats = metadataManager.loadAllChats(currentUserUid);
+        for (ChatModel chat : allChats) {
+            if (chatId.equals(chat.getChatId())) {
+                currentChat = chat;
+
+                // Reset the unread count to 0 since the user is now viewing this chat.
+                // Persist the update to SharedPreferences so MessagesFragment reflects it.
+                if (chat.getUnreadCount() > 0) {
+                    chat.setUnreadCount(0);
+                    metadataManager.saveChat(currentUserUid, chat);
+                }
+                return;
+            }
+        }
+    }
+
     private void sendMessage() {
         String text = messageInput.getText().toString().trim();
         if (text.isEmpty() || chatId == null || currentUsername == null) return;
@@ -256,6 +290,15 @@ public class ChatActivity extends BaseActivity {
                     loadedTimestamps.add(timestampLong);
                     boolean sentByMe = senderUsername.equals(currentUsername);
                     messagesList.add(new MessageModel(text, senderUsername, time, timestampLong, sentByMe));
+
+                    // Increment the unread count badge when a message is received from the
+                    // other user (not sent by the current user). Persist the updated count
+                    // to SharedPreferences so the badge remains visible in MessagesFragment.
+                    if (!sentByMe && currentUserUid != null && currentChat != null) {
+                        currentChat.setUnreadCount(currentChat.getUnreadCount() + 1);
+                        metadataManager.saveChat(currentUserUid, currentChat);
+                    }
+
                     messageAdapter.notifyItemInserted(messagesList.size() - 1);
                     messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
                 }

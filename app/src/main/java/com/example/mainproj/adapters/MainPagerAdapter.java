@@ -6,7 +6,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
 
 import com.example.mainproj.fragments.HomeFragment;
-import com.example.mainproj.fragments.MessagesFragment;
+import com.example.mainproj.fragments.ChatsFragment;
 import com.example.mainproj.fragments.ProfileFragment;
 
 public class MainPagerAdapter extends FragmentPagerAdapter {
@@ -22,7 +22,7 @@ public class MainPagerAdapter extends FragmentPagerAdapter {
             case 0:
                 return new HomeFragment();
             case 1:
-                return new MessagesFragment();
+                return new ChatsFragment();
             case 2:
                 return new ProfileFragment();
             default:

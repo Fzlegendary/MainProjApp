@@ -27,17 +27,51 @@
         android:paddingVertical="12dp"
         android:gravity="center_vertical">
 
-        <!-- Profile picture with circular tinted background -->
-        <ImageView
-            android:id="@+id/profileImage"
+        <!-- FrameLayout wraps the profile image so we can overlay
+             the online status dot and unread badge on top of it -->
+        <FrameLayout
             android:layout_width="46dp"
-            android:layout_height="46dp"
-            android:background="@drawable/bg_avatar_circle"
-            android:src="@android:drawable/sym_def_app_icon"
-            android:padding="10dp"
-            android:scaleType="centerInside"
-            android:contentDescription="Profile picture"
-            app:tint="@color/colorAvatarIcon" />
+            android:layout_height="46dp">
+
+            <!-- Profile picture with circular tinted background -->
+            <ImageView
+                android:id="@+id/profileImage"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:src="@android:drawable/sym_def_app_icon"
+                android:padding="10dp"
+                android:scaleType="centerInside"
+                android:contentDescription="Profile picture"
+                app:tint="@color/colorAvatarIcon" />
+
+            <!-- Online status indicator — small green circle shown at the
+                 bottom-right corner when the user is currently online -->
+            <View
+                android:id="@+id/onlineDot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/bg_online_dot"
+                android:visibility="gone" />
+
+            <!-- Unread message count badge — red circle with white text shown
+                 at the top-right corner when there are unread messages.
+                 Hidden when unreadCount is 0. -->
+            <TextView
+                android:id="@+id/unreadBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/bg_unread_badge"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                android:includeFontPadding="false" />
+
+        </FrameLayout>
 
         <!-- Name + last message -->
         <LinearLayout

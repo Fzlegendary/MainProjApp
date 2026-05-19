@@ -19,9 +19,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.ChatAdapter;
-import com.example.mainproj.messaging.ChatActivity;
+import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
-import com.example.mainproj.messaging.friendRequest.FriendRequest;
+import com.example.mainproj.messaging.MessagesFragment;
 import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActionListener {
+public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionListener {
 
     private RecyclerView chatRecyclerView;
     private ChatAdapter chatAdapter;
@@ -51,6 +51,7 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
     private DatabaseReference chatsRef;
     private ChildEventListener chatsListener;
     private String currentUserSafeEmail;
+    private String currentUserUid;
 
     @Nullable
     @Override
@@ -124,7 +125,15 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
             return;
         }
 
+        currentUserUid = user.getUid();
         currentUserSafeEmail = user.getEmail().replace(".", "_");
+
+        ArrayList<ChatModel> cachedChats = ChatMetadataManager.getInstance(requireContext())
+                .loadAllChats(currentUserUid);
+        chatList.clear();
+        chatList.addAll(cachedChats);
+        filterChats(searchChats.getText().toString());
+
         chatsRef = FirebaseDatabase.getInstance()
                 .getReference("users").child(currentUserSafeEmail).child("chats");
 
@@ -134,7 +143,24 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 ChatModel chat = snapshot.getValue(ChatModel.class);
                 if (chat != null) {
                     chat.setChatId(snapshot.getKey());
-                    chatList.add(chat);
+
+                    boolean chatAlreadyExists = false;
+                    for (int index = 0; index < chatList.size(); index++) {
+                        ChatModel existingChat = chatList.get(index);
+                        if (existingChat != null && existingChat.getChatId() != null
+                                && existingChat.getChatId().equals(chat.getChatId())) {
+                            chatAlreadyExists = true;
+                            break;
+                        }
+                    }
+
+                    if (!chatAlreadyExists) {
+                        chatList.add(chat);
+                    }
+
+                    ChatMetadataManager.getInstance(requireContext())
+                            .saveChat(currentUserUid, chat);
+
                     filterChats(searchChats.getText().toString());
                 }
             }
@@ -144,26 +170,49 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
                 ChatModel chat = snapshot.getValue(ChatModel.class);
                 if (chat != null) {
                     String chatId = snapshot.getKey();
-                    for (int i = 0; i < chatList.size(); i++) {
-                        if (chatList.get(i).getChatId().equals(chatId)) {
+
+                    boolean chatFound = false;
+                    for (int index = 0; index < chatList.size(); index++) {
+                        ChatModel existingChat = chatList.get(index);
+                        if (existingChat != null && existingChat.getChatId() != null
+                                && existingChat.getChatId().equals(chatId)) {
                             chat.setChatId(chatId);
-                            chatList.set(i, chat);
+                            chatList.set(index, chat);
+                            chatFound = true;
                             break;
                         }
                     }
-                    filterChats(searchChats.getText().toString());
+
+                    ChatMetadataManager.getInstance(requireContext())
+                            .saveChat(currentUserUid, chat);
+
+                    if (chatFound)
+                        filterChats(searchChats.getText().toString());
                 }
             }
 
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
                 String chatId = snapshot.getKey();
-                chatList.removeIf(c -> c.getChatId().equals(chatId));
-                filterChats(searchChats.getText().toString());
+
+                chatList.removeIf(c -> c.getChatId() != null && c.getChatId().equals(chatId));
+
+                for (int index = filteredChatList.size() - 1; index >= 0; index--) {
+                    ChatModel chatItem = filteredChatList.get(index);
+                    if (chatItem != null && chatItem.getChatId() != null
+                            && chatItem.getChatId().equals(chatId)) {
+                        filteredChatList.remove(index);
+                    }
+                }
+
+                ChatMetadataManager.getInstance(requireContext())
+                        .clearChat(currentUserUid, chatId);
+
+                chatAdapter.notifyDataSetChanged();
             }
 
             @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
+            public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
@@ -314,10 +363,25 @@ public class MessagesFragment extends Fragment implements ChatAdapter.OnChatActi
     }
 
     @Override
+    public void onChatClick(ChatModel chat) {
+        Bundle args = new Bundle();
+        args.putString("chatId", chat.getChatId());
+        args.putString("username", chat.getUsername());
+
+        MessagesFragment conversationFragment = new MessagesFragment();
+        conversationFragment.setArguments(args);
+
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.viewPager, conversationFragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         if (chatsRef != null && chatsListener != null) {
-            // Remove listener
+            chatsRef.removeEventListener(chatsListener);
         }
     }
 }

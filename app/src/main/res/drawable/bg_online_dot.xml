@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_online_dot.xml
+    Small green circle used as the online status indicator on a user's
+    profile picture in the chat list. Static (no animation).
+    Color: #4CAF50 (Material Green 500)
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Solid green fill for the online status indicator -->
+    <solid android:color="#4CAF50" />
+
+</shape>

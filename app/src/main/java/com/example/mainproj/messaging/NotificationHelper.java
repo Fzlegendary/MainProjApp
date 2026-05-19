@@ -11,6 +11,8 @@ import android.os.Bundle;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.RemoteInput;
 
+import com.example.mainproj.MainActivity;
+
 public class NotificationHelper {
 
     public static final String CHANNEL_ID_MESSAGES = "messages_channel";
@@ -59,7 +61,7 @@ public class NotificationHelper {
 
         int notificationId = (CHANNEL_ID_MESSAGES + chatId).hashCode();
 
-        Intent mainIntent = new Intent(context, MessagingActivity.class);
+        Intent mainIntent = new Intent(context, MainActivity.class);
         mainIntent.putExtra(EXTRA_CHAT_ID, chatId);
         mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
