@@ -178,6 +178,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
                                 && existingChat.getChatId().equals(chatId)) {
                             chat.setChatId(chatId);
                             chatList.set(index, chat);
+
                             chatFound = true;
                             break;
                         }
