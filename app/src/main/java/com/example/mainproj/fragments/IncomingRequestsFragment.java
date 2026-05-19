@@ -173,7 +173,6 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                         String partnerNick = partnerNickname != null ? partnerNickname : "";
 
                         Map<String, Object> chatData = new HashMap<>();
-                        chatData.put("username", partnerUsername);
                         chatData.put("lastMessage", "");
                         chatData.put("time", "");
                         chatData.put("bio", "");
