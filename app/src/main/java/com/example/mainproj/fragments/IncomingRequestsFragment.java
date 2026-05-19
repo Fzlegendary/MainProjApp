@@ -108,6 +108,10 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         String fromEmail = request.getFrom().replace(".", "_");
         String partnerUsername = request.getFromUsername();
 
+        // remove the outgoing request
+        DatabaseReference sentRequestsRef = FirebaseDatabase.getInstance().getReference("sentRequests").child(fromEmail).child(String.valueOf(currentUser));
+        sentRequestsRef.removeValue();
+
         FirebaseDatabase.getInstance().getReference("users").child(myEmail).child("username")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -173,10 +177,9 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                         String partnerNick = partnerNickname != null ? partnerNickname : "";
 
                         Map<String, Object> chatData = new HashMap<>();
-                        chatData.put("lastMessage", "");
-                        chatData.put("time", "");
-                        chatData.put("bio", "");
-                        chatData.put("lastSeen", "");
+                        chatData.put("lastMessage", "lastmsg");
+                        chatData.put("timestamp", com.google.firebase.database.ServerValue.TIMESTAMP);
+                        chatData.put("lastSeen", com.google.firebase.database.ServerValue.TIMESTAMP);
                         chatData.put("online", false);
                         chatData.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
 
