@@ -30,7 +30,7 @@
             app:layout_constraintEnd_toEndOf="parent" />
 
         <!-- ViewPager for fragments -->
-        <com.example.mainproj.views.MainNavViewPager
+        <androidx.viewpager.widget.ViewPager
             android:id="@+id/viewPager"
             android:layout_width="0dp"
             android:layout_height="0dp"

@@ -170,9 +170,8 @@ public class MessageNotificationService extends Service {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, ChatActivity.class);
-                    intent.putExtra("chatId", chatId);
-                    intent.putExtra("username", senderUsername);
+                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
+                    intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
                 })
                 .setNegativeButton("Mute", (dialog, which) -> {

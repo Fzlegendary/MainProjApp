@@ -61,6 +61,9 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         setupViewPager();
         setupBottomNav();
 
+        int tabPosition = getIntent().getIntExtra("tab_position", 1);
+        viewPager.setCurrentItem(tabPosition, false);
+
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.main),
                 (v, insets) -> {

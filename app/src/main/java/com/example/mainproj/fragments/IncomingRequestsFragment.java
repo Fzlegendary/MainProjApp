@@ -2,6 +2,7 @@ package com.example.mainproj.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,8 +14,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.MainActivity;
 import com.example.mainproj.R;
-import com.example.mainproj.messaging.ChatActivity;
 import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.messaging.friendRequest.FriendRequest;
 import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
@@ -39,7 +40,6 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
     private List<FriendRequest> requests = new ArrayList<>();
     private DatabaseReference requestsRef;
     private ValueEventListener requestsListener;
-    private String requestKey;
 
     @Nullable
     @Override
@@ -96,7 +96,13 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
     @Override
     public void onAccept(FriendRequest request) {
         if (request.getKey() == null) return;
-        requestKey = request.getKey();
+
+        String from = request.getFrom();
+        if (from == null || from.isEmpty()) return;
+        String fromEmail = from.replace(".", "_");
+
+        String partnerUsername = request.getFromUsername();
+        if (partnerUsername == null || partnerUsername.isEmpty()) return;
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || currentUser.getEmail() == null) {
@@ -105,19 +111,14 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         }
 
         String myEmail = currentUser.getEmail().replace(".", "_");
-        String fromEmail = request.getFrom().replace(".", "_");
-        String partnerUsername = request.getFromUsername();
-
-        // remove the outgoing request
-        DatabaseReference sentRequestsRef = FirebaseDatabase.getInstance().getReference("sentRequests").child(fromEmail).child(String.valueOf(currentUser));
-        sentRequestsRef.removeValue();
+        final String requestKey = request.getKey();
 
         FirebaseDatabase.getInstance().getReference("users").child(myEmail).child("username")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         String myUsername = snapshot.getValue(String.class);
-                        if (myUsername == null) {
+                        if (myUsername == null || myUsername.isEmpty()) {
                             Toast.makeText(requireContext(), "Unable to get your username", Toast.LENGTH_SHORT).show();
                             return;
                         }
@@ -128,7 +129,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                             return;
                         }
 
-                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername);
+                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey);
                     }
 
                     @Override
@@ -138,7 +139,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 });
     }
 
-    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername) {
+    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey) {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         DatabaseReference specificChatRef = chatsRef.child(chatId);
 
@@ -148,7 +149,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 if (snapshot.exists()) {
                     Toast.makeText(requireContext(), "Chat already exists with " + partnerUsername, Toast.LENGTH_SHORT).show();
                 } else {
-                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername);
+                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey);
                 }
                 specificChatRef.removeEventListener(this);
             }
@@ -160,7 +161,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         });
     }
 
-    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername) {
+    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey) {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
 
@@ -177,7 +178,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                         String partnerNick = partnerNickname != null ? partnerNickname : "";
 
                         Map<String, Object> chatData = new HashMap<>();
-                        chatData.put("lastMessage", "lastmsg");
+                        chatData.put("lastMessage", "");
                         chatData.put("timestamp", com.google.firebase.database.ServerValue.TIMESTAMP);
                         chatData.put("lastSeen", com.google.firebase.database.ServerValue.TIMESTAMP);
                         chatData.put("online", false);
@@ -206,17 +207,18 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                                 requestsRef.child(requestKey).removeValue();
 
                                 FirebaseDatabase.getInstance()
-                                        .getReference("sentRequests").child(fromEmail).child(partnerUsername)
+                                        .getReference("sentRequests").child(fromEmail).child(myUsername)
                                         .removeValue();
                                 FirebaseDatabase.getInstance()
                                         .getReference("sentRequests").child(myEmail).child(partnerUsername)
                                         .removeValue();
 
                                 Toast.makeText(requireContext(), "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
+                                Log.d("test", "chatid: " + chatId);
 
-                                Intent intent = new Intent(requireContext(), ChatActivity.class);
-                                intent.putExtra("username", partnerUsername);
-                                intent.putExtra("chatId", chatId);
+
+                                Intent intent = new Intent(requireContext(), MainActivity.class);
+                                intent.putExtra("tab_position", 1);
                                 startActivity(intent);
 
                             } else {

@@ -1,14 +1,21 @@
 package com.example.mainproj.fragments;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -22,6 +29,7 @@ import com.example.mainproj.messaging.ChatAdapter;
 import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
 import com.example.mainproj.messaging.MessagesFragment;
+import com.example.mainproj.messaging.NetworkMonitor;
 import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -47,11 +55,15 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
     private EditText searchChats;
     private FloatingActionButton addChatButton;
     private View btnFriendRequests;
+    private TextView offlineBanner;
 
     private DatabaseReference chatsRef;
     private ChildEventListener chatsListener;
     private String currentUserSafeEmail;
     private String currentUserUid;
+
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private boolean isFirebaseListenerAttached = false;
 
     @Nullable
     @Override
@@ -67,6 +79,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         searchChats = view.findViewById(R.id.searchChats);
         addChatButton = view.findViewById(R.id.addChatButton);
         btnFriendRequests = view.findViewById(R.id.btnFriendRequests);
+        offlineBanner = view.findViewById(R.id.offlineBanner);
 
         setupRecyclerView();
         setupSearch();
@@ -128,11 +141,38 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         currentUserUid = user.getUid();
         currentUserSafeEmail = user.getEmail().replace(".", "_");
 
+        clearCacheOnce();
+
         ArrayList<ChatModel> cachedChats = ChatMetadataManager.getInstance(requireContext())
                 .loadAllChats(currentUserUid);
         chatList.clear();
         chatList.addAll(cachedChats);
         filterChats(searchChats.getText().toString());
+
+        if (NetworkMonitor.getInstance(requireContext()).isConnected()) {
+            offlineBanner.setVisibility(View.GONE);
+            attachFirebaseListener();
+        } else {
+            offlineBanner.setVisibility(View.VISIBLE);
+            registerNetworkCallback();
+        }
+    }
+
+    private void clearCacheOnce() {
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences("ChatPrefs", Context.MODE_PRIVATE);
+
+        if (!prefs.getBoolean("cacheCleared", false)) {
+            if (currentUserUid != null) {
+                ChatMetadataManager.getInstance(requireContext())
+                        .clearAllForUser(currentUserUid);
+            }
+            prefs.edit().putBoolean("cacheCleared", true).apply();
+        }
+    }
+
+    private void attachFirebaseListener() {
+        if (isFirebaseListenerAttached) return;
 
         chatsRef = FirebaseDatabase.getInstance()
                 .getReference("users").child(currentUserSafeEmail).child("chats");
@@ -202,6 +242,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
                     ChatModel chatItem = filteredChatList.get(index);
                     if (chatItem != null && chatItem.getChatId() != null
                             && chatItem.getChatId().equals(chatId)) {
+                        Log.d("test", "onChildRemoved: "+chatItem);
                         filteredChatList.remove(index);
                     }
                 }
@@ -221,6 +262,22 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
             }
         };
         chatsRef.addChildEventListener(chatsListener);
+        isFirebaseListenerAttached = true;
+    }
+
+    private void registerNetworkCallback() {
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull Network network) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        offlineBanner.setVisibility(View.GONE);
+                        attachFirebaseListener();
+                    });
+                }
+            }
+        };
+        NetworkMonitor.getInstance(requireContext()).registerNetworkCallback(networkCallback);
     }
 
     private void showAddUserDialog() {
@@ -384,5 +441,10 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         if (chatsRef != null && chatsListener != null) {
             chatsRef.removeEventListener(chatsListener);
         }
+        if (networkCallback != null) {
+            NetworkMonitor.getInstance(requireContext()).unregisterNetworkCallback(networkCallback);
+            networkCallback = null;
+        }
+        isFirebaseListenerAttached = false;
     }
 }

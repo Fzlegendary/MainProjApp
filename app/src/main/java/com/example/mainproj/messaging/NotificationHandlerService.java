@@ -7,6 +7,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.example.mainproj.MainActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -95,9 +96,8 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, ChatActivity.class);
-                    intent.putExtra("chatId", chatId);
-                    intent.putExtra("username", senderUsername);
+                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
+                    intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
                 })
                 .setNegativeButton("Mute", (dialog, which) -> {

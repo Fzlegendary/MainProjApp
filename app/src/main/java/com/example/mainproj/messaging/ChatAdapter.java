@@ -4,6 +4,7 @@ package com.example.mainproj.messaging;
 import android.app.AlertDialog;
 import android.content.Context;        // used to access app resources and start activities
 import android.content.Intent;         // used to navigate between activities
+import android.util.Log;
 import android.view.LayoutInflater;    // inflates (converts) XML layout files into View objects
 import android.view.View;              // base class for all UI components
 import android.view.ViewGroup;         // a view that can contain other views (the list container)
@@ -20,7 +21,9 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView; // scrollable list component
 
 // App-specific imports
+import com.example.mainproj.MainActivity;
 import com.example.mainproj.R; // gives access to resources like layouts, ids, colors
+import com.google.firebase.Firebase;
 
 // Java utility
 import java.util.ArrayList; // dynamic list to hold chat items
@@ -28,6 +31,7 @@ import java.util.ArrayList; // dynamic list to hold chat items
 // ChatAdapter connects the list of ChatModel data to the RecyclerView UI
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
 
+    private String TAG = "chatAdapter";
     private ArrayList<ChatModel> chatList; // holds all chat items to display
     private final Context context;               // used to inflate views and start activities
 
@@ -117,6 +121,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         // Short tap — opens the chat conversation screen
         holder.itemView.setOnClickListener(v -> {
             if (actionListener != null) {
+                boolean b = chat.getChatId()==null;
                 actionListener.onChatClick(chat);
             }
         });
@@ -165,9 +170,8 @@ private void showChatOptionsDialog(String username, String displayName, String b
             @Override
             public void onSendMessage(String user) {
                 ChatModel chat = buildChatFromData(user, user, "", "", false, "", 0);
-                Intent intent = new Intent(context, ChatActivity.class);
-                intent.putExtra("username", user);
-                intent.putExtra("chatId", "");
+                Intent intent = new Intent(context, MainActivity.class);
+                intent.putExtra("tab_position", 1);
                 context.startActivity(intent);
             }
 

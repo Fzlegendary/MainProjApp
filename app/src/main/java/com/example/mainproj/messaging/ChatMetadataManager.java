@@ -94,9 +94,9 @@ public class ChatMetadataManager {
     }
 
     private String extractChatId(String key, String userUid) {
-        int separatorIndex = key.indexOf(KEY_SEPARATOR);
-        if (separatorIndex >= 0 && separatorIndex < key.length() - 1) {
-            return key.substring(separatorIndex + 1);
+        String prefix = userUid + KEY_SEPARATOR;
+        if (key.startsWith(prefix)) {
+            return key.substring(prefix.length());
         }
         return key;
     }
