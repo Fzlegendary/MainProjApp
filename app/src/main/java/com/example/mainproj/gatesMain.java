@@ -1,5 +1,6 @@
 package com.example.mainproj;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -43,10 +44,7 @@ public class gatesMain extends BaseActivity
         implements GateAdapter.OnGateClickListener {
 
     private static final String TAG = "gatesMain";
-
-    // ❗ MUST be localhost IP
-    private static final String SERVER_URL =
-            "https://localhost:8080/gate/control";
+    private static final String PREFS_NAME = "MainProjPrefs";
 
     private OkHttpClient client;
     private final List<Gate> gateList = new ArrayList<>();
@@ -75,6 +73,12 @@ public class gatesMain extends BaseActivity
      * HTTPS client
      */
     private void setupHttpsClient() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean useSsl = prefs.getBoolean("server_ssl", false);
+        if (!useSsl) {
+            client = new OkHttpClient();
+            return;
+        }
         try {
             InputStream ksStream = getResources().openRawResource(R.raw.mykeystore);
             KeyStore keyStore = KeyStore.getInstance("BKS");
@@ -101,6 +105,15 @@ public class gatesMain extends BaseActivity
         } catch (Exception e) {
             client = new OkHttpClient();
         }
+    }
+
+    private String getGateControlUrl() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String host = prefs.getString("server_host", "localhost");
+        String port = prefs.getString("server_port", "8080");
+        boolean ssl = prefs.getBoolean("server_ssl", false);
+        String scheme = ssl ? "https" : "http";
+        return scheme + "://" + host + ":" + port + "/gate/control";
     }
 
     /**
@@ -196,7 +209,7 @@ public class gatesMain extends BaseActivity
             json.put("commandId", UUID.randomUUID().toString());
 
             Request request = new Request.Builder()
-                    .url(SERVER_URL)
+                    .url(getGateControlUrl())
                     .post(RequestBody.create(
                             json.toString(),
                             MediaType.get("application/json")))

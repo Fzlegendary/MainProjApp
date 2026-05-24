@@ -1,5 +1,7 @@
 package com.example.mainproj.fragments.subnav;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,15 +30,9 @@ import com.google.android.material.button.MaterialButton;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -49,13 +45,7 @@ import okhttp3.Response;
 public class GateControlFragment extends Fragment implements GateAdapter.OnGateClickListener {
 
     private static final String TAG = "GateControlFragment";
-
-    // TOGGLE SSL: Set to true to enable HTTPS with custom keystore, false for plain HTTP
-    private static final boolean ENABLE_SSL = false;
-
-    // Replace with your PC IP when ENABLE_SSL is true
-    private static final String SERVER_URL =
-            ENABLE_SSL ? "https://localhost:8080/gate/control" : "http://localhost:8080/gate/control";
+    private static final String PREFS_NAME = "MainProjPrefs";
 
     private RecyclerView recyclerView;
     private List<Gate> gateList = new ArrayList<>();
@@ -63,7 +53,6 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     private DatabaseReference gatesRef;
     private ValueEventListener gatesListener;
 
-    // SSL-only variables (commented out when ENABLE_SSL = false)
     private OkHttpClient client;
 
     @Nullable
@@ -87,35 +76,16 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     }
 
     private void setupOkHttpClient() {
-        if (ENABLE_SSL) {
-            // SSL ENABLED - Uncomment and provide keystore to use
-            /*
-            try {
-                InputStream ksStream = getResources().openRawResource(R.raw.mykeystore);
-                KeyStore keyStore = KeyStore.getInstance("BKS");
-                keyStore.load(ksStream, "killnoob200".toCharArray());
+        client = new OkHttpClient();
+    }
 
-                TrustManagerFactory tmf = TrustManagerFactory.getInstance(
-                        TrustManagerFactory.getDefaultAlgorithm());
-                tmf.init(keyStore);
-
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, tmf.getTrustManagers(), null);
-
-                X509TrustManager trustManager = (X509TrustManager) tmf.getTrustManagers()[0];
-
-                client = new OkHttpClient.Builder()
-                        .sslSocketFactory(sslContext.getSocketFactory(), trustManager)
-                        .hostnameVerifier((h, s) -> true)
-                        .build();
-            } catch (Exception e) {
-                client = new OkHttpClient();
-            }
-            */
-            client = new OkHttpClient();
-        } else {
-            client = new OkHttpClient();
-        }
+    private String getGateControlUrl() {
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String host = prefs.getString("server_host", "localhost");
+        String port = prefs.getString("server_port", "8080");
+        boolean ssl = prefs.getBoolean("server_ssl", false);
+        String scheme = ssl ? "https" : "http";
+        return scheme + "://" + host + ":" + port + "/gate/control";
     }
 
     private void setupFirebase() {
@@ -183,7 +153,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
             json.put("test", true);
 
             Request request = new Request.Builder()
-                    .url(SERVER_URL)
+                    .url(getGateControlUrl())
                     .post(RequestBody.create(json.toString(), MediaType.get("application/json")))
                     .build();
 
@@ -254,7 +224,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
             json.put("commandId", UUID.randomUUID().toString());
 
             Request request = new Request.Builder()
-                    .url(SERVER_URL)
+                    .url(getGateControlUrl())
                     .post(RequestBody.create(json.toString(), MediaType.get("application/json")))
                     .build();
 
