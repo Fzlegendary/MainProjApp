@@ -26,7 +26,10 @@ import com.example.mainproj.R; // gives access to resources like layouts, ids, c
 import com.google.firebase.Firebase;
 
 // Java utility
+import java.text.SimpleDateFormat;
 import java.util.ArrayList; // dynamic list to hold chat items
+import java.util.Date;
+import java.util.Locale;
 
 // ChatAdapter connects the list of ChatModel data to the RecyclerView UI
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
@@ -75,19 +78,21 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         String displayName = !nickname.isEmpty() ? nickname : username;
         String bio = chat.getBio();
         if (bio == null) bio = "";
-        String lastSeen = chat.getLastSeen();
-        if (lastSeen == null) lastSeen = "";
+        Long lastSeen = chat.getLastSeen();
+        final String chatid = chat.getChatId();
 
         // Create final copies of the method parameters so they can be safely captured by the lambda expression.
         // In Java, variables captured by a lambda must be effectively final (not reassigned).
         final String finalUsername = username;
         final String finalBio = bio;
-        final String finalLastSeen = lastSeen;
+        final Long finalLastSeen = lastSeen;
 
 
         holder.chatName.setText(displayName);
-        holder.lastMessage.setText(chat.getLastMessage());
-        holder.chatTime.setText(chat.getTime());
+        String lastMsg = chat.getLastMessage();
+        holder.lastMessage.setText(lastMsg != null ? lastMsg : "");
+        String time = chat.getTime();
+        holder.chatTime.setText(time != null ? time : "");
 
         // Load the profile image using Glide with circular crop.
         // If imageUrl is null or empty, show the default app icon.
@@ -109,7 +114,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
         // Show the unread message count badge when there are unread messages.
         // Hidden when unreadCount is 0.
-        int unreadCount = chat.getUnreadCount();
+        Long unreadCountLong = chat.getUnreadCount();
+        int unreadCount = unreadCountLong != null ? unreadCountLong.intValue() : 0;
         if (unreadCount > 0) {
             holder.unreadBadge.setVisibility(View.VISIBLE);
             // Cap display at "99+" for very large counts.
@@ -133,7 +139,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         });
     }
 
-private void showChatOptionsDialog(String username, String displayName, String bio, String lastSeen, boolean online, String imageUrl, int unreadCount) {
+private void showChatOptionsDialog(String username, String displayName, String bio, Long lastSeen, boolean online, String imageUrl, int unreadCount) {
         String[] options = {"Open Profile", "Close DM"};
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
@@ -156,20 +162,25 @@ private void showChatOptionsDialog(String username, String displayName, String b
         builder.show();
     }
 
-    private void showProfileSheet(String username, String bio, String lastSeen, boolean online) {
+    private void showProfileSheet(String username, String bio, Long lastSeen, boolean online) {
         if (!(context instanceof FragmentActivity)) return;
+
+        String lastSeenStr = "";
+        if (lastSeen != null && lastSeen != 0) {
+            lastSeenStr = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(lastSeen));
+        }
 
         UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
                 username,
                 bio,
-                lastSeen,
+                lastSeenStr,
                 online
         );
 
         sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
             @Override
             public void onSendMessage(String user) {
-                ChatModel chat = buildChatFromData(user, user, "", "", false, "", 0);
+                ChatModel chat = buildChatFromData(user, user, "", null, false, "", 0);
                 Intent intent = new Intent(context, MainActivity.class);
                 intent.putExtra("tab_position", 1);
                 context.startActivity(intent);
@@ -190,7 +201,7 @@ private void showChatOptionsDialog(String username, String displayName, String b
         );
     }
 
-    private ChatModel buildChatFromData(String username, String displayName, String bio, String lastSeen, boolean online, String imageUrl, int unreadCount) {
+    private ChatModel buildChatFromData(String username, String displayName, String bio, Long lastSeen, boolean online, String imageUrl, long unreadCount) {
         ChatModel chat = new ChatModel();
         chat.setUsername(username);
         chat.setNickname(displayName);

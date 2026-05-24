@@ -36,7 +36,7 @@ public class ChatMetadataManager {
     }
 
     public void saveChat(String userUid, ChatModel chat) {
-        if (chat == null || chat.getChatId() == null) return;
+        if (userUid == null || chat == null || chat.getChatId() == null) return;
 
         String key = buildKey(userUid, chat.getChatId());
         try {
@@ -46,7 +46,8 @@ public class ChatMetadataManager {
             jsonObject.put("lastMessage", chat.getLastMessage() != null ? chat.getLastMessage() : "");
             jsonObject.put("time", chat.getTime() != null ? chat.getTime() : "");
             jsonObject.put("bio", chat.getBio() != null ? chat.getBio() : "");
-            jsonObject.put("lastSeen", chat.getLastSeen() != null ? chat.getLastSeen() : "");
+            jsonObject.put("lastSeen", chat.getLastSeen() != null ? chat.getLastSeen() : 0);
+            jsonObject.put("timestamp", chat.getTimestamp() != null ? chat.getTimestamp() : 0);
             jsonObject.put("online", chat.isOnline());
             jsonObject.put("imageUrl", chat.getImageUrl() != null ? chat.getImageUrl() : "");
             jsonObject.put("unreadCount", chat.getUnreadCount());
@@ -57,6 +58,7 @@ public class ChatMetadataManager {
 
     public ArrayList<ChatModel> loadAllChats(String userUid) {
         ArrayList<ChatModel> chatList = new ArrayList<>();
+        if (userUid == null) return chatList;
         String userPrefix = userUid + KEY_SEPARATOR;
 
         for (String key : prefs.getAll().keySet()) {
@@ -90,10 +92,12 @@ public class ChatMetadataManager {
     }
 
     private String buildKey(String userUid, String chatId) {
+        if (userUid == null || chatId == null) return "";
         return userUid + KEY_SEPARATOR + chatId;
     }
 
     private String extractChatId(String key, String userUid) {
+        if (userUid == null || key == null) return key;
         String prefix = userUid + KEY_SEPARATOR;
         if (key.startsWith(prefix)) {
             return key.substring(prefix.length());
@@ -111,12 +115,12 @@ public class ChatMetadataManager {
             chat.setUsername(jsonObject.optString("username", ""));
             chat.setNickname(jsonObject.optString("nickname", ""));
             chat.setLastMessage(jsonObject.optString("lastMessage", ""));
-            chat.setTime(jsonObject.optString("time", ""));
             chat.setBio(jsonObject.optString("bio", ""));
-            chat.setLastSeen(jsonObject.optString("lastSeen", ""));
+            chat.setLastSeen(jsonObject.has("lastSeen") ? jsonObject.optLong("lastSeen", 0) : null);
+            chat.setTimestamp(jsonObject.has("timestamp") ? jsonObject.optLong("timestamp", 0) : null);
             chat.setOnline(jsonObject.optBoolean("online", false));
             chat.setImageUrl(jsonObject.optString("imageUrl", ""));
-            chat.setUnreadCount(jsonObject.optInt("unreadCount", 0));
+            chat.setUnreadCount((long) jsonObject.optInt("unreadCount", 0));
             return chat;
         } catch (Exception ignored) {
             return null;

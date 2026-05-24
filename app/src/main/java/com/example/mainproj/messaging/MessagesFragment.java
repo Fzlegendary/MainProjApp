@@ -210,7 +210,7 @@ public class MessagesFragment extends Fragment {
 
     private void loadCurrentUsername() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
+        if (user == null || user.getEmail() == null) return;
 
         String safeEmail = user.getEmail().replace(".", "_");
         DatabaseReference userRef = FirebaseDatabase.getInstance()
@@ -235,11 +235,12 @@ public class MessagesFragment extends Fragment {
 
         ArrayList<ChatModel> allChats = metadataManager.loadAllChats(currentUserUid);
         for (ChatModel chat : allChats) {
+            if (chat == null || chat.getChatId() == null) continue;
             if (chatId.equals(chat.getChatId())) {
                 currentChat = chat;
 
-                if (chat.getUnreadCount() > 0) {
-                    chat.setUnreadCount(0);
+                if (chat.getUnreadCount() != null && chat.getUnreadCount() > 0) {
+                    chat.setUnreadCount(0L);
                     metadataManager.saveChat(currentUserUid, chat);
                 }
                 return;
@@ -307,11 +308,12 @@ public class MessagesFragment extends Fragment {
                         return;
                     }
                     loadedTimestamps.add(timestampLong);
-                    boolean sentByMe = senderUsername.equals(currentUsername);
+                    boolean sentByMe = currentUsername != null && senderUsername.equals(currentUsername);
                     messagesList.add(new MessageModel(text, senderUsername, time, timestampLong, sentByMe));
 
                     if (!sentByMe && currentUserUid != null && currentChat != null) {
-                        currentChat.setUnreadCount(currentChat.getUnreadCount() + 1);
+                        Long currentCount = currentChat.getUnreadCount();
+                        currentChat.setUnreadCount((currentCount != null ? currentCount : 0L) + 1L);
                         metadataManager.saveChat(currentUserUid, currentChat);
                     }
 
@@ -336,7 +338,7 @@ public class MessagesFragment extends Fragment {
 
     private void loadUserProfile() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
+        if (user == null || user.getEmail() == null) return;
 
         profileEmail.setText(user.getEmail());
 

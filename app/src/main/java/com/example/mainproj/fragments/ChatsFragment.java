@@ -116,6 +116,8 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         } else {
             String lowerQuery = query.toLowerCase();
             for (ChatModel chat : chatList) {
+                if (chat == null) continue;
+                Log.d("test", "filterChats: chatid: " + chat.getChatId());
                 String username = chat.getUsername() != null ? chat.getUsername().toLowerCase() : "";
                 String nickname = chat.getNickname() != null ? chat.getNickname().toLowerCase() : "";
                 if (username.contains(lowerQuery) || nickname.contains(lowerQuery)) {
@@ -139,6 +141,10 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         }
 
         currentUserUid = user.getUid();
+        if (currentUserUid == null || user.getEmail() == null) {
+            Toast.makeText(requireContext(), "Unable to load chats", Toast.LENGTH_SHORT).show();
+            return;
+        }
         currentUserSafeEmail = user.getEmail().replace(".", "_");
 
         clearCacheOnce();
@@ -162,7 +168,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences("ChatPrefs", Context.MODE_PRIVATE);
 
-        if (!prefs.getBoolean("cacheCleared", false)) {
+        if (true) {  // !prefs.getBoolean("cacheCleared", false)
             if (currentUserUid != null) {
                 ChatMetadataManager.getInstance(requireContext())
                         .clearAllForUser(currentUserUid);
@@ -426,11 +432,11 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         args.putString("chatId", chat.getChatId());
         args.putString("username", chat.getUsername());
 
-        MessagesFragment conversationFragment = new MessagesFragment();
-        conversationFragment.setArguments(args);
+        MessagesFragment messagesFragment = new MessagesFragment();
+        messagesFragment.setArguments(args);
 
         getParentFragmentManager().beginTransaction()
-                .replace(R.id.viewPager, conversationFragment)
+                .replace(R.id.viewPager, messagesFragment)
                 .addToBackStack(null)
                 .commit();
     }
