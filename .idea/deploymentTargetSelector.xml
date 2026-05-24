@@ -15,12 +15,12 @@
           <targets>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="PhysicalDevice" identifier="serial=R58RB2M2K4F" />
+                <DeviceId pluginId="PhysicalDevice" identifier="serial=R5CY521LEMX" />
               </handle>
             </Target>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="PhysicalDevice" identifier="serial=R5CY521LEMX" />
+                <DeviceId pluginId="PhysicalDevice" identifier="serial=R58RB2M2K4F" />
               </handle>
             </Target>
           </targets>

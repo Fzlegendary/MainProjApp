@@ -1,8 +1,14 @@
 package com.example.mainproj;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -16,6 +22,7 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
+import com.example.mainproj.messaging.NetworkMonitor;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -38,6 +45,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private MainPagerAdapter pagerAdapter;
     private int lastSelectedPosition = 0;
     private boolean isInSettingsNav = false;
+    private ConnectivityManager.NetworkCallback offlineDialogCallback;
+    private AlertDialog offlineDialog;
+    private final Handler connectivityHandler = new Handler(Looper.getMainLooper());
+    private final Runnable connectivityCheckRunnable = () -> checkConnectivityAndShowDialog();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +90,73 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         NavigationView navigationView = findViewById(R.id.navigationView);
         navigationView.setNavigationItemSelectedListener(this);
+
+        checkConnectivityAndShowDialog();
+
+        ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull Network network) {
+                runOnUiThread(() -> checkConnectivityAndShowDialog());
+            }
+
+            @Override
+            public void onLost(@NonNull Network network) {
+                runOnUiThread(() -> {
+                    checkConnectivityAndShowDialog();
+                    connectivityHandler.removeCallbacks(connectivityCheckRunnable);
+                    connectivityHandler.postDelayed(connectivityCheckRunnable, 2000);
+                });
+            }
+
+            @Override
+            public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                runOnUiThread(() -> checkConnectivityAndShowDialog());
+            }
+
+            @Override
+            public void onUnavailable() {
+                runOnUiThread(() -> checkConnectivityAndShowDialog());
+            }
+        };
+        NetworkMonitor.getInstance(this).registerNetworkCallback(cb);
+        offlineDialogCallback = cb;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkConnectivityAndShowDialog();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        connectivityHandler.removeCallbacks(connectivityCheckRunnable);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (offlineDialogCallback != null) {
+            NetworkMonitor.getInstance(this).unregisterNetworkCallback(offlineDialogCallback);
+        }
+    }
+
+    private void checkConnectivityAndShowDialog() {
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            if (offlineDialog == null || !offlineDialog.isShowing()) {
+                offlineDialog = new AlertDialog.Builder(this)
+                        .setTitle("No Connection")
+                        .setMessage("not connected to internet, certain features unavailable.")
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+        } else {
+            if (offlineDialog != null && offlineDialog.isShowing()) {
+                offlineDialog.dismiss();
+                offlineDialog = null;
+            }
+        }
     }
 
     private void setupViewPager() {

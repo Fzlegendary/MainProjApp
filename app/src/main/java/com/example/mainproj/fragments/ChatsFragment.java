@@ -15,7 +15,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -55,7 +54,6 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
     private EditText searchChats;
     private FloatingActionButton addChatButton;
     private View btnFriendRequests;
-    private TextView offlineBanner;
 
     private DatabaseReference chatsRef;
     private ChildEventListener chatsListener;
@@ -79,8 +77,6 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         searchChats = view.findViewById(R.id.searchChats);
         addChatButton = view.findViewById(R.id.addChatButton);
         btnFriendRequests = view.findViewById(R.id.btnFriendRequests);
-        offlineBanner = view.findViewById(R.id.offlineBanner);
-
         setupRecyclerView();
         setupSearch();
         setupClickListeners();
@@ -156,10 +152,8 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         filterChats(searchChats.getText().toString());
 
         if (NetworkMonitor.getInstance(requireContext()).isConnected()) {
-            offlineBanner.setVisibility(View.GONE);
             attachFirebaseListener();
         } else {
-            offlineBanner.setVisibility(View.VISIBLE);
             registerNetworkCallback();
         }
     }
@@ -276,10 +270,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
             @Override
             public void onAvailable(@NonNull Network network) {
                 if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        offlineBanner.setVisibility(View.GONE);
-                        attachFirebaseListener();
-                    });
+                    getActivity().runOnUiThread(() -> attachFirebaseListener());
                 }
             }
         };
