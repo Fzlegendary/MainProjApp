@@ -207,6 +207,7 @@ public class gatesMain extends BaseActivity
             json.put("gate", gateId);
             json.put("state", targetState);
             json.put("commandId", UUID.randomUUID().toString());
+            json.put("userName", SessionManager.getCurrentUsername());
 
             Request request = new Request.Builder()
                     .url(getGateControlUrl())
