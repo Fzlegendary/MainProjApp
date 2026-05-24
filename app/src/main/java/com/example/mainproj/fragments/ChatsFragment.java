@@ -419,17 +419,10 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
 
     @Override
     public void onChatClick(ChatModel chat) {
-        Bundle args = new Bundle();
-        args.putString("chatId", chat.getChatId());
-        args.putString("username", chat.getUsername());
-
-        MessagesFragment messagesFragment = new MessagesFragment();
-        messagesFragment.setArguments(args);
-
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.viewPager, messagesFragment)
-                .addToBackStack(null)
-                .commit();
+        Intent intent = new Intent(requireContext(), com.example.mainproj.messaging.MessagingActivity.class);
+        intent.putExtra("chatId", chat.getChatId());
+        intent.putExtra("username", chat.getUsername());
+        startActivity(intent);
     }
 
     @Override
