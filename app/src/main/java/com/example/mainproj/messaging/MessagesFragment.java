@@ -26,9 +26,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.BaseActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.userSystem.Login_activity;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -70,7 +67,6 @@ public class MessagesFragment extends Fragment {
 
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
-    private GoogleSignInClient mGoogleSignInClient;
     private ChatCacheManager cacheManager;
     private ChatMetadataManager metadataManager;
     private Set<Long> loadedTimestamps = new HashSet<>();
@@ -115,12 +111,6 @@ public class MessagesFragment extends Fragment {
         chatToolbar.setNavigationOnClickListener(v ->
                 drawerLayout.openDrawer(GravityCompat.END)
         );
-
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(requireContext(), gso);
 
         messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView);
         messageInput = view.findViewById(R.id.messageInput);
@@ -169,7 +159,6 @@ public class MessagesFragment extends Fragment {
 
         view.findViewById(R.id.logoutButton).setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
-            mGoogleSignInClient.signOut();
 
             android.content.Intent intent = new android.content.Intent(requireContext(), Login_activity.class);
             intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);

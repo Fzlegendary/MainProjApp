@@ -24,9 +24,6 @@ import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.example.mainproj.userSystem.Login_activity;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,7 +37,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private ViewPager viewPager;
     private BottomNavigationView bottomNav;
     private FirebaseAuth mAuth;
-    private GoogleSignInClient mGoogleSignInClient;
     private SharedPreferences prefs;
     private MainPagerAdapter pagerAdapter;
     private int lastSelectedPosition = 0;
@@ -59,12 +55,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         mAuth = FirebaseAuth.getInstance();
-
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -252,7 +242,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         if (id == R.id.nav_logout) {
             mAuth.signOut();
-            mGoogleSignInClient.signOut();
             prefs.edit().remove(KEY_LOGGED_IN_EMAIL).apply();
             startActivity(new Intent(this, Login_activity.class));
             finish();
