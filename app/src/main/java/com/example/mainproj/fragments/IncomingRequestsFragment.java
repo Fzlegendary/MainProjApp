@@ -1,6 +1,5 @@
 package com.example.mainproj.fragments;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -14,7 +13,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mainproj.MainActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.messaging.friendRequest.FriendRequest;
@@ -35,7 +33,6 @@ import java.util.Map;
 public class IncomingRequestsFragment extends Fragment implements FriendRequestAdapter.OnRequestActionListener {
 
     private RecyclerView recyclerView;
-    private String TAG = "fq";
     private FriendRequestAdapter adapter;
     private List<FriendRequest> requests = new ArrayList<>();
     private DatabaseReference requestsRef;
@@ -104,6 +101,8 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         String partnerUsername = request.getFromUsername();
         if (partnerUsername == null || partnerUsername.isEmpty()) return;
 
+        String partnerImageUrl = request.getFromImageUrl();
+
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null || currentUser.getEmail() == null) {
             Toast.makeText(requireContext(), "Not logged in", Toast.LENGTH_SHORT).show();
@@ -129,7 +128,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                             return;
                         }
 
-                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey);
+                        checkAndCreateChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey, partnerImageUrl);
                     }
 
                     @Override
@@ -139,7 +138,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 });
     }
 
-    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey) {
+    private void checkAndCreateChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey, String partnerImageUrl) {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         DatabaseReference specificChatRef = chatsRef.child(chatId);
 
@@ -149,7 +148,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 if (snapshot.exists()) {
                     Toast.makeText(requireContext(), "Chat already exists with " + partnerUsername, Toast.LENGTH_SHORT).show();
                 } else {
-                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey);
+                    createNewChat(chatId, myEmail, fromEmail, myUsername, partnerUsername, requestKey, partnerImageUrl);
                 }
                 specificChatRef.removeEventListener(this);
             }
@@ -161,21 +160,28 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         });
     }
 
-    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey) {
+    private void createNewChat(String chatId, String myEmail, String fromEmail, String myUsername, String partnerUsername, String requestKey, String partnerImageUrl) {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
 
-        usersRef.child(myEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
+        usersRef.child(myEmail).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot myNickSnap) {
-                String myNickname = myNickSnap.getValue(String.class);
+            public void onDataChange(@NonNull DataSnapshot mySnap) {
+                String myNickname = mySnap.child("nickname").getValue(String.class);
                 String myNick = myNickname != null ? myNickname : "";
+                String myImg = mySnap.child("imageUrl").getValue(String.class);
+                if (myImg == null) myImg = "";
 
-                usersRef.child(fromEmail).child("nickname").addListenerForSingleValueEvent(new ValueEventListener() {
+                usersRef.child(fromEmail).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot partnerNickSnap) {
-                        String partnerNickname = partnerNickSnap.getValue(String.class);
+                    public void onDataChange(@NonNull DataSnapshot partnerSnap) {
+                        String partnerNickname = partnerSnap.child("nickname").getValue(String.class);
                         String partnerNick = partnerNickname != null ? partnerNickname : "";
+                        String partnerImg = partnerImageUrl != null ? partnerImageUrl : "";
+                        if (partnerImg.isEmpty()) {
+                            partnerImg = partnerSnap.child("imageUrl").getValue(String.class);
+                            if (partnerImg == null) partnerImg = "";
+                        }
 
                         Map<String, Object> chatData = new HashMap<>();
                         chatData.put("lastMessage", "");
@@ -204,6 +210,23 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                                 usersRef.child(myEmail).child("chats").child(chatId).setValue(myChatData);
                                 usersRef.child(fromEmail).child("chats").child(chatId).setValue(partnerChatData);
 
+                                Map<String, Object> myFriendEntry = new HashMap<>();
+                                myFriendEntry.put("safeEmail", fromEmail);
+                                myFriendEntry.put("nickname", partnerNick);
+                                myFriendEntry.put("imageUrl", partnerImg);
+                                myFriendEntry.put("chatId", chatId);
+                                myFriendEntry.put("addedAt", System.currentTimeMillis());
+
+                                Map<String, Object> partnerFriendEntry = new HashMap<>();
+                                partnerFriendEntry.put("safeEmail", myEmail);
+                                partnerFriendEntry.put("nickname", myNick);
+                                partnerFriendEntry.put("imageUrl", myImg);
+                                partnerFriendEntry.put("chatId", chatId);
+                                partnerFriendEntry.put("addedAt", System.currentTimeMillis());
+
+                                usersRef.child(myEmail).child("friends").child(partnerUsername).setValue(myFriendEntry);
+                                usersRef.child(fromEmail).child("friends").child(myUsername).setValue(partnerFriendEntry);
+
                                 requestsRef.child(requestKey).removeValue();
 
                                 FirebaseDatabase.getInstance()
@@ -215,11 +238,6 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
 
                                 Toast.makeText(requireContext(), "Chat created with " + partnerUsername, Toast.LENGTH_SHORT).show();
                                 Log.d("test", "chatid: " + chatId);
-
-
-                                Intent intent = new Intent(requireContext(), MainActivity.class);
-                                intent.putExtra("tab_position", 1);
-                                startActivity(intent);
 
                             } else {
                                 Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();
@@ -236,7 +254,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(requireContext(), "Error fetching your nickname", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error fetching your data", Toast.LENGTH_SHORT).show();
             }
         });
     }

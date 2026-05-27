@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".messaging.ChatCacheApplication"
@@ -22,9 +25,6 @@
         android:theme="@style/Theme.MainProj"
         android:usesCleartextTraffic="true">
         
-        <activity
-            android:name=".ServerSettingsActivity"
-            android:exported="false" />
         <activity
             android:name=".messaging.MessagingActivity"
             android:exported="true" />
@@ -43,15 +43,6 @@
         <activity
             android:name=".userSystem.sign_up_activity"
             android:exported="false" />
-        <activity
-            android:name=".gatesMain"
-            android:exported="false" />
-        <activity
-            android:name=".ProfileDisplayerActivity"
-            android:exported="false" />
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="false" />
         
 
         <service
@@ -62,6 +53,16 @@
         <receiver
             android:name=".messaging.NotificationActionReceiver"
             android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <receiver
             android:name=".messaging.BootReceiver"

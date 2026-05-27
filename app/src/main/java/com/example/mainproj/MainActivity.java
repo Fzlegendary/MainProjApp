@@ -9,6 +9,9 @@ import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -22,13 +25,21 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
+import com.example.mainproj.messaging.ChatCacheManager;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.auth.FirebaseAuth;
+import com.google.android.material.button.MaterialButton;
 
-public class MainActivity extends BaseActivity implements NavigationView.OnNavigationItemSelectedListener {
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+public class MainActivity extends BaseActivity {
 
     private static final String PREFS_NAME = "MainProjPrefs";
     private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
@@ -39,12 +50,14 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private FirebaseAuth mAuth;
     private SharedPreferences prefs;
     private MainPagerAdapter pagerAdapter;
-    private int lastSelectedPosition = 0;
     private boolean isInSettingsNav = false;
     private ConnectivityManager.NetworkCallback offlineDialogCallback;
     private AlertDialog offlineDialog;
     private final Handler connectivityHandler = new Handler(Looper.getMainLooper());
     private final Runnable connectivityCheckRunnable = () -> checkConnectivityAndShowDialog();
+
+    private ImageView profileImage;
+    private TextView profileName, profileUsername, profileEmail;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +68,9 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         mAuth = FirebaseAuth.getInstance();
+
+        ChatCacheManager.getInstance(this).clearAll();
+
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -78,8 +94,22 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             drawerLayout.openDrawer(GravityCompat.START);
         });
 
-        NavigationView navigationView = findViewById(R.id.navigationView);
-        navigationView.setNavigationItemSelectedListener(this);
+        profileImage = findViewById(R.id.profileImage);
+        profileName = findViewById(R.id.profileName);
+        profileUsername = findViewById(R.id.profileUsername);
+        profileEmail = findViewById(R.id.profileEmail);
+
+        MaterialButton logoutButton = findViewById(R.id.logoutButton);
+        logoutButton.setOnClickListener(v -> {
+            mAuth.signOut();
+            prefs.edit().remove(KEY_LOGGED_IN_EMAIL).apply();
+            Intent intent = new Intent(this, Login_activity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
+
+        loadUserProfile();
 
         checkConnectivityAndShowDialog();
 
@@ -161,7 +191,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             @Override
             public void onPageSelected(int position) {
                 updateBottomNavSelection(position);
-                lastSelectedPosition = position;
             }
 
             @Override
@@ -236,19 +265,28 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         }
     }
 
-    @Override
-    public boolean onNavigationItemSelected(@NonNull android.view.MenuItem item) {
-        int id = item.getItemId();
+    private void loadUserProfile() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.getEmail() == null) return;
 
-        if (id == R.id.nav_logout) {
-            mAuth.signOut();
-            prefs.edit().remove(KEY_LOGGED_IN_EMAIL).apply();
-            startActivity(new Intent(this, Login_activity.class));
-            finish();
-        }
+        profileEmail.setText(user.getEmail());
 
-        androidx.drawerlayout.widget.DrawerLayout drawerLayout = findViewById(R.id.drawerLayout);
-        drawerLayout.closeDrawer(GravityCompat.START);
-        return true;
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(user.getEmail().replace(".", "_"));
+
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String name = snapshot.child("name").getValue(String.class);
+                String username = snapshot.child("username").getValue(String.class);
+                if (name != null) profileName.setText(name);
+                if (username != null) profileUsername.setText(username);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
     }
+
 }

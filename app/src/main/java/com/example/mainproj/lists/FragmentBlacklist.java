@@ -34,7 +34,6 @@ public class FragmentBlacklist extends FragmentBaseList {
 
     private ListAdapter adapter;
     private List<PlaceholderContent.PlaceholderItem> fullList = new ArrayList<>();
-    private static final String LIST_TYPE = "blacklist";
 
     private DatabaseReference blacklistRef;
     private ValueEventListener blacklistListener;

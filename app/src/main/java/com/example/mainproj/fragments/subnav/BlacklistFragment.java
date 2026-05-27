@@ -3,17 +3,18 @@ package com.example.mainproj.fragments.subnav;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -52,8 +53,8 @@ public class BlacklistFragment extends Fragment {
     // Badge showing how many filters are active (e.g., "2")
     private TextView filterBadge;
 
-    // The SearchView for typing queries (free text or filter commands)
-    private SearchView searchView;
+    // The search field for typing queries (free text or filter commands)
+    private EditText searchView;
     // RecyclerView showing suggestion dropdown when typing "by:"
     private RecyclerView searchSuggestions;
     // Adapter that provides suggestion items to the RecyclerView
@@ -93,17 +94,19 @@ public class BlacklistFragment extends Fragment {
         // Initialize the suggestion adapter — callback fires when user taps a suggestion
         suggestionAdapter = new SearchSuggestionAdapter(s -> {
             // Get whatever the user has typed so far
-            String current = searchView.getQuery().toString();
+            String current = searchView.getText().toString();
             // Find where "by:" starts in the query
             int byIndex = current.toLowerCase().lastIndexOf("by:");
             if (byIndex >= 0) {
                 // Keep everything before "by:" (including "by:")
                 // Replace what comes after with the suggestion value
                 String prefix = current.substring(0, byIndex + 3);
-                searchView.setQuery(prefix + s.value + " ", false);
+                searchView.setText(prefix + s.value + " ");
+                searchView.setSelection(searchView.getText().length());
             } else {
                 // No "by:" found — just append the suggestion as the new query
-                searchView.setQuery(s.value + " ", false);
+                searchView.setText(s.value + " ");
+                searchView.setSelection(searchView.getText().length());
             }
         });
 
@@ -111,22 +114,14 @@ public class BlacklistFragment extends Fragment {
         searchSuggestions.setLayoutManager(new LinearLayoutManager(requireContext()));
         searchSuggestions.setAdapter(suggestionAdapter);
 
-        // Listen for SearchView text changes — submit on enter, update live as user types
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        // Listen for text changes — update live as user types
+        searchView.addTextChangedListener(new TextWatcher() {
             @Override
-            public boolean onQueryTextSubmit(String query) {
-                // User pressed Enter — update the ViewModel with the full query
-                // This triggers the observer in both list fragments, filtering them
-                searchViewModel.setSearchQuery(query);
-                // Hide the suggestions dropdown when query is submitted
-                searchSuggestions.setVisibility(View.GONE);
-                // Update the filter badge count (shows how many filters are active)
-                updateFilterBadge();
-                return true;
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public boolean onQueryTextChange(String newText) {
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String newText = s.toString();
                 // Live update as user types — set query in ViewModel
                 searchViewModel.setSearchQuery(newText);
                 // Recount active filters and update badge
@@ -145,10 +140,10 @@ public class BlacklistFragment extends Fragment {
 
                     // Build a list of suggestions matching what the user typed
                     List<SearchSuggestion> suggestions = new ArrayList<>();
-                    for (String s : knownUsers) {
+                    for (String user : knownUsers) {
                         // Case-insensitive prefix match
-                        if (s.toLowerCase().startsWith(afterBy.toLowerCase())) {
-                            suggestions.add(new SearchSuggestion(s, s));
+                        if (user.toLowerCase().startsWith(afterBy.toLowerCase())) {
+                            suggestions.add(new SearchSuggestion(user, user));
                         }
                     }
 
@@ -159,7 +154,6 @@ public class BlacklistFragment extends Fragment {
                     );
 
                     // Hide suggestions once the user has fully typed a known username
-                    // (so the dropdown disappears when the suggestion is "complete")
                     if (knownUsers.contains(afterBy)) {
                         searchSuggestions.setVisibility(View.GONE);
                     }
@@ -167,8 +161,22 @@ public class BlacklistFragment extends Fragment {
                     // No "by:" in query — hide suggestions
                     searchSuggestions.setVisibility(View.GONE);
                 }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        // Submit on Enter key
+        searchView.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                String query = searchView.getText().toString();
+                searchViewModel.setSearchQuery(query);
+                searchSuggestions.setVisibility(View.GONE);
+                updateFilterBadge();
                 return true;
             }
+            return false;
         });
 
         // Set up the inner ViewPager2 with Whitelist / Blacklist tabs
@@ -232,7 +240,7 @@ public class BlacklistFragment extends Fragment {
 
     /**
      * Displays a PopupMenu with all available filter options.
-     * Each option appends a filter token to the SearchView query.
+     * Each option appends a filter token to the search query.
      * @param anchor The View to anchor the popup menu to (the filter button)
      */
     private void showFilterMenu(View anchor) {
@@ -353,14 +361,14 @@ public class BlacklistFragment extends Fragment {
 
         if (current.isEmpty()) {
             // No existing query — start with just the filter
-            searchView.setQuery(filter, false);
+            searchView.setText(filter);
         } else {
             // Append comma-separated: "existing query, new_filter"
-            searchView.setQuery(current + ", " + filter, false);
+            searchView.setText(current + ", " + filter);
         }
-        // Also update the ViewModel directly (SearchView.setQuery triggers listener
-        // but we update it again to ensure consistency)
-        searchViewModel.setSearchQuery(searchView.getQuery().toString());
+        searchView.setSelection(searchView.getText().length());
+        // Also update the ViewModel directly
+        searchViewModel.setSearchQuery(searchView.getText().toString());
         // Update the badge to reflect the new active filter count
         updateFilterBadge();
     }
@@ -369,8 +377,8 @@ public class BlacklistFragment extends Fragment {
      * Clears the entire search query, removing all text and filters.
      */
     private void clearFilters() {
-        // Clear the SearchView text
-        searchView.setQuery("", false);
+        // Clear the search text
+        searchView.setText("");
         // Reset the ViewModel query to empty string
         searchViewModel.setSearchQuery("");
         // Hide the filter badge (no active filters)

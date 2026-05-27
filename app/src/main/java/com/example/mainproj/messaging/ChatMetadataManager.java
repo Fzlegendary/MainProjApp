@@ -20,6 +20,7 @@ public class ChatMetadataManager {
     private static final char KEY_SEPARATOR = '_';
 
     private static ChatMetadataManager instance;
+    private static boolean cachingEnabled = false;
 
     private final SharedPreferences prefs;
 
@@ -35,7 +36,16 @@ public class ChatMetadataManager {
         return instance;
     }
 
+    public static boolean isCachingEnabled() {
+        return cachingEnabled;
+    }
+
+    public static void setCachingEnabled(boolean enabled) {
+        cachingEnabled = enabled;
+    }
+
     public void saveChat(String userUid, ChatModel chat) {
+        if (!cachingEnabled) return;
         if (userUid == null || chat == null || chat.getChatId() == null) return;
 
         String key = buildKey(userUid, chat.getChatId());
@@ -57,6 +67,7 @@ public class ChatMetadataManager {
     }
 
     public ArrayList<ChatModel> loadAllChats(String userUid) {
+        if (!cachingEnabled) return new ArrayList<>();
         ArrayList<ChatModel> chatList = new ArrayList<>();
         if (userUid == null) return chatList;
         String userPrefix = userUid + KEY_SEPARATOR;

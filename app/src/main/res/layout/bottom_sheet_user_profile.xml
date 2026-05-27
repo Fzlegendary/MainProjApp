@@ -80,7 +80,7 @@
             android:layout_width="8dp"
             android:layout_height="8dp"
             android:background="@drawable/bg_avatar_circle"
-            android:backgroundTint="#4CAF50"
+            android:backgroundTint="@color/colorOnlineDot"
             android:layout_marginEnd="6dp"/>
 
         <TextView
@@ -135,7 +135,7 @@
         android:textSize="15sp"
         android:textColor="@color/colorFabIcon"
         app:backgroundTint="@color/colorFab"
-        app:cornerRadius="12dp"
+        app:cornerRadius="14dp"
         app:strokeWidth="0dp"/>
 
     <!-- Block user -->
@@ -148,9 +148,10 @@
         android:layout_marginTop="6dp"
         android:text="Block User"
         android:textSize="13sp"
-        android:textColor="#EF5350"
+        android:textColor="@color/colorBlockUser"
         app:backgroundTint="@android:color/transparent"
-        app:rippleColor="#1AEF5350"/>
+        app:rippleColor="@color/colorBlockUser"
+        app:cornerRadius="12dp"/>
 
     <!-- Admin: Manage Role -->
     <com.google.android.material.button.MaterialButton
@@ -163,8 +164,8 @@
         android:textSize="15sp"
         android:textColor="@color/colorFabIcon"
         android:visibility="gone"
-        app:backgroundTint="#FF9800"
-        app:cornerRadius="12dp"
+        app:backgroundTint="@color/colorWarning"
+        app:cornerRadius="14dp"
         app:strokeWidth="0dp"/>
 
     <!-- Admin: Manage Gate Permissions -->
@@ -178,8 +179,8 @@
         android:textSize="15sp"
         android:textColor="@color/colorFabIcon"
         android:visibility="gone"
-        app:backgroundTint="#9C27B0"
-        app:cornerRadius="12dp"
+        app:backgroundTint="@color/colorPurple"
+        app:cornerRadius="14dp"
         app:strokeWidth="0dp"/>
 
 </LinearLayout>

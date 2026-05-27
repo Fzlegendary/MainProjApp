@@ -19,6 +19,24 @@
     <color name="colorCardShadow">#33000000</color>
     <color name="colorAvatarBackground">#1A3A5C</color>
     <color name="colorAvatarIcon">#64B5F6</color>
-    <color name="colorStatusAccepted">#66BB6A</color>
-    <color name="colorStatusDeclined">#EF5350</color>
+    <color name="colorStatusAccepted">#6BAF7A</color>
+    <color name="colorStatusDeclined">#C57070</color>
+
+    <!-- Dark variants of semantic colors -->
+    <color name="colorWarning">#D4A06A</color>
+    <color name="colorPurple">#A98CB8</color>
+    <color name="colorTabIndicator">#9B8EC0</color>
+    <color name="colorBlockUser">#C57070</color>
+    <color name="colorToggleDisabled">#C57070</color>
+    <color name="colorToggleEnabled">#6BAF7A</color>
+    <color name="colorOnlineDot">#6BAF7A</color>
+    <color name="colorServerBg">#1A1D27</color>
+    <color name="colorPillBg">#2A2E3F</color>
+    <color name="colorBadgeGray">#555555</color>
+    <color name="colorToastWarningBg">#423300</color>
+    <color name="colorToastWarningText">#FFD54F</color>
+    <color name="colorTextOnPrimary">#FFFFFF</color>
+    <color name="colorIconGray">#9AA0B4</color>
+    <color name="colorOfflineBanner">#5A6070</color>
+    <color name="colorGateCardBg">#1E2D3D</color>
 </resources>

@@ -207,12 +207,12 @@ public class ServerSettingsFragment extends Fragment {
     private void updateToggleButton() {
         if (serverEnabled) {
             btnToggle.setText("Disable Server");
-            btnToggle.setTextColor(0xFFD32F2F);
-            btnToggle.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFFD32F2F));
+            btnToggle.setTextColor(getResources().getColor(R.color.colorToggleDisabled, requireContext().getTheme()));
+            btnToggle.setStrokeColor(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.colorToggleDisabled, requireContext().getTheme())));
         } else {
             btnToggle.setText("Enable Server");
-            btnToggle.setTextColor(0xFF388E3C);
-            btnToggle.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFF388E3C));
+            btnToggle.setTextColor(getResources().getColor(R.color.colorToggleEnabled, requireContext().getTheme()));
+            btnToggle.setStrokeColor(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.colorToggleEnabled, requireContext().getTheme())));
         }
     }
 

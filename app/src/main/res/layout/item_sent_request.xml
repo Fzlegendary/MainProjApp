@@ -40,7 +40,7 @@
         android:layout_height="wrap_content"
         android:text="Pending"
         android:textSize="14sp"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:background="@drawable/bg_pill_filter"
         android:paddingHorizontal="12dp"
         android:paddingVertical="4dp"

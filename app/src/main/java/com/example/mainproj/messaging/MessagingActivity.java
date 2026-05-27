@@ -1,15 +1,26 @@
 package com.example.mainproj.messaging;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.Gravity;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
@@ -18,58 +29,74 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
 import com.example.mainproj.userSystem.Login_activity;
-import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 
-public class MessagingActivity extends AppCompatActivity {
+public class MessagingActivity extends AppCompatActivity implements MessageAdapter.OnMessageDeleteListener {
 
     private DrawerLayout drawerLayout;
-    private Toolbar chatToolbar;
 
     private RecyclerView messagesRecyclerView;
     private MessageAdapter messageAdapter;
     private ArrayList<MessageModel> messagesList;
     private EditText messageInput;
-    private MaterialButton sendButton;
+    private FloatingActionButton sendButton;
 
     private String chatId;
     private String partnerUsername;
     private String currentUsername;
-    private String currentUserUid;
+    private String currentUserSafeEmail;
 
     private DatabaseReference messagesRef;
-    private ChildEventListener messagesListener;
+    private ValueEventListener messagesListener;
 
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
-    private ChatCacheManager cacheManager;
-    private ChatMetadataManager metadataManager;
-    private Set<Long> loadedTimestamps = new HashSet<>();
-    private ChatModel currentChat;
+
+    private TextView tvChatName;
+
+    private File pendingImageFile;
+    private LinearLayout photoPreviewContainer;
+    private ImageView ivPhotoPreview;
+    private ImageButton btnRemovePhoto;
+    private ImageButton btnCamera;
+    private ImageButton btnGallery;
+
+    private ActivityResultLauncher<Uri> cameraLauncher;
+    private ActivityResultLauncher<String> galleryLauncher;
+    private ActivityResultLauncher<String> cameraPermissionLauncher;
+
+    private StorageReference storageRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.fragment_conversation);
+        setContentView(R.layout.activity_chat);
 
         chatId = getIntent().getStringExtra("chatId");
         partnerUsername = getIntent().getStringExtra("username");
@@ -81,43 +108,36 @@ public class MessagingActivity extends AppCompatActivity {
         });
 
         drawerLayout = findViewById(R.id.chatDrawerLayout);
-        chatToolbar = findViewById(R.id.chatToolbar);
 
-        setSupportActionBar(chatToolbar);
+        tvChatName = findViewById(R.id.tvChatName);
 
         if (partnerUsername != null) {
-            chatToolbar.setTitle(partnerUsername);
+            tvChatName.setText(partnerUsername);
         }
 
-        chatToolbar.setNavigationOnClickListener(v ->
-                drawerLayout.openDrawer(GravityCompat.END)
-        );
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
         messageInput = findViewById(R.id.messageInput);
         sendButton = findViewById(R.id.sendButton);
+        btnCamera = findViewById(R.id.btnCamera);
+        btnGallery = findViewById(R.id.btnGallery);
+        photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
+        ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
+        btnRemovePhoto = findViewById(R.id.btnRemovePhoto);
 
         messagesList = new ArrayList<>();
         messageAdapter = new MessageAdapter(messagesList, this);
+        messageAdapter.setOnMessageDeleteListener(this);
         messagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         messagesRecyclerView.setAdapter(messageAdapter);
 
-        cacheManager = ChatCacheManager.getInstance(this);
-        metadataManager = ChatMetadataManager.getInstance(this);
-        loadCachedMessages();
-
-        loadCurrentUsername();
-
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser != null) {
-            currentUserUid = firebaseUser.getUid();
+        if (firebaseUser != null && firebaseUser.getEmail() != null) {
+            currentUserSafeEmail = firebaseUser.getEmail().replace(".", "_");
         }
 
-        loadChatMetadata();
-
-        if (chatId != null) {
-            ChatCacheApplication.setCurrentOpenChatId(chatId);
-        }
+        storageRef = FirebaseStorage.getInstance().getReference();
 
         profileImage = findViewById(R.id.profileImage);
         profileName = findViewById(R.id.profileName);
@@ -128,13 +148,70 @@ public class MessagingActivity extends AppCompatActivity {
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
-
             android.content.Intent intent = new android.content.Intent(this, Login_activity.class);
             intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         });
 
+        findViewById(R.id.clearChatsButton).setOnClickListener(v ->
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Delete Chat")
+                        .setMessage("Are you sure you want to delete this chat?")
+                        .setPositiveButton("Delete", (dialog, which) -> {
+                            ChatCacheManager.getInstance(this).clearAll();
+                            if (chatId != null && currentUserSafeEmail != null) {
+                                FirebaseDatabase.getInstance().getReference("users")
+                                        .child(currentUserSafeEmail).child("chats").child(chatId)
+                                        .removeValue();
+                            }
+                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                            finish();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show());
+
+        findViewById(R.id.clearCacheButton).setOnClickListener(v -> {
+            ChatCacheManager.getInstance(this).clearAll();
+            Toast.makeText(this, "Cache cleared", Toast.LENGTH_SHORT).show();
+        });
+
+        cameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                result -> {
+                    if (result && pendingImageFile != null && pendingImageFile.exists()) {
+                        showPhotoPreview(pendingImageFile);
+                    }
+                });
+
+        galleryLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        copyGalleryUriToCache(uri);
+                    }
+                });
+
+        cameraPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) {
+                        launchCameraInternal();
+                    } else {
+                        Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        btnCamera.setOnClickListener(v -> openCamera());
+        btnGallery.setOnClickListener(v -> openGallery());
+        btnRemovePhoto.setOnClickListener(v -> removePhotoPreview());
         sendButton.setOnClickListener(v -> sendMessage());
+        messageInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                sendMessage();
+                return true;
+            }
+            return false;
+        });
 
         if (chatId == null) {
             Toast.makeText(this, "Error: No chat ID", Toast.LENGTH_SHORT).show();
@@ -142,7 +219,7 @@ public class MessagingActivity extends AppCompatActivity {
         }
 
         messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
-        messagesListener = buildMessagesListener();
+        loadCurrentUsername();
     }
 
     @Override
@@ -151,15 +228,11 @@ public class MessagingActivity extends AppCompatActivity {
         if (chatId != null) {
             ChatCacheApplication.setCurrentOpenChatId(chatId);
         }
-        if (messagesRef != null && messagesListener != null) {
-            messagesRef.addChildEventListener(messagesListener);
-        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        saveToCache();
         ChatCacheApplication.setCurrentOpenChatId(null);
         if (messagesRef != null && messagesListener != null) {
             messagesRef.removeEventListener(messagesListener);
@@ -168,8 +241,8 @@ public class MessagingActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
-            drawerLayout.closeDrawer(GravityCompat.END);
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
         } else {
             super.onBackPressed();
         }
@@ -190,6 +263,7 @@ public class MessagingActivity extends AppCompatActivity {
                 if (currentUsername != null) {
                     ChatCacheApplication.setCurrentUsername(currentUsername);
                 }
+                attachMessagesListener();
             }
 
             @Override
@@ -197,27 +271,94 @@ public class MessagingActivity extends AppCompatActivity {
         });
     }
 
-    private void loadChatMetadata() {
-        if (chatId == null || currentUserUid == null) return;
+    private void attachMessagesListener() {
+        if (messagesListener != null) return;
 
-        ArrayList<ChatModel> allChats = metadataManager.loadAllChats(currentUserUid);
-        for (ChatModel chat : allChats) {
-            if (chat == null || chat.getChatId() == null) continue;
-            if (chatId.equals(chat.getChatId())) {
-                currentChat = chat;
+        messagesListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                messagesList.clear();
 
-                if (chat.getUnreadCount() != null && chat.getUnreadCount() > 0) {
-                    chat.setUnreadCount(0L);
-                    metadataManager.saveChat(currentUserUid, chat);
+                MessageModel previousMessage = null;
+                for (DataSnapshot msgSnap : snapshot.getChildren()) {
+                    String messageId = msgSnap.getKey();
+
+                    String text = msgSnap.child("text").getValue(String.class);
+                    String senderUsername = msgSnap.child("senderUsername").getValue(String.class);
+                    String time = msgSnap.child("time").getValue(String.class);
+                    Long timestampLong = msgSnap.child("timestamp").getValue(Long.class);
+                    String imageUrl = msgSnap.child("imageUrl").getValue(String.class);
+
+                    if ((text == null || text.isEmpty()) && imageUrl == null) continue;
+                    if (senderUsername == null) continue;
+
+                    boolean sentByMe = currentUsername != null && senderUsername.equals(currentUsername);
+
+                    String textVal = text != null ? text : "";
+                    MessageModel msg = new MessageModel(
+                            textVal, senderUsername,
+                            time != null ? time : "",
+                            timestampLong != null ? timestampLong : 0L,
+                            sentByMe);
+                    msg.setMessageId(messageId);
+                    msg.setImageUrl(imageUrl);
+
+                    if (timestampLong != null && timestampLong > 0) {
+                        if (previousMessage != null && previousMessage.getTimestampLong() > 0) {
+                            Calendar prevCal = Calendar.getInstance();
+                            prevCal.setTimeInMillis(previousMessage.getTimestampLong());
+
+                            Calendar currCal = Calendar.getInstance();
+                            currCal.setTimeInMillis(timestampLong);
+
+                            if (prevCal.get(Calendar.YEAR) != currCal.get(Calendar.YEAR) ||
+                                    prevCal.get(Calendar.DAY_OF_YEAR) != currCal.get(Calendar.DAY_OF_YEAR)) {
+                                MessageModel separator = new MessageModel(
+                                        formatDateMessage(timestampLong),
+                                        "date_separator", "", timestampLong, false);
+                                messagesList.add(separator);
+                            }
+                        } else {
+                            MessageModel separator = new MessageModel(
+                                    formatDateMessage(timestampLong),
+                                    "date_separator", "", timestampLong, false);
+                            messagesList.add(separator);
+                        }
+                    }
+
+                    messagesList.add(msg);
+                    previousMessage = msg;
                 }
-                return;
+
+                messageAdapter.notifyDataSetChanged();
+                if (!messagesList.isEmpty()) {
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
             }
-        }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(MessagingActivity.this, "Failed to load messages", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        messagesRef.addValueEventListener(messagesListener);
     }
 
     private void sendMessage() {
         String text = messageInput.getText().toString().trim();
-        if (text.isEmpty() || chatId == null || currentUsername == null) return;
+        if (chatId == null || currentUsername == null) return;
+        if (text.isEmpty() && pendingImageFile == null) return;
+
+        if (pendingImageFile != null) {
+            uploadPhotoAndSend(text);
+        } else {
+            sendTextMessageOnly(text);
+        }
+    }
+
+    private void sendTextMessageOnly(String text) {
+        if (chatId == null || currentUsername == null) return;
 
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
@@ -231,74 +372,107 @@ public class MessagingActivity extends AppCompatActivity {
             if (task.isSuccessful()) {
                 messageInput.setText("");
 
+                long now = System.currentTimeMillis();
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
-                lastMessageUpdate.put("lastMessage", text);
-                lastMessageUpdate.put("time", sdf.format(new Date()));
+                lastMessageUpdate.put("lastMessage/text", text);
+                lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
+                lastMessageUpdate.put("lastMessage/timestamp", now);
 
-                FirebaseDatabase.getInstance().getReference("chats").child(chatId).updateChildren(lastMessageUpdate);
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.updateChildren(lastMessageUpdate);
+
+                if (currentUserSafeEmail != null) {
+                    DatabaseReference userChatRef = FirebaseDatabase.getInstance()
+                            .getReference("users").child(currentUserSafeEmail)
+                            .child("chats").child(chatId);
+                    userChatRef.updateChildren(lastMessageUpdate);
+                }
             } else {
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void loadCachedMessages() {
-        if (chatId == null) return;
-        ArrayList<MessageModel> cached = cacheManager.loadMessages(chatId);
-        for (MessageModel msg : cached) {
-            messagesList.add(msg);
-            loadedTimestamps.add(msg.getTimestampLong());
+    private void uploadPhotoAndSend(String caption) {
+        if (pendingImageFile == null || chatId == null || currentUsername == null) return;
+
+        sendButton.setEnabled(false);
+        String fileName = "chat_" + chatId + "/" + UUID.randomUUID() + ".jpg";
+        StorageReference fileRef = storageRef.child("chat_images").child(fileName);
+
+        byte[] imageBytes = compressImage(pendingImageFile);
+        if (imageBytes == null) {
+            Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show();
+            sendButton.setEnabled(true);
+            return;
         }
-        messageAdapter.notifyDataSetChanged();
-        if (!messagesList.isEmpty()) {
-            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-        }
+
+        fileRef.putBytes(imageBytes)
+                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl()
+                        .addOnSuccessListener(uri -> {
+                            String imageUrl = uri.toString();
+                            sendImageMessage(caption, imageUrl);
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
+                            sendButton.setEnabled(true);
+                        }))
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+                    sendButton.setEnabled(true);
+                });
     }
 
-    private void saveToCache() {
-        if (chatId != null) {
-            cacheManager.saveMessages(chatId, messagesList);
-        }
-    }
+    private void sendImageMessage(String caption, String imageUrl) {
+        String text = caption != null && !caption.isEmpty() ? caption : "";
 
-    private ChildEventListener buildMessagesListener() {
-        return new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
-                String text = snapshot.child("text").getValue(String.class);
-                String senderUsername = snapshot.child("senderUsername").getValue(String.class);
-                String time = snapshot.child("time").getValue(String.class);
-                Long timestampLong = snapshot.child("timestamp").getValue(Long.class);
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("text", text);
+        messageData.put("senderUsername", currentUsername);
+        messageData.put("timestamp", ServerValue.TIMESTAMP);
+        messageData.put("imageUrl", imageUrl);
 
-                if (text != null && senderUsername != null && timestampLong != null) {
-                    if (loadedTimestamps.contains(timestampLong)) return;
-                    loadedTimestamps.add(timestampLong);
-                    boolean sentByMe = currentUsername != null && senderUsername.equals(currentUsername);
-                    messagesList.add(new MessageModel(text, senderUsername, time, timestampLong, sentByMe));
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        messageData.put("time", sdf.format(new Date()));
 
-                    if (!sentByMe && currentUserUid != null && currentChat != null) {
-                        Long currentCount = currentChat.getUnreadCount();
-                        currentChat.setUnreadCount((currentCount != null ? currentCount : 0L) + 1L);
-                        metadataManager.saveChat(currentUserUid, currentChat);
-                    }
+        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+            sendButton.setEnabled(true);
+            if (task.isSuccessful()) {
+                messageInput.setText("");
+                removePhotoPreview();
 
-                    messageAdapter.notifyItemInserted(messagesList.size() - 1);
-                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                String displayText = text.isEmpty() ? "Photo" : text;
+                long now = System.currentTimeMillis();
+                Map<String, Object> lastMessageUpdate = new HashMap<>();
+                lastMessageUpdate.put("lastMessage/text", displayText);
+                lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
+                lastMessageUpdate.put("lastMessage/timestamp", now);
+
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.updateChildren(lastMessageUpdate);
+
+                if (currentUserSafeEmail != null) {
+                    DatabaseReference userChatRef = FirebaseDatabase.getInstance()
+                            .getReference("users").child(currentUserSafeEmail)
+                            .child("chats").child(chatId);
+                    userChatRef.updateChildren(lastMessageUpdate);
                 }
+            } else {
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
             }
+        });
+    }
 
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        };
+    @Override
+    public void onDeleteMessage(MessageModel message) {
+        if (message.getMessageId() != null && chatId != null) {
+            FirebaseDatabase.getInstance().getReference("chats")
+                    .child(chatId).child("messages")
+                    .child(message.getMessageId())
+                    .removeValue();
+        }
     }
 
     private void loadUserProfile() {
@@ -314,12 +488,116 @@ public class MessagingActivity extends AppCompatActivity {
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                profileName.setText(snapshot.child("name").getValue(String.class));
-                profileUsername.setText(snapshot.child("username").getValue(String.class));
+                String name = snapshot.child("name").getValue(String.class);
+                String username = snapshot.child("username").getValue(String.class);
+                if (name != null) profileName.setText(name);
+                if (username != null) profileUsername.setText(username);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
+    }
+
+    private String formatDateMessage(long timestamp) {
+        Calendar cal = Calendar.getInstance();
+        Calendar msgCal = Calendar.getInstance();
+        msgCal.setTimeInMillis(timestamp);
+
+        int today = cal.get(Calendar.DAY_OF_YEAR);
+        int msgDay = msgCal.get(Calendar.DAY_OF_YEAR);
+        int year = cal.get(Calendar.YEAR);
+        int msgYear = msgCal.get(Calendar.YEAR);
+
+        if (year == msgYear && today == msgDay) return "Today";
+        else if (year == msgYear && today - msgDay == 1) return "Yesterday";
+        else return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
+    }
+
+    private void openCamera() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            launchCameraInternal();
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA);
+        }
+    }
+
+    private void launchCameraInternal() {
+        File cameraDir = new File(getCacheDir(), "camera");
+        cameraDir.mkdirs();
+        pendingImageFile = new File(cameraDir, "IMG_" + System.currentTimeMillis() + ".jpg");
+        Uri photoUri = FileProvider.getUriForFile(this,
+                getPackageName() + ".fileprovider", pendingImageFile);
+        cameraLauncher.launch(photoUri);
+    }
+
+    private void openGallery() {
+        galleryLauncher.launch("image/*");
+    }
+
+    private void copyGalleryUriToCache(Uri sourceUri) {
+        try {
+            File galleryDir = new File(getCacheDir(), "gallery");
+            galleryDir.mkdirs();
+            pendingImageFile = new File(galleryDir, "IMG_" + System.currentTimeMillis() + ".jpg");
+
+            InputStream inputStream = getContentResolver().openInputStream(sourceUri);
+            FileOutputStream outputStream = new FileOutputStream(pendingImageFile);
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            outputStream.close();
+            inputStream.close();
+
+            showPhotoPreview(pendingImageFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+            pendingImageFile = null;
+        }
+    }
+
+    private void showPhotoPreview(File photoFile) {
+        Glide.with(this)
+                .load(photoFile)
+                .centerCrop()
+                .into(ivPhotoPreview);
+        photoPreviewContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void removePhotoPreview() {
+        photoPreviewContainer.setVisibility(View.GONE);
+        if (pendingImageFile != null) {
+            pendingImageFile.delete();
+            pendingImageFile = null;
+        }
+    }
+
+    private byte[] compressImage(File imageFile) {
+        try {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+
+            int maxDimension = 1024;
+            int sampleSize = 1;
+            while (opts.outWidth / sampleSize > maxDimension
+                    || opts.outHeight / sampleSize > maxDimension) {
+                sampleSize *= 2;
+            }
+
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = sampleSize;
+            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            bitmap.recycle();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

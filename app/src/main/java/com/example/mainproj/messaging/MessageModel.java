@@ -1,12 +1,5 @@
 package com.example.mainproj.messaging;
 
-/**
- * MessageModel
- * Represents a single message in a conversation.
- *
- * sentByMe = true  → rendered on the RIGHT (blue bubble, no avatar)
- * sentByMe = false → rendered on the LEFT  (white bubble + avatar, tap avatar → profile sheet)
- */
 public class MessageModel {
 
     private final String  text;
@@ -14,6 +7,8 @@ public class MessageModel {
     private final String  timestamp;
     private final long    timestampLong;
     private final boolean sentByMe;
+    private String        messageId;
+    private String        imageUrl;
 
     public MessageModel(String text, String senderUsername, String timestamp, long timestampLong, boolean sentByMe) {
         this.text           = text;
@@ -28,4 +23,8 @@ public class MessageModel {
     public String  getTimestamp()      { return timestamp; }
     public long    getTimestampLong()  { return timestampLong; }
     public boolean isSentByMe()        { return sentByMe; }
+    public String  getMessageId()      { return messageId; }
+    public void    setMessageId(String messageId) { this.messageId = messageId; }
+    public String  getImageUrl()       { return imageUrl; }
+    public void    setImageUrl(String imageUrl)   { this.imageUrl = imageUrl; }
 }

@@ -1,69 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="16dp"
-    android:background="@color/colorSurface">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/colorCardBorder"
+    app:strokeWidth="1dp"
+    android:backgroundTint="@color/colorCardBackground">
 
-    <ImageView
-        android:id="@+id/ivProfilePicture"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:background="@drawable/bg_avatar_circle"
-        android:src="@android:drawable/sym_def_app_icon"
-        android:padding="10dp"
-        android:scaleType="centerInside"
-        android:contentDescription="Profile picture"
-        app:tint="@color/colorAvatarIcon"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
-
-    <TextView
-        android:id="@+id/tvUsername"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Username"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/colorTextPrimary"
-        android:layout_marginStart="12dp"
-        app:layout_constraintTop_toTopOf="@id/ivProfilePicture"
-        app:layout_constraintBottom_toBottomOf="@id/ivProfilePicture"
-        app:layout_constraintStart_toEndOf="@id/ivProfilePicture"
-        app:layout_constraintEnd_toStartOf="@id/btnAccept" />
+        android:padding="14dp">
 
-    <Button
-        android:id="@+id/btnAccept"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Accept"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/colorAddFab"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/btnReject"
-        android:layout_marginEnd="8dp" />
+        <ImageView
+            android:id="@+id/ivProfilePicture"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_avatar_circle"
+            android:src="@android:drawable/sym_def_app_icon"
+            android:padding="9dp"
+            android:scaleType="centerInside"
+            android:contentDescription="Profile picture"
+            app:tint="@color/colorAvatarIcon"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
-    <Button
-        android:id="@+id/btnReject"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Reject"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/colorDeleteFab"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <TextView
+            android:id="@+id/tvUsername"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Username"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:layout_marginStart="12dp"
+            app:layout_constraintTop_toTopOf="@id/ivProfilePicture"
+            app:layout_constraintBottom_toBottomOf="@id/ivProfilePicture"
+            app:layout_constraintStart_toEndOf="@id/ivProfilePicture"
+            app:layout_constraintEnd_toStartOf="@id/btnAccept" />
 
-    <View
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="@color/colorDivider"
-        app:layout_constraintTop_toBottomOf="@id/tvUsername"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <Button
+            android:id="@+id/btnAccept"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:text="Accept"
+            android:textSize="13sp"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/colorAddFab"
+            app:cornerRadius="10dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnReject"
+            android:layout_marginEnd="8dp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <Button
+            android:id="@+id/btnReject"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:text="Reject"
+            android:textSize="13sp"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/colorDeleteFab"
+            app:cornerRadius="10dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.cardview.widget.CardView>

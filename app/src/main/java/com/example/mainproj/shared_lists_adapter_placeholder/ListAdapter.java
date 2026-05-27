@@ -1,10 +1,8 @@
 package com.example.mainproj.shared_lists_adapter_placeholder;
 
 import android.view.*;
-import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 

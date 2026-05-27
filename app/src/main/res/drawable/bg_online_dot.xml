@@ -9,6 +9,6 @@
     android:shape="oval">
 
     <!-- Solid green fill for the online status indicator -->
-    <solid android:color="#4CAF50" />
+    <solid android:color="@color/colorOnlineDot" />
 
 </shape>

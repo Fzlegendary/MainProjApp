@@ -1,68 +1,51 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<!--
-    item_message_received.xml
-    Layout for a message received from the other person.
-    Profile picture sits to the LEFT of the bubble; the bubble's bottom-left
-    corner has a 4 dp radius (the "tail") that points back toward the avatar.
-    Tapping the avatar opens the UserProfileBottomSheet.
--->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="bottom"
-    android:paddingStart="8dp"
-    android:paddingEnd="56dp"
-    android:paddingTop="3dp"
-    android:paddingBottom="3dp">
+    android:padding="4dp">
 
-    <!-- ── Profile picture ── -->
-    <!-- Clickable; the adapter attaches the OnClickListener that opens the sheet -->
-    <ImageView
-        android:id="@+id/msgReceivedAvatar"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginEnd="6dp"
-        android:background="@drawable/bg_avatar_circle"
-        android:src="@android:drawable/sym_def_app_icon"
-        android:padding="8dp"
-        android:scaleType="centerInside"
-        android:tint="@color/colorAvatarIcon"
-        android:clickable="true"
-        android:focusable="true"
-        android:contentDescription="Profile picture" />
-
-    <!-- ── Bubble with tail pointing left toward the avatar ── -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_bubble_received"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:layout_gravity="start"
+        android:layout_marginEnd="64dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp"
+        app:cardBackgroundColor="@color/message_received_background">
 
-        <TextView
-            android:id="@+id/msgReceivedText"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/colorTextPrimary"
-            android:textSize="15sp"
-            android:maxWidth="220dp"
-            android:lineSpacingExtra="2dp"/>
+            android:orientation="vertical"
+            android:padding="12dp">
 
-        <TextView
-            android:id="@+id/msgReceivedTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/colorTextSecondary"
-            android:textSize="10sp"
-            android:layout_marginTop="3dp"/>
+            <TextView
+                android:id="@+id/tvMessageNickname"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#888888"
+                android:layout_marginBottom="2dp"
+                android:text="Nickname" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/message_received_text"
+                android:textSize="16sp"
+                android:text="Received message" />
 
-</LinearLayout>
+            <TextView
+                android:id="@+id/tvMessageTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="4dp"
+                android:textSize="11sp"
+                android:textColor="@color/message_received_text"
+                android:alpha="0.7"
+                android:text="12:34" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

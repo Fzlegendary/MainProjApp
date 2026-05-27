@@ -5,14 +5,14 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA">
+    android:background="@color/colorBackground">
 
     <LinearLayout
         android:id="@+id/headerSection"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#FFFFFF"
+        android:background="@color/colorSurface"
         android:elevation="2dp"
         android:padding="16dp"
         app:layout_constraintTop_toTopOf="parent"
@@ -25,7 +25,7 @@
             android:text="Gate Control System"
             android:textSize="22sp"
             android:textStyle="bold"
-            android:textColor="#1A1A1A" />
+            android:textColor="@color/colorTextPrimary" />
 
         <TextView
             android:id="@+id/textview"
@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:text="Connected to server"
             android:textSize="14sp"
-            android:textColor="#666666" />
+            android:textColor="@color/colorTextSecondary" />
 
     </LinearLayout>
 
@@ -54,12 +54,12 @@
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_margin="16dp"
-        android:backgroundTint="#2196F3"
+        android:backgroundTint="@color/colorPrimary"
         android:text="Test Server Connection"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:cornerRadius="12dp"
+        app:cornerRadius="14dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

@@ -10,6 +10,6 @@
     android:shape="oval">
 
     <!-- Solid red fill for the unread message badge -->
-    <solid android:color="#F44336" />
+    <solid android:color="@color/colorDeleteFab" />
 
 </shape>

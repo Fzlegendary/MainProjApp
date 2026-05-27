@@ -34,7 +34,6 @@ public class FragmentWhitelist extends FragmentBaseList {
 
     private ListAdapter adapter;
     private List<PlaceholderContent.PlaceholderItem> fullList = new ArrayList<>();
-    private static final String LIST_TYPE = "whitelist";
 
     private DatabaseReference whitelistRef;
     private ValueEventListener whitelistListener;

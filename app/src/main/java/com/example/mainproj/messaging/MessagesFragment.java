@@ -1,7 +1,6 @@
 package com.example.mainproj.messaging;
 
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +12,6 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
@@ -23,13 +21,11 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mainproj.BaseActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.userSystem.Login_activity;
-import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -39,52 +35,49 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
-public class MessagesFragment extends Fragment {
+public class MessagesFragment extends Fragment implements MessageAdapter.OnMessageDeleteListener {
 
     private DrawerLayout drawerLayout;
-    private Toolbar chatToolbar;
 
     private RecyclerView messagesRecyclerView;
     private MessageAdapter messageAdapter;
     private ArrayList<MessageModel> messagesList;
     private EditText messageInput;
-    private MaterialButton sendButton;
+    private FloatingActionButton sendButton;
 
     private String chatId;
     private String partnerUsername;
     private String currentUsername;
-    private String currentUserUid;
+    private String currentUserSafeEmail;
 
     private DatabaseReference messagesRef;
-    private ChildEventListener messagesListener;
+    private ValueEventListener messagesListener;
 
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
-    private ChatCacheManager cacheManager;
-    private ChatMetadataManager metadataManager;
-    private Set<Long> loadedTimestamps = new HashSet<>();
-    private ChatModel currentChat;
+
+    private TextView tvChatName;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            chatId = getArguments().getString("chatId");
+            chatId          = getArguments().getString("chatId");
             partnerUsername = getArguments().getString("username");
         }
     }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_conversation, container, false);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_chat, container, false);
     }
 
     @Override
@@ -98,82 +91,98 @@ public class MessagesFragment extends Fragment {
         });
 
         drawerLayout = view.findViewById(R.id.chatDrawerLayout);
-        chatToolbar = view.findViewById(R.id.chatToolbar);
 
-        if (requireActivity() instanceof BaseActivity) {
-            ((BaseActivity) requireActivity()).setSupportActionBar(chatToolbar);
+        tvChatName = view.findViewById(R.id.tvChatName);
+        if (partnerUsername != null) {
+            tvChatName.setText(partnerUsername);
         }
 
-        if (partnerUsername != null && chatToolbar != null) {
-            chatToolbar.setTitle(partnerUsername);
-        }
-
-        chatToolbar.setNavigationOnClickListener(v ->
-                drawerLayout.openDrawer(GravityCompat.END)
-        );
+        view.findViewById(R.id.btnBack).setOnClickListener(v ->
+                requireActivity().onBackPressed());
 
         messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView);
-        messageInput = view.findViewById(R.id.messageInput);
-        sendButton = view.findViewById(R.id.sendButton);
+        messageInput         = view.findViewById(R.id.messageInput);
+        sendButton           = view.findViewById(R.id.sendButton);
 
-        messagesList = new ArrayList<>();
-        messageAdapter = new MessageAdapter(messagesList, requireContext());
+        messagesList    = new ArrayList<>();
+        messageAdapter  = new MessageAdapter(messagesList, requireContext());
+        messageAdapter.setOnMessageDeleteListener(this);
         messagesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         messagesRecyclerView.setAdapter(messageAdapter);
 
-        cacheManager = ChatCacheManager.getInstance(requireContext());
-        metadataManager = ChatMetadataManager.getInstance(requireContext());
-        loadCachedMessages();
-
-        loadCurrentUsername();
-
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser != null) {
-            currentUserUid = firebaseUser.getUid();
+        if (firebaseUser != null && firebaseUser.getEmail() != null) {
+            currentUserSafeEmail = firebaseUser.getEmail().replace(".", "_");
         }
 
-        loadChatMetadata();
-
-        if (chatId != null) {
-            ChatCacheApplication.setCurrentOpenChatId(chatId);
-        }
-
-        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
-                    drawerLayout.closeDrawer(GravityCompat.END);
-                } else {
-                    setEnabled(false);
-                    requireActivity().getOnBackPressedDispatcher().onBackPressed();
-                }
-            }
-        });
-
-        profileImage = view.findViewById(R.id.profileImage);
-        profileName = view.findViewById(R.id.profileName);
+        profileImage    = view.findViewById(R.id.profileImage);
+        profileName     = view.findViewById(R.id.profileName);
         profileUsername = view.findViewById(R.id.profileUsername);
-        profileEmail = view.findViewById(R.id.profileEmail);
+        profileEmail    = view.findViewById(R.id.profileEmail);
 
         loadUserProfile();
 
+        requireActivity().getOnBackPressedDispatcher().addCallback(
+                getViewLifecycleOwner(), new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                            drawerLayout.closeDrawer(GravityCompat.START);
+                        } else {
+                            setEnabled(false);
+                            requireActivity().getOnBackPressedDispatcher().onBackPressed();
+                        }
+                    }
+                });
+
         view.findViewById(R.id.logoutButton).setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
-
-            android.content.Intent intent = new android.content.Intent(requireContext(), Login_activity.class);
-            intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            android.content.Intent intent = new android.content.Intent(
+                    requireContext(), Login_activity.class);
+            intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         });
 
+        view.findViewById(R.id.clearChatsButton).setOnClickListener(v ->
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setTitle("Delete Chat")
+                        .setMessage("Are you sure you want to delete this chat?")
+                        .setPositiveButton("Delete", (dialog, which) -> {
+                            ChatCacheManager.getInstance(requireContext()).clearAll();
+                            if (chatId != null && currentUserSafeEmail != null) {
+                                FirebaseDatabase.getInstance().getReference("users")
+                                        .child(currentUserSafeEmail).child("chats").child(chatId)
+                                        .removeValue();
+                            }
+                            Toast.makeText(requireContext(), "Chat deleted", Toast.LENGTH_SHORT).show();
+                            requireActivity().onBackPressed();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show());
+
+        view.findViewById(R.id.clearCacheButton).setOnClickListener(v -> {
+            ChatCacheManager.getInstance(requireContext()).clearAll();
+            Toast.makeText(requireContext(), "Cache cleared", Toast.LENGTH_SHORT).show();
+        });
+
         sendButton.setOnClickListener(v -> sendMessage());
+        messageInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                sendMessage();
+                return true;
+            }
+            return false;
+        });
 
         if (chatId == null) {
             Toast.makeText(requireContext(), "Error: No chat ID", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
-        messagesListener = buildMessagesListener();
+        messagesRef = FirebaseDatabase.getInstance()
+                .getReference("chats").child(chatId).child("messages");
+        loadCurrentUsername();
     }
 
     @Override
@@ -182,15 +191,11 @@ public class MessagesFragment extends Fragment {
         if (chatId != null) {
             ChatCacheApplication.setCurrentOpenChatId(chatId);
         }
-        if (messagesRef != null && messagesListener != null) {
-            messagesRef.addChildEventListener(messagesListener);
-        }
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        saveToCache();
         ChatCacheApplication.setCurrentOpenChatId(null);
         if (messagesRef != null && messagesListener != null) {
             messagesRef.removeEventListener(messagesListener);
@@ -202,127 +207,140 @@ public class MessagesFragment extends Fragment {
         if (user == null || user.getEmail() == null) return;
 
         String safeEmail = user.getEmail().replace(".", "_");
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("users").child(safeEmail);
+        FirebaseDatabase.getInstance()
+                .getReference("users").child(safeEmail)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        currentUsername = snapshot.child("username").getValue(String.class);
+                        if (currentUsername != null) {
+                            ChatCacheApplication.setCurrentUsername(currentUsername);
+                        }
+                        attachMessagesListener();
+                    }
 
-        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                currentUsername = snapshot.child("username").getValue(String.class);
-                if (currentUsername != null) {
-                    ChatCacheApplication.setCurrentUsername(currentUsername);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
     }
 
-    private void loadChatMetadata() {
-        if (chatId == null || currentUserUid == null) return;
+    private void attachMessagesListener() {
+        if (messagesListener != null) return;
 
-        ArrayList<ChatModel> allChats = metadataManager.loadAllChats(currentUserUid);
-        for (ChatModel chat : allChats) {
-            if (chat == null || chat.getChatId() == null) continue;
-            if (chatId.equals(chat.getChatId())) {
-                currentChat = chat;
+        messagesListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                messagesList.clear();
 
-                if (chat.getUnreadCount() != null && chat.getUnreadCount() > 0) {
-                    chat.setUnreadCount(0L);
-                    metadataManager.saveChat(currentUserUid, chat);
+                MessageModel previousMessage = null;
+                for (DataSnapshot msgSnap : snapshot.getChildren()) {
+                    String messageId = msgSnap.getKey();
+
+                    String text           = msgSnap.child("text").getValue(String.class);
+                    String senderUsername = msgSnap.child("senderUsername").getValue(String.class);
+                    String time           = msgSnap.child("time").getValue(String.class);
+                    Long   timestampLong  = msgSnap.child("timestamp").getValue(Long.class);
+
+                    if (text == null || senderUsername == null) continue;
+
+                    boolean sentByMe = currentUsername != null
+                            && senderUsername.equals(currentUsername);
+
+                    MessageModel msg = new MessageModel(
+                            text, senderUsername,
+                            time != null ? time : "",
+                            timestampLong != null ? timestampLong : 0L,
+                            sentByMe);
+                    msg.setMessageId(messageId);
+
+                    if (timestampLong != null && timestampLong > 0) {
+                        if (previousMessage != null && previousMessage.getTimestampLong() > 0) {
+                            Calendar prevCal = Calendar.getInstance();
+                            prevCal.setTimeInMillis(previousMessage.getTimestampLong());
+
+                            Calendar currCal = Calendar.getInstance();
+                            currCal.setTimeInMillis(timestampLong);
+
+                            if (prevCal.get(Calendar.YEAR) != currCal.get(Calendar.YEAR) ||
+                                    prevCal.get(Calendar.DAY_OF_YEAR) != currCal.get(Calendar.DAY_OF_YEAR)) {
+                                MessageModel separator = new MessageModel(
+                                        formatDateMessage(timestampLong),
+                                        "date_separator", "", timestampLong, false);
+                                messagesList.add(separator);
+                            }
+                        } else {
+                            MessageModel separator = new MessageModel(
+                                    formatDateMessage(timestampLong),
+                                    "date_separator", "", timestampLong, false);
+                            messagesList.add(separator);
+                        }
+                    }
+
+                    messagesList.add(msg);
+                    previousMessage = msg;
                 }
-                return;
+
+                messageAdapter.notifyDataSetChanged();
+                if (!messagesList.isEmpty()) {
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
             }
-        }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(requireContext(), "Failed to load messages", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        messagesRef.addValueEventListener(messagesListener);
     }
 
     private void sendMessage() {
         String text = messageInput.getText().toString().trim();
         if (text.isEmpty() || chatId == null || currentUsername == null) return;
 
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
         messageData.put("senderUsername", currentUsername);
         messageData.put("timestamp", ServerValue.TIMESTAMP);
-
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         messageData.put("time", sdf.format(new Date()));
 
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 messageInput.setText("");
 
+                long now = System.currentTimeMillis();
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
-                lastMessageUpdate.put("lastMessage", text);
-                lastMessageUpdate.put("time", sdf.format(new Date()));
+                lastMessageUpdate.put("lastMessage/text", text);
+                lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
+                lastMessageUpdate.put("lastMessage/timestamp", now);
 
-                FirebaseDatabase.getInstance().getReference("chats").child(chatId).updateChildren(lastMessageUpdate);
+                FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId)
+                        .updateChildren(lastMessageUpdate);
+
+                if (currentUserSafeEmail != null) {
+                    FirebaseDatabase.getInstance()
+                            .getReference("users").child(currentUserSafeEmail)
+                            .child("chats").child(chatId)
+                            .updateChildren(lastMessageUpdate);
+                }
             } else {
                 Toast.makeText(requireContext(), "Failed to send message", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void loadCachedMessages() {
-        if (chatId == null) return;
-        ArrayList<MessageModel> cached = cacheManager.loadMessages(chatId);
-        for (MessageModel msg : cached) {
-            messagesList.add(msg);
-            loadedTimestamps.add(msg.getTimestampLong());
+    @Override
+    public void onDeleteMessage(MessageModel message) {
+        if (message.getMessageId() != null && chatId != null) {
+            FirebaseDatabase.getInstance().getReference("chats")
+                    .child(chatId).child("messages")
+                    .child(message.getMessageId())
+                    .removeValue();
         }
-        messageAdapter.notifyDataSetChanged();
-        if (!messagesList.isEmpty()) {
-            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-        }
-    }
-
-    private void saveToCache() {
-        if (chatId != null) {
-            cacheManager.saveMessages(chatId, messagesList);
-        }
-    }
-
-    private ChildEventListener buildMessagesListener() {
-        return new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
-                String text = snapshot.child("text").getValue(String.class);
-                String senderUsername = snapshot.child("senderUsername").getValue(String.class);
-                String time = snapshot.child("time").getValue(String.class);
-                Long timestampLong = snapshot.child("timestamp").getValue(Long.class);
-
-                if (text != null && senderUsername != null && timestampLong != null) {
-                    if (loadedTimestamps.contains(timestampLong)) {
-                        return;
-                    }
-                    loadedTimestamps.add(timestampLong);
-                    boolean sentByMe = currentUsername != null && senderUsername.equals(currentUsername);
-                    messagesList.add(new MessageModel(text, senderUsername, time, timestampLong, sentByMe));
-
-                    if (!sentByMe && currentUserUid != null && currentChat != null) {
-                        Long currentCount = currentChat.getUnreadCount();
-                        currentChat.setUnreadCount((currentCount != null ? currentCount : 0L) + 1L);
-                        metadataManager.saveChat(currentUserUid, currentChat);
-                    }
-
-                    messageAdapter.notifyItemInserted(messagesList.size() - 1);
-                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-                }
-            }
-
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, String previousChildName) {}
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        };
     }
 
     private void loadUserProfile() {
@@ -331,19 +349,35 @@ public class MessagesFragment extends Fragment {
 
         profileEmail.setText(user.getEmail());
 
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
+        FirebaseDatabase.getInstance()
                 .getReference("users")
-                .child(user.getEmail().replace(".", "_"));
+                .child(user.getEmail().replace(".", "_"))
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String name = snapshot.child("name").getValue(String.class);
+                        String username = snapshot.child("username").getValue(String.class);
+                        if (name != null) profileName.setText(name);
+                        if (username != null) profileUsername.setText(username);
+                    }
 
-        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                profileName.setText(snapshot.child("name").getValue(String.class));
-                profileUsername.setText(snapshot.child("username").getValue(String.class));
-            }
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
+    private String formatDateMessage(long timestamp) {
+        Calendar cal = Calendar.getInstance();
+        Calendar msgCal = Calendar.getInstance();
+        msgCal.setTimeInMillis(timestamp);
+
+        int today = cal.get(Calendar.DAY_OF_YEAR);
+        int msgDay = msgCal.get(Calendar.DAY_OF_YEAR);
+        int year = cal.get(Calendar.YEAR);
+        int msgYear = msgCal.get(Calendar.YEAR);
+
+        if (year == msgYear && today == msgDay) return "Today";
+        else if (year == msgYear && today - msgDay == 1) return "Yesterday";
+        else return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
     }
 }

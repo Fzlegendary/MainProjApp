@@ -3,7 +3,6 @@ package com.example.mainproj.gates;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -15,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder> {
@@ -55,14 +53,14 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
             holder.tvGateStatus.setBackgroundResource(R.drawable.status_badge_open);
             holder.btnToggleGate.setText("CLOSE GATE");
             holder.btnToggleGate.setBackgroundTintList(
-                    ContextCompat.getColorStateList(holder.itemView.getContext(), android.R.color.holo_red_dark)
+                    ContextCompat.getColorStateList(holder.itemView.getContext(), R.color.colorStatusDeclined)
             );
         } else {
             holder.tvGateStatus.setText("Closed");
             holder.tvGateStatus.setBackgroundResource(R.drawable.status_badge_closed);
             holder.btnToggleGate.setText("OPEN GATE");
             holder.btnToggleGate.setBackgroundTintList(
-                    ContextCompat.getColorStateList(holder.itemView.getContext(), android.R.color.holo_green_dark)
+                    ContextCompat.getColorStateList(holder.itemView.getContext(), R.color.colorStatusAccepted)
             );
         }
 
@@ -110,7 +108,7 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
     }
 
     static class GateViewHolder extends RecyclerView.ViewHolder {
-        TextView tvGateNumber, tvGateStatus, tvActionStatus, tvPermissionBadge;
+        TextView tvGateNumber, tvGateStatus, tvActionStatus;
         Button btnToggleGate;
         ImageButton btnGateAdminSettings;
 
@@ -119,7 +117,6 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
             tvGateNumber = itemView.findViewById(R.id.tvGateNumber);
             tvGateStatus = itemView.findViewById(R.id.tvGateStatus);
             tvActionStatus = itemView.findViewById(R.id.tvActionStatus);
-            tvPermissionBadge = itemView.findViewById(R.id.tvPermissionBadge);
             btnToggleGate = itemView.findViewById(R.id.btnToggleGate);
             btnGateAdminSettings = itemView.findViewById(R.id.btnGateAdminSettings);
         }

@@ -1,16 +1,11 @@
 package com.example.mainproj.fragments;
 
 import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,11 +20,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.ChatAdapter;
-import com.example.mainproj.messaging.ChatMetadataManager;
+import com.example.mainproj.messaging.ChatCacheApplication;
 import com.example.mainproj.messaging.ChatModel;
-import com.example.mainproj.messaging.MessagesFragment;
 import com.example.mainproj.messaging.NetworkMonitor;
-import com.example.mainproj.messaging.friendRequest.FriendRequestAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -44,7 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionListener {
+public class ChatsFragment extends Fragment {
 
     private RecyclerView chatRecyclerView;
     private ChatAdapter chatAdapter;
@@ -54,11 +47,11 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
     private EditText searchChats;
     private FloatingActionButton addChatButton;
     private View btnFriendRequests;
+    private View btnFriends;
 
     private DatabaseReference chatsRef;
     private ChildEventListener chatsListener;
     private String currentUserSafeEmail;
-    private String currentUserUid;
 
     private ConnectivityManager.NetworkCallback networkCallback;
     private boolean isFirebaseListenerAttached = false;
@@ -77,6 +70,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         searchChats = view.findViewById(R.id.searchChats);
         addChatButton = view.findViewById(R.id.addChatButton);
         btnFriendRequests = view.findViewById(R.id.btnFriendRequests);
+        btnFriends = view.findViewById(R.id.btnFriends);
         setupRecyclerView();
         setupSearch();
         setupClickListeners();
@@ -85,8 +79,10 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
 
     private void setupRecyclerView() {
         chatRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        chatAdapter = new ChatAdapter(filteredChatList, requireContext());
-        chatAdapter.setOnChatActionListener(this);
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        String safeEmail = user != null && user.getEmail() != null
+                ? user.getEmail().replace(".", "_") : "";
+        chatAdapter = new ChatAdapter(requireContext(), filteredChatList, safeEmail);
         chatRecyclerView.setAdapter(chatAdapter);
     }
 
@@ -97,7 +93,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                filterChats(s.toString());
+                chatAdapter.filter(s.toString());
             }
 
             @Override
@@ -106,27 +102,24 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
     }
 
     private void filterChats(String query) {
-        filteredChatList.clear();
-        if (query.isEmpty()) {
-            filteredChatList.addAll(chatList);
-        } else {
-            String lowerQuery = query.toLowerCase();
-            for (ChatModel chat : chatList) {
-                if (chat == null) continue;
-                Log.d("test", "filterChats: chatid: " + chat.getChatId());
-                String username = chat.getUsername() != null ? chat.getUsername().toLowerCase() : "";
-                String nickname = chat.getNickname() != null ? chat.getNickname().toLowerCase() : "";
-                if (username.contains(lowerQuery) || nickname.contains(lowerQuery)) {
-                    filteredChatList.add(chat);
-                }
-            }
-        }
-        chatAdapter.notifyDataSetChanged();
+        chatAdapter.filter(query);
+    }
+
+    private String formatLastMessage(DataSnapshot snapshot) {
+        String text = snapshot.child("lastMessage").child("text").getValue(String.class);
+        String sender = snapshot.child("lastMessage").child("senderUsername").getValue(String.class);
+        if (text == null) return "";
+
+        String currentUsername = ChatCacheApplication.getCurrentUsername();
+        boolean isMe = sender != null && sender.equals(currentUsername);
+        String prefix = isMe ? "You" : (sender != null ? sender : "");
+        return prefix + ": " + text;
     }
 
     private void setupClickListeners() {
         addChatButton.setOnClickListener(v -> showAddUserDialog());
         btnFriendRequests.setOnClickListener(v -> showFriendRequestsDialog());
+        btnFriends.setOnClickListener(v -> showFriendsDialog());
     }
 
     private void loadChats() {
@@ -136,38 +129,12 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
             return;
         }
 
-        currentUserUid = user.getUid();
-        if (currentUserUid == null || user.getEmail() == null) {
-            Toast.makeText(requireContext(), "Unable to load chats", Toast.LENGTH_SHORT).show();
-            return;
-        }
         currentUserSafeEmail = user.getEmail().replace(".", "_");
-
-        clearCacheOnce();
-
-        ArrayList<ChatModel> cachedChats = ChatMetadataManager.getInstance(requireContext())
-                .loadAllChats(currentUserUid);
-        chatList.clear();
-        chatList.addAll(cachedChats);
-        filterChats(searchChats.getText().toString());
 
         if (NetworkMonitor.getInstance(requireContext()).isConnected()) {
             attachFirebaseListener();
         } else {
             registerNetworkCallback();
-        }
-    }
-
-    private void clearCacheOnce() {
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences("ChatPrefs", Context.MODE_PRIVATE);
-
-        if (true) {  // !prefs.getBoolean("cacheCleared", false)
-            if (currentUserUid != null) {
-                ChatMetadataManager.getInstance(requireContext())
-                        .clearAllForUser(currentUserUid);
-            }
-            prefs.edit().putBoolean("cacheCleared", true).apply();
         }
     }
 
@@ -178,79 +145,66 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
                 .getReference("users").child(currentUserSafeEmail).child("chats");
 
         chatsListener = new ChildEventListener() {
+            private boolean initialLoadDone = false;
+
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                ChatModel chat = snapshot.getValue(ChatModel.class);
-                if (chat != null) {
-                    chat.setChatId(snapshot.getKey());
+                String chatId = snapshot.getKey();
+                if (chatId == null) return;
 
-                    boolean chatAlreadyExists = false;
-                    for (int index = 0; index < chatList.size(); index++) {
-                        ChatModel existingChat = chatList.get(index);
-                        if (existingChat != null && existingChat.getChatId() != null
-                                && existingChat.getChatId().equals(chat.getChatId())) {
-                            chatAlreadyExists = true;
-                            break;
-                        }
-                    }
+                ChatModel chat = new ChatModel();
+                chat.setChatId(chatId);
+                chat.setUsername(snapshot.child("username").getValue(String.class));
+                chat.setNickname(snapshot.child("nickname").getValue(String.class));
+                chat.setImageUrl(snapshot.child("imageUrl").getValue(String.class));
+                chat.setOnline(Boolean.TRUE.equals(snapshot.child("online").getValue(Boolean.class)));
+                chat.setUnreadCount(snapshot.child("unreadCount").getValue(Long.class));
+                chat.setLastMessage(formatLastMessage(snapshot));
 
-                    if (!chatAlreadyExists) {
-                        chatList.add(chat);
-                    }
+                String chatName = snapshot.child("chatName").getValue(String.class);
+                if (chatName != null && !chatName.isEmpty()) chat.setNickname(chatName);
 
-                    ChatMetadataManager.getInstance(requireContext())
-                            .saveChat(currentUserUid, chat);
+                boolean exists = chatList.stream().anyMatch(c -> chatId.equals(c.getChatId()));
+                if (!exists) chatList.add(chat);
 
-                    filterChats(searchChats.getText().toString());
-                }
+                chatAdapter.updateFullList(chatList);
+                chatAdapter.filter(searchChats.getText().toString());
             }
 
             @Override
             public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                ChatModel chat = snapshot.getValue(ChatModel.class);
-                if (chat != null) {
-                    String chatId = snapshot.getKey();
+                String chatId = snapshot.getKey();
+                if (chatId == null) return;
 
-                    boolean chatFound = false;
-                    for (int index = 0; index < chatList.size(); index++) {
-                        ChatModel existingChat = chatList.get(index);
-                        if (existingChat != null && existingChat.getChatId() != null
-                                && existingChat.getChatId().equals(chatId)) {
-                            chat.setChatId(chatId);
-                            chatList.set(index, chat);
+                for (int i = 0; i < chatList.size(); i++) {
+                    ChatModel existing = chatList.get(i);
+                    if (chatId.equals(existing.getChatId())) {
+                        ChatModel updated = new ChatModel();
+                        updated.setChatId(chatId);
+                        updated.setUsername(snapshot.child("username").getValue(String.class));
+                        updated.setNickname(snapshot.child("nickname").getValue(String.class));
+                        updated.setImageUrl(snapshot.child("imageUrl").getValue(String.class));
+                        updated.setOnline(Boolean.TRUE.equals(snapshot.child("online").getValue(Boolean.class)));
+                        updated.setUnreadCount(snapshot.child("unreadCount").getValue(Long.class));
+                        updated.setLastMessage(formatLastMessage(snapshot));
 
-                            chatFound = true;
-                            break;
-                        }
+                        String chatName = snapshot.child("chatName").getValue(String.class);
+                        if (chatName != null && !chatName.isEmpty()) updated.setNickname(chatName);
+
+                        chatList.set(i, updated);
+                        chatAdapter.updateFullList(chatList);
+                        chatAdapter.filter(searchChats.getText().toString());
+                        break;
                     }
-
-                    ChatMetadataManager.getInstance(requireContext())
-                            .saveChat(currentUserUid, chat);
-
-                    if (chatFound)
-                        filterChats(searchChats.getText().toString());
                 }
             }
 
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
                 String chatId = snapshot.getKey();
-
                 chatList.removeIf(c -> c.getChatId() != null && c.getChatId().equals(chatId));
-
-                for (int index = filteredChatList.size() - 1; index >= 0; index--) {
-                    ChatModel chatItem = filteredChatList.get(index);
-                    if (chatItem != null && chatItem.getChatId() != null
-                            && chatItem.getChatId().equals(chatId)) {
-                        Log.d("test", "onChildRemoved: "+chatItem);
-                        filteredChatList.remove(index);
-                    }
-                }
-
-                ChatMetadataManager.getInstance(requireContext())
-                        .clearChat(currentUserUid, chatId);
-
-                chatAdapter.notifyDataSetChanged();
+                chatAdapter.updateFullList(chatList);
+                chatAdapter.filter(searchChats.getText().toString());
             }
 
             @Override
@@ -261,6 +215,7 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
                 Toast.makeText(requireContext(), "Error loading chats", Toast.LENGTH_SHORT).show();
             }
         };
+
         chatsRef.addChildEventListener(chatsListener);
         isFirebaseListenerAttached = true;
     }
@@ -390,39 +345,20 @@ public class ChatsFragment extends Fragment implements ChatAdapter.OnChatActionL
         viewPager.setAdapter(pagerAdapter);
 
         new com.google.android.material.tabs.TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            if (position == 0) {
-                tab.setText("Incoming");
-            } else {
-                tab.setText("Outgoing");
-            }
+            if (position == 0) tab.setText("Incoming");
+            else tab.setText("Outgoing");
         }).attach();
 
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(requireContext())
                 .setView(dialogView)
                 .setNegativeButton("Close", null)
-                .create();
-
-        dialog.show();
+                .create()
+                .show();
     }
 
-    @Override
-    public void onOpenProfile(ChatModel chat) {
-        Intent intent = new Intent(requireContext(), com.example.mainproj.ProfileDisplayerActivity.class);
-        intent.putExtra("username", chat.getUsername());
-        startActivity(intent);
-    }
-
-    @Override
-    public void onCloseDM(ChatModel chat) {
-        Toast.makeText(requireContext(), "Close DM: " + chat.getUsername(), Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onChatClick(ChatModel chat) {
-        Intent intent = new Intent(requireContext(), com.example.mainproj.messaging.MessagingActivity.class);
-        intent.putExtra("chatId", chat.getChatId());
-        intent.putExtra("username", chat.getUsername());
-        startActivity(intent);
+    private void showFriendsDialog() {
+        FriendsListFragment friendsFragment = new FriendsListFragment();
+        friendsFragment.show(getParentFragmentManager(), "FriendsList");
     }
 
     @Override

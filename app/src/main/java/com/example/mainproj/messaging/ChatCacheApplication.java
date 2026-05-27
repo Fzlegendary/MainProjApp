@@ -24,12 +24,12 @@ public class ChatCacheApplication extends Application implements Application.Act
     }
 
     private void fetchFCMToken() {
-        FirebaseMessaging.getInstance().getToken()
+                FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
                     if (!task.isSuccessful()) {
                         return;
                     }
-                    String token = task.getResult();
+                    task.getResult();
                 });
     }
 
@@ -99,8 +99,6 @@ public class ChatCacheApplication extends Application implements Application.Act
         }
         if (activityCount <= 0) {
             activityCount = 0;
-            ChatCacheManager.getInstance(this).clearAll();
-            MutedChatManager.getInstance(this).clearAll();
         }
     }
 }

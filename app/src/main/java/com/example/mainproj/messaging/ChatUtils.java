@@ -1,9 +1,5 @@
 package com.example.mainproj.messaging;
 
-import android.widget.Toast;
-
-import com.example.mainproj.MainActivity;
-
 public class ChatUtils {
 
     public static String generateChatId(String username1, String username2) {
