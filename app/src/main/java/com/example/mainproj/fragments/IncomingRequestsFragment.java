@@ -172,6 +172,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                 String myImg = mySnap.child("imageUrl").getValue(String.class);
                 if (myImg == null) myImg = "";
 
+                final String finalMyImg = myImg;
                 usersRef.child(fromEmail).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot partnerSnap) {
@@ -195,6 +196,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                         participants.put(fromEmail, true);
                         chatData.put("participants", participants);
 
+                        final String finalPartnerImg = partnerImg;
                         chatsRef.child(chatId).setValue(chatData).addOnCompleteListener(task -> {
                             if (task.isSuccessful()) {
                                 Map<String, Object> myChatData = new HashMap<>(chatData);
@@ -213,14 +215,14 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
                                 Map<String, Object> myFriendEntry = new HashMap<>();
                                 myFriendEntry.put("safeEmail", fromEmail);
                                 myFriendEntry.put("nickname", partnerNick);
-                                myFriendEntry.put("imageUrl", partnerImg);
+                                myFriendEntry.put("imageUrl", finalPartnerImg);
                                 myFriendEntry.put("chatId", chatId);
                                 myFriendEntry.put("addedAt", System.currentTimeMillis());
 
                                 Map<String, Object> partnerFriendEntry = new HashMap<>();
                                 partnerFriendEntry.put("safeEmail", myEmail);
                                 partnerFriendEntry.put("nickname", myNick);
-                                partnerFriendEntry.put("imageUrl", myImg);
+                                partnerFriendEntry.put("imageUrl", finalMyImg);
                                 partnerFriendEntry.put("chatId", chatId);
                                 partnerFriendEntry.put("addedAt", System.currentTimeMillis());
 
@@ -274,10 +276,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         FirebaseDatabase.getInstance().getReference("users").child(myEmail).child("username")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String myUsername = snapshot.getValue(String.class);
-                        String myUsernameSafe = myUsername != null ? myUsername : "";
-
+                    public void onDataChange(@NonNull DataSnapshot snapshot){
                         requestsRef.child(request.getKey()).removeValue();
 
                         FirebaseDatabase.getInstance()
