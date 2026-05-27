@@ -15,9 +15,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
-import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
@@ -44,7 +42,6 @@ public class MainActivity extends BaseActivity {
     private static final String PREFS_NAME = "MainProjPrefs";
     private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
 
-    private Toolbar toolbar;
     private ViewPager viewPager;
     private BottomNavigationView bottomNav;
     private FirebaseAuth mAuth;
@@ -71,10 +68,6 @@ public class MainActivity extends BaseActivity {
 
         ChatCacheManager.getInstance(this).clearAll();
 
-
-        toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
         setupViewPager();
         setupBottomNav();
 
@@ -88,11 +81,6 @@ public class MainActivity extends BaseActivity {
                     v.setPadding(bars.left, bars.top, bars.right, 0);
                     return insets;
                 });
-
-        toolbar.setNavigationOnClickListener(v -> {
-            androidx.drawerlayout.widget.DrawerLayout drawerLayout = findViewById(R.id.drawerLayout);
-            drawerLayout.openDrawer(GravityCompat.START);
-        });
 
         profileImage = findViewById(R.id.profileImage);
         profileName = findViewById(R.id.profileName);
