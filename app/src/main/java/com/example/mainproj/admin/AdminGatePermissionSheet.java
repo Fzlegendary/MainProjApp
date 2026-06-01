@@ -296,7 +296,7 @@ public class AdminGatePermissionSheet extends BottomSheetDialogFragment {
         int newCtrl = spinnerCtrl.getSelectedItemPosition();
         boolean newDisabled = switchDisable.getVisibility() == View.VISIBLE && switchDisable.isChecked();
 
-        SessionManager.setGateLevels(gateId, newVis, 0, newCtrl);
+        SessionManager.setGateLevels(gateId, newVis, newCtrl);
         SessionManager.setGateDisabled(gateId, newDisabled);
         currentVisLevel = newVis;
         currentCtrlLevel = newCtrl;

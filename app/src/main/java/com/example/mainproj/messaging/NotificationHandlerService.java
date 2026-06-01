@@ -84,6 +84,8 @@ public class NotificationHandlerService extends FirebaseMessagingService {
     }
 
     private void showInAppDialog(String chatId, String senderUsername, String messageText) {
+        if (!NetworkMonitor.getInstance(this).isConnected()) return;
+
         Activity foregroundActivity = ChatCacheApplication.getCurrentForegroundActivity();
         if (foregroundActivity == null || foregroundActivity.isFinishing()) {
             return;

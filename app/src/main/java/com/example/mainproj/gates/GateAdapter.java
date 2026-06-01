@@ -74,7 +74,6 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
             holder.itemView.setVisibility(View.VISIBLE);
         }
 
-        // Toggle button: disabled if busy, not clickable, or insufficient openable level
         holder.btnToggleGate.setEnabled(!busy && gate.isClickable());
 
         // Admin gear icon: shown for roleLevel >= 1 always

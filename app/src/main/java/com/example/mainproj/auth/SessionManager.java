@@ -1,5 +1,7 @@
 package com.example.mainproj.auth;
 
+import android.content.Context;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -68,10 +70,6 @@ public class SessionManager {
         return roleLevel >= gateLevel;
     }
 
-    public static boolean canOpenGate(int openableLevel) {
-        return roleLevel >= openableLevel;
-    }
-
     public static boolean canModifyUser(int targetRoleLevel) {
         return roleLevel > targetRoleLevel;
     }
@@ -105,10 +103,9 @@ public class SessionManager {
                 .updateChildren(updates);
     }
 
-    public static void setGateLevels(String gateId, int visibilityLevel, int openableLevel, int controlLevel) {
+    public static void setGateLevels(String gateId, int visibilityLevel, int controlLevel) {
         Map<String, Object> updates = new HashMap<>();
         updates.put("visibilityLevel", visibilityLevel);
-        updates.put("openableLevel", openableLevel);
         updates.put("controlLevel", controlLevel);
         FirebaseDatabase.getInstance()
                 .getReference("gates").child(gateId)
@@ -119,5 +116,19 @@ public class SessionManager {
         FirebaseDatabase.getInstance()
                 .getReference("gates").child(gateId).child("disabled")
                 .setValue(disabled);
+    }
+
+    public static void clearAllPrefs(Context context) {
+        String[] prefNames = {
+                "MainProjPrefs",
+                "action_queue",
+                "muted_chats_prefs",
+                "chat_metadata",
+                "message_cache"
+        };
+        for (String name : prefNames) {
+            context.getSharedPreferences(name, Context.MODE_PRIVATE)
+                    .edit().clear().apply();
+        }
     }
 }

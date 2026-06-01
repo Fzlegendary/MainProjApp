@@ -1,5 +1,6 @@
 package com.example.mainproj.messaging;
 
+import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -7,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.RemoteInput;
@@ -15,8 +17,11 @@ import com.example.mainproj.MainActivity;
 
 public class NotificationHelper {
 
+    private static final String TAG = "NotificationHelper";
+
     public static final String CHANNEL_ID_MESSAGES = "messages_channel";
     public static final String CHANNEL_NAME_MESSAGES = "Chat Messages";
+    public static final String CHANNEL_ID_EXPIRATION = "item_expiration";
 
     public static final String ACTION_MARK_AS_READ = "com.example.mainproj.ACTION_MARK_AS_READ";
     public static final String ACTION_REPLY = "com.example.mainproj.ACTION_REPLY";
@@ -144,5 +149,43 @@ public class NotificationHelper {
             return remoteInput.getCharSequence(EXTRA_MESSAGE_TEXT, "").toString();
         }
         return null;
+    }
+
+    public static void createExpirationChannel(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID_EXPIRATION, "Item Expiration", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Notifications when list items expire");
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+                Log.d(TAG, "Expiration channel created");
+            }
+        }
+    }
+
+    public static void scheduleAlarm(Context context, int requestId, long triggerAtMillis, Intent intent) {
+        Log.d(TAG, "Scheduling alarm: requestId=" + requestId + ", triggerAt=" + triggerAtMillis);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, requestId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAtMillis, null), pendingIntent);
+            } else {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+            }
+        }
+    }
+
+    public static void cancelAlarm(Context context, int requestId, Intent intent) {
+        Log.d(TAG, "Cancelling alarm: requestId=" + requestId);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, requestId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+        }
     }
 }

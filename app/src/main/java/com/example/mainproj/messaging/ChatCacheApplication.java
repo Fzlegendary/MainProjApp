@@ -3,6 +3,7 @@ package com.example.mainproj.messaging;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.example.mainproj.auth.SessionManager;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -19,6 +20,8 @@ public class ChatCacheApplication extends Application implements Application.Act
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
         NotificationHelper.createChannel(this);
+        NotificationHelper.createExpirationChannel(this);
+        Log.d("ChatCacheApplication", "Channels created on startup");
         fetchFCMToken();
         SessionManager.init();
     }

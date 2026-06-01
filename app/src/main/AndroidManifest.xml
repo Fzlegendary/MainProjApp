@@ -71,6 +71,9 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <receiver android:name=".messaging.ExpirationReceiver" android:exported="false" />
+        <receiver android:name=".messaging.DeletionReceiver" android:exported="false" />
     </application>
 
 </manifest>

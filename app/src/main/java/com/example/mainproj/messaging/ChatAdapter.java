@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.mainproj.Action;
 import com.example.mainproj.R;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -109,32 +110,40 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
         String chatId = chat.getChatId();
         if (chatId != null) {
-            DatabaseReference chatRef = FirebaseDatabase.getInstance()
-                    .getReference("chats").child(chatId);
-            chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    String lastMessageText = "";
-                    long lastTimestamp = 0;
+            if (!NetworkMonitor.getInstance(context).isConnected()) {
+                holder.tvLastMessage.setText(chat.getLastMessage() != null ? chat.getLastMessage() : "");
+                Long ts = chat.getTimestamp();
+                holder.tvTime.setText(ts != null ? formatTimestamp(ts) : "");
+            } else {
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String lastMessageText = "";
+                        long lastTimestamp = 0;
 
-                    if (snapshot.child("lastMessage").exists()) {
-                        DataSnapshot lastMsgSnap = snapshot.child("lastMessage");
-                        lastMessageText = lastMsgSnap.child("text").getValue(String.class);
-                        Object tsObj = lastMsgSnap.child("timestamp").getValue();
-                        if (tsObj instanceof Long) lastTimestamp = (Long) tsObj;
-                        else if (tsObj instanceof Double) lastTimestamp = ((Double) tsObj).longValue();
+                        if (snapshot.child("lastMessage").exists()) {
+                            DataSnapshot lastMsgSnap = snapshot.child("lastMessage");
+                            lastMessageText = lastMsgSnap.child("text").getValue(String.class);
+                            Object tsObj = lastMsgSnap.child("timestamp").getValue();
+                            if (tsObj instanceof Long) lastTimestamp = (Long) tsObj;
+                            else if (tsObj instanceof Double) lastTimestamp = ((Double) tsObj).longValue();
+                        }
+
+                        holder.tvLastMessage.setText(lastMessageText != null ? lastMessageText : "");
+                        holder.tvTime.setText(formatTimestamp(lastTimestamp));
                     }
 
-                    holder.tvLastMessage.setText(lastMessageText != null ? lastMessageText : "");
-                    holder.tvTime.setText(formatTimestamp(lastTimestamp));
-                }
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-                    holder.tvLastMessage.setText(chat.getLastMessage());
-                    holder.tvTime.setText("");
-                }
-            });
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        holder.tvLastMessage.setText(chat.getLastMessage() != null ? chat.getLastMessage() : "");
+                        Long ts = chat.getTimestamp();
+                        holder.tvTime.setText(ts != null ? formatTimestamp(ts) : "");
+                        Toast.makeText(context, "Failed to get from firebase", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
         }
 
         holder.itemView.setOnClickListener(v -> {

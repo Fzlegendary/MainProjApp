@@ -1,5 +1,7 @@
 package com.example.mainproj.messaging;
 
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,7 +23,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.Action;
 import com.example.mainproj.R;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -62,6 +66,7 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
 
     private DatabaseReference messagesRef;
     private ValueEventListener messagesListener;
+    private ConnectivityManager.NetworkCallback networkRecoveryCallback;
 
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
@@ -140,6 +145,7 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
                 });
 
         view.findViewById(R.id.logoutButton).setOnClickListener(v -> {
+            SessionManager.clearAllPrefs(requireContext());
             FirebaseAuth.getInstance().signOut();
             android.content.Intent intent = new android.content.Intent(
                     requireContext(), Login_activity.class);
@@ -211,6 +217,7 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
     public void onStop() {
         super.onStop();
         ChatCacheApplication.setCurrentOpenChatId(null);
+        unregisterNetworkRecoveryCallback();
         if (messagesRef != null && messagesListener != null) {
             messagesRef.removeEventListener(messagesListener);
         }
@@ -220,36 +227,74 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) return;
 
-        String safeEmail = user.getEmail().replace(".", "_");
-        FirebaseDatabase.getInstance()
-                .getReference("users").child(safeEmail)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        currentUsername = snapshot.child("username").getValue(String.class);
-                        if (currentUsername != null) {
-                            ChatCacheApplication.setCurrentUsername(currentUsername);
-                        }
+        if (currentUsername == null) {
+            currentUsername = ChatCacheApplication.getCurrentUsername();
+        }
 
-                        if (chatId != null && ChatCacheManager.isCachingEnabled()) {
-                            ArrayList<MessageModel> cached = ChatCacheManager.getInstance(requireContext())
-                                    .loadMessages(chatId);
-                            if (!cached.isEmpty()) {
-                                messagesList.clear();
-                                messagesList.addAll(cached);
-                                messageAdapter.notifyDataSetChanged();
-                                if (!messagesList.isEmpty()) {
-                                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-                                }
+        if (NetworkMonitor.getInstance(requireContext()).isConnected()) {
+            String safeEmail = user.getEmail().replace(".", "_");
+            FirebaseDatabase.getInstance()
+                    .getReference("users").child(safeEmail)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            currentUsername = snapshot.child("username").getValue(String.class);
+                            if (currentUsername != null) {
+                                ChatCacheApplication.setCurrentUsername(currentUsername);
                             }
+
+                            loadCachedMessages();
+                            attachMessagesListener();
                         }
 
-                        attachMessagesListener();
-                    }
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            loadCachedMessages();
+                            attachMessagesListener();
+                        }
+                    });
+        } else {
+            if (currentUsername == null) {
+                currentUsername = "";
+            }
+            loadCachedMessages();
+            registerNetworkRecoveryCallback();
+        }
+    }
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {}
-                });
+    private void loadCachedMessages() {
+        if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+            ArrayList<MessageModel> cached = ChatCacheManager.getInstance(requireContext())
+                    .loadMessages(chatId);
+            if (!cached.isEmpty()) {
+                messagesList.clear();
+                messagesList.addAll(cached);
+                messageAdapter.notifyDataSetChanged();
+                if (!messagesList.isEmpty()) {
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+        }
+    }
+
+    private void registerNetworkRecoveryCallback() {
+        networkRecoveryCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull Network network) {
+                unregisterNetworkRecoveryCallback();
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> loadCurrentUsername());
+                }
+            }
+        };
+        NetworkMonitor.getInstance(requireContext()).registerNetworkCallback(networkRecoveryCallback);
+    }
+
+    private void unregisterNetworkRecoveryCallback() {
+        if (networkRecoveryCallback != null) {
+            NetworkMonitor.getInstance(requireContext()).unregisterNetworkCallback(networkRecoveryCallback);
+            networkRecoveryCallback = null;
+        }
     }
 
     private void attachMessagesListener() {

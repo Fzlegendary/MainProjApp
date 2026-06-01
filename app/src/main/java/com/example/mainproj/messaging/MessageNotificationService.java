@@ -32,6 +32,7 @@ public class MessageNotificationService extends Service {
 
     private DatabaseReference chatsRef;
     private Map<String, ChildEventListener> chatListeners = new HashMap<>();
+    private final Map<String, Boolean> listenerReady = new HashMap<>();
     private String currentUserSafeEmail;
     private String currentUsername;
 
@@ -96,6 +97,19 @@ public class MessageNotificationService extends Service {
                     FirebaseDatabase.getInstance()
                             .getReference("chats").child(chatId).child("messages")
                             .addChildEventListener(listener);
+
+                    FirebaseDatabase.getInstance()
+                            .getReference("chats").child(chatId).child("messages")
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    listenerReady.put(chatId, true);
+                                }
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    listenerReady.put(chatId, true);
+                                }
+                            });
                 }
             }
 
@@ -128,6 +142,9 @@ public class MessageNotificationService extends Service {
                 if (mutedChatManager.isMuted(chatId)) {
                     return;
                 }
+
+                if (!Boolean.TRUE.equals(listenerReady.get(chatId))) return;
+                if (!NetworkMonitor.getInstance(MessageNotificationService.this).isConnected()) return;
 
                 if (ChatCacheApplication.isAppInForeground()) {
                     showInAppDialog(chatId, senderUsername != null ? senderUsername : "Unknown", messageText);
@@ -224,6 +241,7 @@ public class MessageNotificationService extends Service {
                     .removeEventListener(entry.getValue());
         }
         chatListeners.clear();
+        listenerReady.clear();
     }
 
     public static void startService(android.content.Context context) {

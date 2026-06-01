@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -30,7 +32,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.mainproj.Action;
 import com.example.mainproj.R;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -53,7 +57,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -78,6 +81,9 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private DatabaseReference messagesRef;
     private ValueEventListener messagesListener;
+
+    // Callback that watches for network recovery while offline
+    private ConnectivityManager.NetworkCallback networkRecoveryCallback;
 
     private ImageView profileImage;
     private TextView profileName, profileUsername, profileEmail;
@@ -151,6 +157,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         loadUserProfile();
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
+            SessionManager.clearAllPrefs(this);
             FirebaseAuth.getInstance().signOut();
             android.content.Intent intent = new android.content.Intent(this, Login_activity.class);
             intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -233,7 +240,89 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         }
 
         messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
-        loadCurrentUsername();
+        loadMessages();
+    }
+
+    public void loadMessages() {
+        // Resolve username: try cache first, then Firebase if online
+        if (currentUsername == null) {
+            currentUsername = ChatCacheApplication.getCurrentUsername();
+        }
+
+        if (currentUsername == null && NetworkMonitor.getInstance(this).isConnected()) {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null && user.getEmail() != null) {
+                String safeEmail = user.getEmail().replace(".", "_");
+                DatabaseReference userRef = FirebaseDatabase.getInstance()
+                        .getReference("users").child(safeEmail);
+                userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        currentUsername = snapshot.child("username").getValue(String.class);
+                        if (currentUsername != null) {
+                            ChatCacheApplication.setCurrentUsername(currentUsername);
+                        }
+                        loadMessages();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        currentUsername = "";
+                        loadMessages();
+                    }
+                });
+            }
+            return;
+        }
+
+        if (currentUsername == null) {
+            currentUsername = "";
+        }
+
+        if (NetworkMonitor.getInstance(this).isConnected()) {
+            unregisterNetworkRecoveryCallback();
+
+            if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                ArrayList<MessageModel> cached =
+                        ChatCacheManager.getInstance(this).loadMessages(chatId);
+                if (!cached.isEmpty()) {
+                    messagesList.clear();
+                    messagesList.addAll(cached);
+                    messageAdapter.notifyDataSetChanged();
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+
+            attachMessagesListener();
+
+        } else {
+            if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                ArrayList<MessageModel> cached =
+                        ChatCacheManager.getInstance(this).loadMessages(chatId);
+                if (!cached.isEmpty()) {
+                    messagesList.clear();
+                    messagesList.addAll(cached);
+                    messageAdapter.notifyDataSetChanged();
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+
+            networkRecoveryCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(@NonNull Network network) {
+                    unregisterNetworkRecoveryCallback();
+                    runOnUiThread(() -> loadMessages());
+                }
+            };
+            NetworkMonitor.getInstance(this).registerNetworkCallback(networkRecoveryCallback);
+        }
+    }
+
+    private void unregisterNetworkRecoveryCallback() {
+        if (networkRecoveryCallback != null) {
+            NetworkMonitor.getInstance(this).unregisterNetworkCallback(networkRecoveryCallback);
+            networkRecoveryCallback = null;
+        }
     }
 
     @Override
@@ -250,7 +339,9 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         ChatCacheApplication.setCurrentOpenChatId(null);
         if (messagesRef != null && messagesListener != null) {
             messagesRef.removeEventListener(messagesListener);
+            messagesListener = null;
         }
+        unregisterNetworkRecoveryCallback();
     }
 
     @Override
@@ -262,43 +353,9 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         }
     }
 
-    private void loadCurrentUsername() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || user.getEmail() == null) return;
-
-        String safeEmail = user.getEmail().replace(".", "_");
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("users").child(safeEmail);
-
-        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                currentUsername = snapshot.child("username").getValue(String.class);
-                if (currentUsername != null) {
-                    ChatCacheApplication.setCurrentUsername(currentUsername);
-                }
-
-                if (chatId != null && ChatCacheManager.isCachingEnabled()) {
-                    ArrayList<MessageModel> cached = ChatCacheManager.getInstance(MessagingActivity.this)
-                            .loadMessages(chatId);
-                    if (!cached.isEmpty()) {
-                        messagesList.clear();
-                        messagesList.addAll(cached);
-                        messageAdapter.notifyDataSetChanged();
-                        if (!messagesList.isEmpty()) {
-                            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-                        }
-                    }
-                }
-
-                attachMessagesListener();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
-
+    // ---------------------------------------------------------------------------
+    // Firebase real-time listener
+    // ---------------------------------------------------------------------------
     private void attachMessagesListener() {
         if (messagesListener != null) return;
 
@@ -592,7 +649,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
         });
     }
 
@@ -608,7 +666,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         if (year == msgYear && today == msgDay) return "Today";
         else if (year == msgYear && today - msgDay == 1) return "Yesterday";
-        else return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
+        else
+            return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
     }
 
     private void openCamera() {
@@ -683,7 +742,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             while (opts.outWidth / sampleSize > maxDimension
                     || opts.outHeight / sampleSize > maxDimension) {
                 sampleSize *= 2;
-            }
+            }   
 
             opts.inJustDecodeBounds = false;
             opts.inSampleSize = sampleSize;

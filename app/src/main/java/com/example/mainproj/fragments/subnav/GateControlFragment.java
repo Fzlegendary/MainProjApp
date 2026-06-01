@@ -99,12 +99,10 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                     String id = g.getKey();
                     String state = g.child("state").getValue(String.class);
                     Integer visLevel = g.child("visibilityLevel").getValue(Integer.class);
-                    Integer openLevel = g.child("openableLevel").getValue(Integer.class);
                     Integer ctrlLevel = g.child("controlLevel").getValue(Integer.class);
                     Boolean disabledVal = g.child("disabled").getValue(Boolean.class);
 
                     int vLevel = visLevel != null ? visLevel : 0;
-                    int oLevel = openLevel != null ? openLevel : 0;
                     int cLevel = ctrlLevel != null ? ctrlLevel : 0;
                     boolean isDisabled = disabledVal != null && disabledVal;
 
@@ -118,7 +116,6 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                             0L,
                             "",
                             vLevel,
-                            oLevel,
                             cLevel
                     );
                     gate.setDisabled(isDisabled);
@@ -188,10 +185,6 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     @Override
     public void onGateToggle(Gate gate, int position) {
         if (!gate.isClickable()) return;
-        if (!SessionManager.canOpenGate(gate.getOpenableLevel())) {
-            Toast.makeText(requireContext(), "You don't have permission to open this gate", Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (!SessionManager.canControlGate(gate.getControlLevel())) {
             Toast.makeText(requireContext(), "You don't have permission to control this gate", Toast.LENGTH_SHORT).show();
             return;

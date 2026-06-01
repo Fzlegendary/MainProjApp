@@ -9,7 +9,6 @@ public class Gate {
     private String lastCommandId;
     private boolean isClickable = true;
     private int visibilityLevel = 0;
-    private int openableLevel = 0;
     private int controlLevel = 0;
     private boolean disabled = false;
 
@@ -21,14 +20,13 @@ public class Gate {
         this.lastCommandId = lastCommandId;
     }
 
-    public Gate(String gateNumber, String state, String actionStatus, long lastAckAt, String lastCommandId, int visibilityLevel, int openableLevel, int controlLevel) {
+    public Gate(String gateNumber, String state, String actionStatus, long lastAckAt, String lastCommandId, int visibilityLevel, int controlLevel) {
         this.gateNumber = gateNumber;
         this.state = state;
         this.actionStatus = actionStatus;
         this.lastAckAt = lastAckAt;
         this.lastCommandId = lastCommandId;
         this.visibilityLevel = visibilityLevel;
-        this.openableLevel = openableLevel;
         this.controlLevel = controlLevel;
     }
 
@@ -74,14 +72,6 @@ public class Gate {
 
     public void setVisibilityLevel(int visibilityLevel) {
         this.visibilityLevel = visibilityLevel;
-    }
-
-    public int getOpenableLevel() {
-        return openableLevel;
-    }
-
-    public void setOpenableLevel(int openableLevel) {
-        this.openableLevel = openableLevel;
     }
 
     public int getControlLevel() {

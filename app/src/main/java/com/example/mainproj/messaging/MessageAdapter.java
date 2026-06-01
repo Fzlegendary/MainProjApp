@@ -21,7 +21,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     private static final int VIEW_TYPE_DATE_SEPARATOR = 0;
     private static final int VIEW_TYPE_SENT     = 1;
     private static final int VIEW_TYPE_RECEIVED = 2;
-    private static final int VIEW_TYPE_IMAGE_SENT     = 3;
+    private static final int VIEW_TYPE_IMAGE_SENT = 3;
     private static final int VIEW_TYPE_IMAGE_RECEIVED = 4;
 
     private final ArrayList<MessageModel> messages;

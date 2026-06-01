@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging;
+package com.example.mainproj;
 
 import android.content.Context;
 import android.content.SharedPreferences;
