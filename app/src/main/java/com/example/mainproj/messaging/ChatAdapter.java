@@ -24,6 +24,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -156,6 +159,15 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                             fullList.removeIf(item -> item.getChatId() != null
                                     && item.getChatId().equals(selectedChat.getChatId()));
                             notifyDataSetChanged();
+
+                            if (!NetworkMonitor.getInstance(context).isConnected()) {
+                                ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                Action.enqueue(context, new Action("delete_chat", selectedChat.getChatId(), null, null));
+                                Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+
                             Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
                             if (selectedChat.getChatId() != null) {
                                 DatabaseReference userChatRef = FirebaseDatabase.getInstance()
@@ -196,6 +208,17 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 }
 
                 if (chat.getChatId() != null) {
+                    if (!NetworkMonitor.getInstance(context).isConnected()) {
+                        ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                        try {
+                            JSONObject payload = new JSONObject();
+                            payload.put("chatName", newName);
+                            Action.enqueue(context, new Action("rename_chat", chat.getChatId(), null, payload.toString()));
+                        } catch (JSONException e) {
+                            // fall through
+                        }
+                        return;
+                    }
                     DatabaseReference chatNameRef = FirebaseDatabase.getInstance()
                             .getReference("users")
                             .child(safeEmail)

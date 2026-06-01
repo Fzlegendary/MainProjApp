@@ -40,6 +40,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MessagesFragment extends Fragment implements MessageAdapter.OnMessageDeleteListener {
 
@@ -149,6 +153,16 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
                         .setTitle("Delete Chat")
                         .setMessage("Are you sure you want to delete this chat?")
                         .setPositiveButton("Delete", (dialog, which) -> {
+                            if (!NetworkMonitor.getInstance(requireContext()).isConnected()) {
+                                ChatCacheManager.getInstance(requireContext()).clearChat(chatId);
+                                if (currentUserSafeEmail != null) {
+                                    ChatMetadataManager.getInstance(requireContext()).clearChat(currentUserSafeEmail, chatId);
+                                }
+                                Action.enqueue(requireContext(), new Action("delete_chat", chatId, null, null));
+                                Toast.makeText(requireContext(), "Chat deleted", Toast.LENGTH_SHORT).show();
+                                requireActivity().onBackPressed();
+                                return;
+                            }
                             ChatCacheManager.getInstance(requireContext()).clearAll();
                             if (chatId != null && currentUserSafeEmail != null) {
                                 FirebaseDatabase.getInstance().getReference("users")
@@ -216,6 +230,20 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
                         if (currentUsername != null) {
                             ChatCacheApplication.setCurrentUsername(currentUsername);
                         }
+
+                        if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                            ArrayList<MessageModel> cached = ChatCacheManager.getInstance(requireContext())
+                                    .loadMessages(chatId);
+                            if (!cached.isEmpty()) {
+                                messagesList.clear();
+                                messagesList.addAll(cached);
+                                messageAdapter.notifyDataSetChanged();
+                                if (!messagesList.isEmpty()) {
+                                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                                }
+                            }
+                        }
+
                         attachMessagesListener();
                     }
 
@@ -284,6 +312,9 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
                 if (!messagesList.isEmpty()) {
                     messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
                 }
+                if (chatId != null) {
+                    ChatCacheManager.getInstance(requireContext()).saveMessages(chatId, messagesList);
+                }
             }
 
             @Override
@@ -300,18 +331,69 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
         if (text.isEmpty() || chatId == null || currentUsername == null) return;
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        String timeStr = sdf.format(new Date());
+        long now = System.currentTimeMillis();
+
+        if (!NetworkMonitor.getInstance(requireContext()).isConnected()) {
+            String localId = "local_" + UUID.randomUUID().toString();
+            MessageModel msg = new MessageModel(text, currentUsername, timeStr, now, true);
+            msg.setMessageId(localId);
+            messagesList.add(msg);
+            messageAdapter.notifyDataSetChanged();
+            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+            ChatCacheManager.getInstance(requireContext()).saveMessages(chatId, messagesList);
+
+            ChatModel chat = new ChatModel();
+            chat.setChatId(chatId);
+            chat.setUsername(partnerUsername);
+            chat.setLastMessage(currentUsername + ": " + text);
+            chat.setTimestamp(now);
+            if (currentUserSafeEmail != null) {
+                ChatMetadataManager.getInstance(requireContext()).saveChat(currentUserSafeEmail, chat);
+            }
+
+            Map<String, Object> messageData = new HashMap<>();
+            messageData.put("text", text);
+            messageData.put("senderUsername", currentUsername);
+            messageData.put("time", timeStr);
+            try {
+                JSONObject payload = new JSONObject();
+                for (Map.Entry<String, Object> e : messageData.entrySet()) {
+                    payload.put(e.getKey(), e.getValue());
+                }
+                Action.enqueue(requireContext(), new Action("send_message", chatId, localId, payload.toString()));
+            } catch (JSONException e) {
+                // fall through
+            }
+
+            Map<String, Object> headerUpdate = new HashMap<>();
+            headerUpdate.put("lastMessage/text", text);
+            headerUpdate.put("lastMessage/senderUsername", currentUsername);
+            headerUpdate.put("lastMessage/timestamp", now);
+            try {
+                JSONObject headerPayload = new JSONObject();
+                for (Map.Entry<String, Object> e : headerUpdate.entrySet()) {
+                    headerPayload.put(e.getKey(), e.getValue());
+                }
+                Action.enqueue(requireContext(), new Action("update_chat_header", chatId, null, headerPayload.toString()));
+            } catch (JSONException e) {
+                // fall through
+            }
+
+            messageInput.setText("");
+            return;
+        }
 
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
         messageData.put("senderUsername", currentUsername);
         messageData.put("timestamp", ServerValue.TIMESTAMP);
-        messageData.put("time", sdf.format(new Date()));
+        messageData.put("time", timeStr);
 
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 messageInput.setText("");
 
-                long now = System.currentTimeMillis();
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
                 lastMessageUpdate.put("lastMessage/text", text);
                 lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
@@ -335,12 +417,20 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
 
     @Override
     public void onDeleteMessage(MessageModel message) {
-        if (message.getMessageId() != null && chatId != null) {
-            FirebaseDatabase.getInstance().getReference("chats")
-                    .child(chatId).child("messages")
-                    .child(message.getMessageId())
-                    .removeValue();
+        if (message.getMessageId() == null || chatId == null) return;
+
+        if (!NetworkMonitor.getInstance(requireContext()).isConnected()) {
+            messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+            messageAdapter.notifyDataSetChanged();
+            ChatCacheManager.getInstance(requireContext()).saveMessages(chatId, messagesList);
+            Action.enqueue(requireContext(), new Action("delete_message", chatId, message.getMessageId(), null));
+            return;
         }
+
+        FirebaseDatabase.getInstance().getReference("chats")
+                .child(chatId).child("messages")
+                .child(message.getMessageId())
+                .removeValue();
     }
 
     private void loadUserProfile() {

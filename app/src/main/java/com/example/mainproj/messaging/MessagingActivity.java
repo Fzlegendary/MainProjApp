@@ -53,9 +53,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MessagingActivity extends AppCompatActivity implements MessageAdapter.OnMessageDeleteListener {
 
@@ -158,6 +162,16 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                         .setTitle("Delete Chat")
                         .setMessage("Are you sure you want to delete this chat?")
                         .setPositiveButton("Delete", (dialog, which) -> {
+                            if (!NetworkMonitor.getInstance(this).isConnected()) {
+                                ChatCacheManager.getInstance(this).clearChat(chatId);
+                                if (currentUserSafeEmail != null) {
+                                    ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                }
+                                Action.enqueue(this, new Action("delete_chat", chatId, null, null));
+                                Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                finish();
+                                return;
+                            }
                             ChatCacheManager.getInstance(this).clearAll();
                             if (chatId != null && currentUserSafeEmail != null) {
                                 FirebaseDatabase.getInstance().getReference("users")
@@ -263,6 +277,20 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                 if (currentUsername != null) {
                     ChatCacheApplication.setCurrentUsername(currentUsername);
                 }
+
+                if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                    ArrayList<MessageModel> cached = ChatCacheManager.getInstance(MessagingActivity.this)
+                            .loadMessages(chatId);
+                    if (!cached.isEmpty()) {
+                        messagesList.clear();
+                        messagesList.addAll(cached);
+                        messageAdapter.notifyDataSetChanged();
+                        if (!messagesList.isEmpty()) {
+                            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                        }
+                    }
+                }
+
                 attachMessagesListener();
             }
 
@@ -334,6 +362,9 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                 if (!messagesList.isEmpty()) {
                     messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
                 }
+                if (chatId != null) {
+                    ChatCacheManager.getInstance(MessagingActivity.this).saveMessages(chatId, messagesList);
+                }
             }
 
             @Override
@@ -360,19 +391,72 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     private void sendTextMessageOnly(String text) {
         if (chatId == null || currentUsername == null) return;
 
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        String timeStr = sdf.format(new Date());
+        long now = System.currentTimeMillis();
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            String localId = "local_" + UUID.randomUUID().toString();
+            MessageModel msg = new MessageModel(text, currentUsername, timeStr, now, true);
+            msg.setMessageId(localId);
+            messagesList.add(msg);
+            messageAdapter.notifyDataSetChanged();
+            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+            ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+            ChatModel chat = new ChatModel();
+            chat.setChatId(chatId);
+            chat.setUsername(partnerUsername);
+            chat.setLastMessage(currentUsername + ": " + text);
+            chat.setTimestamp(now);
+            if (currentUserSafeEmail != null) {
+                ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+            }
+
+            Map<String, Object> messageData = new HashMap<>();
+            messageData.put("text", text);
+            messageData.put("senderUsername", currentUsername);
+            messageData.put("time", timeStr);
+            String payloadJson;
+            try {
+                JSONObject payload = new JSONObject();
+                for (Map.Entry<String, Object> e : messageData.entrySet()) {
+                    payload.put(e.getKey(), e.getValue());
+                }
+                payloadJson = payload.toString();
+            } catch (JSONException e) {
+                payloadJson = "{}";
+            }
+            Action.enqueue(this, new Action("send_message", chatId, localId, payloadJson));
+
+            Map<String, Object> headerUpdate = new HashMap<>();
+            headerUpdate.put("lastMessage/text", text);
+            headerUpdate.put("lastMessage/senderUsername", currentUsername);
+            headerUpdate.put("lastMessage/timestamp", now);
+            try {
+                JSONObject headerPayload = new JSONObject();
+                for (Map.Entry<String, Object> e : headerUpdate.entrySet()) {
+                    headerPayload.put(e.getKey(), e.getValue());
+                }
+                Action.enqueue(this, new Action("update_chat_header", chatId, null, headerPayload.toString()));
+            } catch (JSONException e) {
+                // fall through
+            }
+
+            messageInput.setText("");
+            return;
+        }
+
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
         messageData.put("senderUsername", currentUsername);
         messageData.put("timestamp", ServerValue.TIMESTAMP);
-
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        messageData.put("time", sdf.format(new Date()));
+        messageData.put("time", timeStr);
 
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 messageInput.setText("");
 
-                long now = System.currentTimeMillis();
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
                 lastMessageUpdate.put("lastMessage/text", text);
                 lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
@@ -396,6 +480,11 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private void uploadPhotoAndSend(String caption) {
         if (pendingImageFile == null || chatId == null || currentUsername == null) return;
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            Toast.makeText(this, "Cannot send images offline", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         sendButton.setEnabled(false);
         String fileName = "chat_" + chatId + "/" + UUID.randomUUID() + ".jpg";
@@ -467,12 +556,20 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     @Override
     public void onDeleteMessage(MessageModel message) {
-        if (message.getMessageId() != null && chatId != null) {
-            FirebaseDatabase.getInstance().getReference("chats")
-                    .child(chatId).child("messages")
-                    .child(message.getMessageId())
-                    .removeValue();
+        if (message.getMessageId() == null || chatId == null) return;
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+            messageAdapter.notifyDataSetChanged();
+            ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+            Action.enqueue(this, new Action("delete_message", chatId, message.getMessageId(), null));
+            return;
         }
+
+        FirebaseDatabase.getInstance().getReference("chats")
+                .child(chatId).child("messages")
+                .child(message.getMessageId())
+                .removeValue();
     }
 
     private void loadUserProfile() {

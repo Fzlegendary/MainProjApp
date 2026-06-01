@@ -23,7 +23,9 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.example.mainproj.adapters.MainPagerAdapter;
 import com.example.mainproj.fragments.ProfileFragment;
+import com.example.mainproj.messaging.Action;
 import com.example.mainproj.messaging.ChatCacheManager;
+import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -66,7 +68,8 @@ public class MainActivity extends BaseActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        ChatCacheManager.getInstance(this).clearAll();
+        ChatCacheManager.getInstance(this).setCachingEnabled(true);
+        ChatMetadataManager.getInstance(this).setCachingEnabled(true);
 
         setupViewPager();
         setupBottomNav();
@@ -104,7 +107,10 @@ public class MainActivity extends BaseActivity {
         ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(@NonNull Network network) {
-                runOnUiThread(() -> checkConnectivityAndShowDialog());
+                runOnUiThread(() -> {
+                    checkConnectivityAndShowDialog();
+                    Action.syncAll(MainActivity.this);
+                });
             }
 
             @Override

@@ -21,6 +21,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.ChatAdapter;
 import com.example.mainproj.messaging.ChatCacheApplication;
+import com.example.mainproj.messaging.ChatCacheManager;
+import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -134,6 +136,14 @@ public class ChatsFragment extends Fragment {
         if (NetworkMonitor.getInstance(requireContext()).isConnected()) {
             attachFirebaseListener();
         } else {
+            ArrayList<ChatModel> cached = ChatMetadataManager.getInstance(requireContext())
+                    .loadAllChats(currentUserSafeEmail);
+            if (!cached.isEmpty()) {
+                chatList.clear();
+                chatList.addAll(cached);
+                chatAdapter.updateFullList(chatList);
+                chatAdapter.filter("");
+            }
             registerNetworkCallback();
         }
     }
@@ -161,11 +171,19 @@ public class ChatsFragment extends Fragment {
                 chat.setUnreadCount(snapshot.child("unreadCount").getValue(Long.class));
                 chat.setLastMessage(formatLastMessage(snapshot));
 
+                Long ts = snapshot.child("lastMessage").child("timestamp").getValue(Long.class);
+                if (ts != null) chat.setTimestamp(ts);
+
                 String chatName = snapshot.child("chatName").getValue(String.class);
                 if (chatName != null && !chatName.isEmpty()) chat.setNickname(chatName);
 
                 boolean exists = chatList.stream().anyMatch(c -> chatId.equals(c.getChatId()));
-                if (!exists) chatList.add(chat);
+                if (!exists) {
+                    chatList.add(chat);
+                    if (currentUserSafeEmail != null) {
+                        ChatMetadataManager.getInstance(requireContext()).saveChat(currentUserSafeEmail, chat);
+                    }
+                }
 
                 chatAdapter.updateFullList(chatList);
                 chatAdapter.filter(searchChats.getText().toString());
@@ -188,10 +206,16 @@ public class ChatsFragment extends Fragment {
                         updated.setUnreadCount(snapshot.child("unreadCount").getValue(Long.class));
                         updated.setLastMessage(formatLastMessage(snapshot));
 
+                        Long ts = snapshot.child("lastMessage").child("timestamp").getValue(Long.class);
+                        if (ts != null) updated.setTimestamp(ts);
+
                         String chatName = snapshot.child("chatName").getValue(String.class);
                         if (chatName != null && !chatName.isEmpty()) updated.setNickname(chatName);
 
                         chatList.set(i, updated);
+                        if (currentUserSafeEmail != null) {
+                            ChatMetadataManager.getInstance(requireContext()).saveChat(currentUserSafeEmail, updated);
+                        }
                         chatAdapter.updateFullList(chatList);
                         chatAdapter.filter(searchChats.getText().toString());
                         break;
@@ -203,6 +227,10 @@ public class ChatsFragment extends Fragment {
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
                 String chatId = snapshot.getKey();
                 chatList.removeIf(c -> c.getChatId() != null && c.getChatId().equals(chatId));
+                if (chatId != null && currentUserSafeEmail != null) {
+                    ChatMetadataManager.getInstance(requireContext()).clearChat(currentUserSafeEmail, chatId);
+                    ChatCacheManager.getInstance(requireContext()).clearChat(chatId);
+                }
                 chatAdapter.updateFullList(chatList);
                 chatAdapter.filter(searchChats.getText().toString());
             }
