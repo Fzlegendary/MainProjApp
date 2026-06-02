@@ -1,5 +1,8 @@
 package com.example.mainproj.gates;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Gate {
 
     private String gateNumber;
@@ -11,6 +14,8 @@ public class Gate {
     private int visibilityLevel = 0;
     private int controlLevel = 0;
     private boolean disabled = false;
+    private Map<String, Boolean> allowedUsers = new HashMap<>();
+    private Map<String, Boolean> allowedAdmins = new HashMap<>();
 
     public Gate(String gateNumber, String state, String actionStatus, long lastAckAt, String lastCommandId) {
         this.gateNumber = gateNumber;
@@ -100,5 +105,21 @@ public class Gate {
 
     public void setClickable(boolean clickable) {
         this.isClickable = clickable;
+    }
+
+    public Map<String, Boolean> getAllowedUsers() {
+        return allowedUsers;
+    }
+
+    public void setAllowedUsers(Map<String, Boolean> allowedUsers) {
+        this.allowedUsers = allowedUsers != null ? allowedUsers : new HashMap<>();
+    }
+
+    public Map<String, Boolean> getAllowedAdmins() {
+        return allowedAdmins;
+    }
+
+    public void setAllowedAdmins(Map<String, Boolean> allowedAdmins) {
+        this.allowedAdmins = allowedAdmins != null ? allowedAdmins : new HashMap<>();
     }
 }

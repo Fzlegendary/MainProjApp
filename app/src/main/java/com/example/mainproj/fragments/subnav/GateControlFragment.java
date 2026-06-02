@@ -107,7 +107,21 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                     boolean isDisabled = disabledVal != null && disabledVal;
 
                     if (isDisabled && SessionManager.getRoleLevel() < 2) continue;
-                    if (!SessionManager.canViewGate(vLevel)) continue;
+
+                    boolean isExplicitlyAllowed = false;
+                    DataSnapshot allowedSnap = g.child("allowedUsers");
+                    if (allowedSnap.exists()) {
+                        Boolean val = allowedSnap.child(SessionManager.getCurrentUsername()).getValue(Boolean.class);
+                        isExplicitlyAllowed = (val != null && val);
+                    }
+
+                    if (vLevel == -1) {
+                        if (SessionManager.getRoleLevel() < 2 && !isExplicitlyAllowed) continue;
+                    } else if (!isExplicitlyAllowed && !SessionManager.canViewGate(vLevel)) {
+                        continue;
+                    }
+
+                    DataSnapshot adminSnap = g.child("allowedAdmins");
 
                     Gate gate = new Gate(
                             id,
@@ -119,6 +133,12 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                             cLevel
                     );
                     gate.setDisabled(isDisabled);
+                    if (allowedSnap.exists()) {
+                        gate.setAllowedUsers((java.util.Map<String, Boolean>) allowedSnap.getValue());
+                    }
+                    if (adminSnap.exists()) {
+                        gate.setAllowedAdmins((java.util.Map<String, Boolean>) adminSnap.getValue());
+                    }
                     gateList.add(gate);
                 }
                 if (adapter != null) {

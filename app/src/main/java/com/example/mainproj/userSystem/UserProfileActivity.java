@@ -15,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.example.mainproj.R;
-import com.example.mainproj.admin.AdminGatePermissionSheet;
+import com.example.mainproj.userSystem.UserGatePermissionSheet;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.messaging.MessagingActivity;
@@ -133,8 +133,27 @@ public class UserProfileActivity extends AppCompatActivity {
                     });
         });
 
-        if (SessionManager.isAdmin()) {
+        if (SessionManager.isAdmin() && roleLevel < 2) {
             adminSection.setVisibility(View.VISIBLE);
+
+            boolean isSuper = SessionManager.isSuperAdmin();
+            boolean isTargetRegular = (roleLevel == 0);
+
+            if (isSuper) {
+                btnManageRole.setVisibility(View.VISIBLE);
+            } else {
+                btnManageRole.setVisibility(View.GONE);
+            }
+
+            if (isSuper || isTargetRegular) {
+                btnManageGatePerms.setVisibility(View.VISIBLE);
+            } else {
+                btnManageGatePerms.setVisibility(View.GONE);
+            }
+
+            if (btnManageRole.getVisibility() == View.GONE && btnManageGatePerms.getVisibility() == View.GONE) {
+                adminSection.setVisibility(View.GONE);
+            }
 
             btnManageRole.setOnClickListener(v -> {
                 if (safeEmail != null && !safeEmail.isEmpty()) {
@@ -145,11 +164,11 @@ public class UserProfileActivity extends AppCompatActivity {
             });
 
             btnManageGatePerms.setOnClickListener(v -> {
-                if (safeEmail != null && !safeEmail.isEmpty()) {
-                    AdminGatePermissionSheet sheet = AdminGatePermissionSheet.newInstance("", 0, 0, false);
-                    sheet.show(getSupportFragmentManager(), AdminGatePermissionSheet.TAG);
+                if (username != null && !username.isEmpty()) {
+                    UserGatePermissionSheet sheet = UserGatePermissionSheet.newInstance(username);
+                    sheet.show(getSupportFragmentManager(), UserGatePermissionSheet.TAG);
                 } else {
-                    Toast.makeText(this, "Cannot manage permissions \u2014 no email on record", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Cannot manage permissions \u2014 no username on record", Toast.LENGTH_SHORT).show();
                 }
             });
         }

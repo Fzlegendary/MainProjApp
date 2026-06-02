@@ -48,7 +48,14 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
         holder.tvGateNumber.setText(displayName);
         holder.tvActionStatus.setText(gate.getActionStatus());
 
-        if (gate.isOpen()) {
+        if (gate.isDisabled()) {
+            holder.tvGateStatus.setText("Disabled");
+            holder.tvGateStatus.setBackgroundResource(R.drawable.status_badge_closed);
+            holder.btnToggleGate.setText("DISABLED");
+            holder.btnToggleGate.setBackgroundTintList(
+                    ContextCompat.getColorStateList(holder.itemView.getContext(), R.color.colorTextHint)
+            );
+        } else if (gate.isOpen()) {
             holder.tvGateStatus.setText("Open");
             holder.tvGateStatus.setBackgroundResource(R.drawable.status_badge_open);
             holder.btnToggleGate.setText("CLOSE GATE");
@@ -66,18 +73,33 @@ public class GateAdapter extends RecyclerView.Adapter<GateAdapter.GateViewHolder
 
         boolean busy = gate.getActionStatus().contains("Opening") || gate.getActionStatus().contains("Closing");
 
-        // checks if user can view (visibility + disabled flag)
-        if ((gate.isDisabled() && SessionManager.getRoleLevel() < 2) || gate.getVisibilityLevel() > SessionManager.getRoleLevel()) {
+        // checks if user can view (visibility + disabled flag + allowedUsers)
+        if (gate.isDisabled() && SessionManager.getRoleLevel() < 2) {
             holder.itemView.setVisibility(View.GONE);
             return;
-        } else {
-            holder.itemView.setVisibility(View.VISIBLE);
         }
+        boolean isExplicitlyAllowed = gate.getAllowedUsers() != null
+                && Boolean.TRUE.equals(gate.getAllowedUsers().get(SessionManager.getCurrentUsername()));
+        if (gate.getVisibilityLevel() == -1) {
+            if (SessionManager.getRoleLevel() < 2 && !isExplicitlyAllowed) {
+                holder.itemView.setVisibility(View.GONE);
+                return;
+            }
+        } else if (!isExplicitlyAllowed && gate.getVisibilityLevel() > SessionManager.getRoleLevel()) {
+            holder.itemView.setVisibility(View.GONE);
+            return;
+        }
+        holder.itemView.setVisibility(View.VISIBLE);
 
         holder.btnToggleGate.setEnabled(!busy && gate.isClickable());
 
         // Admin gear icon: shown for roleLevel >= 1 always
-        if (SessionManager.getRoleLevel() >= gate.getControlLevel() && SessionManager.getRoleLevel() != 0) {
+        if (gate.getControlLevel() == -1) {
+            boolean canAdmin = SessionManager.isSuperAdmin()
+                    || (gate.getAllowedAdmins() != null
+                    && Boolean.TRUE.equals(gate.getAllowedAdmins().get(SessionManager.getCurrentUsername())));
+            holder.btnGateAdminSettings.setVisibility(canAdmin ? View.VISIBLE : View.GONE);
+        } else if (SessionManager.getRoleLevel() >= gate.getControlLevel() && SessionManager.getRoleLevel() != 0) {
             holder.btnGateAdminSettings.setVisibility(View.VISIBLE);
         } else {
             holder.btnGateAdminSettings.setVisibility(View.GONE);
