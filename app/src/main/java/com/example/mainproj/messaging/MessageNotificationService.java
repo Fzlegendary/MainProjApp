@@ -22,7 +22,10 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class MessageNotificationService extends Service {
@@ -124,7 +127,10 @@ public class MessageNotificationService extends Service {
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
                 String messageSender = snapshot.child("senderUsername").getValue(String.class);
                 String messageText = snapshot.child("text").getValue(String.class);
-                String messageTime = snapshot.child("time").getValue(String.class);
+                Long messageTs = snapshot.child("timestamp").getValue(Long.class);
+                String messageTime = messageTs != null && messageTs > 0
+                        ? new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(messageTs))
+                        : "";
                 String messageKey = snapshot.getKey();
 
                 if (messageSender == null || messageText == null) return;
@@ -135,11 +141,6 @@ public class MessageNotificationService extends Service {
 
                 String currentOpenChatId = ChatCacheApplication.getCurrentOpenChatId();
                 if (currentOpenChatId != null && currentOpenChatId.equals(chatId)) {
-                    return;
-                }
-
-                MutedChatManager mutedChatManager = MutedChatManager.getInstance(MessageNotificationService.this);
-                if (mutedChatManager.isMuted(chatId)) {
                     return;
                 }
 
@@ -190,9 +191,6 @@ public class MessageNotificationService extends Service {
                     Intent intent = new Intent(foregroundActivity, MainActivity.class);
                     intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
-                })
-                .setNegativeButton("Mute", (dialog, which) -> {
-                    MutedChatManager.getInstance(MessageNotificationService.this).muteChat(chatId);
                 })
                 .setNeutralButton("Dismiss", null)
                 .setCancelable(true)

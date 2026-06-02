@@ -87,6 +87,15 @@ public class MainActivity extends BaseActivity {
 
         ChatCacheManager.getInstance(this).setCachingEnabled(true);
         ChatMetadataManager.getInstance(this).setCachingEnabled(true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Clear Cache")
+                .setMessage("Clear all cached data on startup?")
+                .setPositiveButton("Clear", (dialog, which) ->
+                        SessionManager.clearAllPrefs(this))
+                .setNegativeButton("Keep", null)
+                .show();
+
         cacheAllData();
 
         setupViewPager();
@@ -128,7 +137,6 @@ public class MainActivity extends BaseActivity {
                 runOnUiThread(() -> {
                     checkConnectivityAndShowDialog();
                     cacheAllData();
-                    Action.syncAll(MainActivity.this);
                 });
             }
 
@@ -159,6 +167,7 @@ public class MainActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         checkConnectivityAndShowDialog();
+        cacheAllData();
     }
 
     @Override
@@ -257,8 +266,6 @@ public class MainActivity extends BaseActivity {
                                         String sender = msgSnap
                                                 .child("senderUsername")
                                                 .getValue(String.class);
-                                        String time = msgSnap.child("time")
-                                                .getValue(String.class);
                                         Long tsLong = msgSnap.child("timestamp")
                                                 .getValue(Long.class);
                                         String imageUrl = msgSnap
@@ -273,13 +280,13 @@ public class MainActivity extends BaseActivity {
                                         if (tsLong != null && tsLong > 0) {
                                             if (previousMessage != null
                                                     && previousMessage
-                                                            .getTimestampLong()
+                                                            .getTimestamp()
                                                             > 0) {
                                                 Calendar prevCal =
                                                         Calendar.getInstance();
                                                 prevCal.setTimeInMillis(
                                                         previousMessage
-                                                                .getTimestampLong());
+                                                                .getTimestamp());
                                                 Calendar currCal =
                                                         Calendar.getInstance();
                                                 currCal.setTimeInMillis(tsLong);
@@ -298,7 +305,6 @@ public class MainActivity extends BaseActivity {
                                                                     formatDateMessage(
                                                                             tsLong),
                                                                     "date_separator",
-                                                                    "",
                                                                     tsLong,
                                                                     false));
                                                 }
@@ -308,7 +314,6 @@ public class MainActivity extends BaseActivity {
                                                                 formatDateMessage(
                                                                         tsLong),
                                                                 "date_separator",
-                                                                "",
                                                                 tsLong,
                                                                 false));
                                             }
@@ -317,7 +322,6 @@ public class MainActivity extends BaseActivity {
                                         MessageModel msg = new MessageModel(
                                                 text != null ? text : "",
                                                 sender,
-                                                time != null ? time : "",
                                                 tsLong != null ? tsLong : 0L,
                                                 sentByMe);
                                         msg.setMessageId(msgSnap.getKey());

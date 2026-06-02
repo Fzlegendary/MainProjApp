@@ -1,9 +1,11 @@
 package com.example.mainproj.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -12,6 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.mainproj.R;
+import com.example.mainproj.SharedPrefDisplayerActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -67,6 +70,14 @@ public class ProfileFragment extends Fragment {
             btnBack.setOnClickListener(v -> {
                 showingSettings = false;
                 showProfile();
+            });
+        }
+
+        Button btnPrefViewer = settingsView.findViewById(R.id.btnSharedPrefViewer);
+        if (btnPrefViewer != null) {
+            btnPrefViewer.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), SharedPrefDisplayerActivity.class);
+                startActivity(intent);
             });
         }
     }

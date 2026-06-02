@@ -52,12 +52,6 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                     return;
                 }
 
-                MutedChatManager mutedChatManager = MutedChatManager.getInstance(this);
-                if (mutedChatManager.isMuted(chatId)) {
-                    Log.d(TAG, "Chat is muted, suppressing notification for: " + chatId);
-                    return;
-                }
-
                 if (ChatCacheApplication.isAppInForeground()) {
                     showInAppDialog(chatId, senderUsername, messageText);
                 } else {
@@ -101,9 +95,6 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                     Intent intent = new Intent(foregroundActivity, MainActivity.class);
                     intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
-                })
-                .setNegativeButton("Mute", (dialog, which) -> {
-                    MutedChatManager.getInstance(this).muteChat(chatId);
                 })
                 .setNeutralButton("Dismiss", null)
                 .setCancelable(true)

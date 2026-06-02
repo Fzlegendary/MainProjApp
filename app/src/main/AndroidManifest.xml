@@ -43,6 +43,9 @@
         <activity
             android:name=".userSystem.sign_up_activity"
             android:exported="false" />
+        <activity
+            android:name=".SharedPrefDisplayerActivity"
+            android:exported="false" />
         
 
         <service

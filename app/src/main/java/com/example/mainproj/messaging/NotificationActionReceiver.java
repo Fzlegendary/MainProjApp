@@ -10,10 +10,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class NotificationActionReceiver extends BroadcastReceiver {
@@ -88,9 +85,6 @@ public class NotificationActionReceiver extends BroadcastReceiver {
         messageData.put("senderUsername", currentUsername);
         messageData.put("timestamp", System.currentTimeMillis());
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        messageData.put("time", sdf.format(new Date()));
-
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 DatabaseReference chatRef = FirebaseDatabase.getInstance()
@@ -98,7 +92,6 @@ public class NotificationActionReceiver extends BroadcastReceiver {
 
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
                 lastMessageUpdate.put("lastMessage", replyText);
-                lastMessageUpdate.put("time", sdf.format(new Date()));
 
                 chatRef.updateChildren(lastMessageUpdate);
 

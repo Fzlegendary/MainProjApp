@@ -54,8 +54,6 @@ public class ChatMetadataManager {
             jsonObject.put("username", chat.getUsername() != null ? chat.getUsername() : "");
             jsonObject.put("nickname", chat.getNickname() != null ? chat.getNickname() : "");
             jsonObject.put("lastMessage", chat.getLastMessage() != null ? chat.getLastMessage() : "");
-            jsonObject.put("time", chat.getTime() != null ? chat.getTime() : "");
-            jsonObject.put("bio", chat.getBio() != null ? chat.getBio() : "");
             jsonObject.put("lastSeen", chat.getLastSeen() != null ? chat.getLastSeen() : 0);
             jsonObject.put("timestamp", chat.getTimestamp() != null ? chat.getTimestamp() : 0);
             jsonObject.put("online", chat.isOnline());
@@ -126,7 +124,6 @@ public class ChatMetadataManager {
             chat.setUsername(jsonObject.optString("username", ""));
             chat.setNickname(jsonObject.optString("nickname", ""));
             chat.setLastMessage(jsonObject.optString("lastMessage", ""));
-            chat.setBio(jsonObject.optString("bio", ""));
             chat.setLastSeen(jsonObject.has("lastSeen") ? jsonObject.optLong("lastSeen", 0) : null);
             chat.setTimestamp(jsonObject.has("timestamp") ? jsonObject.optLong("timestamp", 0) : null);
             chat.setOnline(jsonObject.optBoolean("online", false));

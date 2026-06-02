@@ -14,7 +14,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -99,7 +102,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         } else if (holder instanceof SentViewHolder) {
             SentViewHolder vh = (SentViewHolder) holder;
             vh.tvMessage.setText(msg.getText());
-            vh.tvMessageTime.setText(msg.getTimestamp());
+            vh.tvMessageTime.setText(formatTime(msg.getTimestamp()));
 
             vh.itemView.setOnLongClickListener(v -> {
                 int adapterPos = holder.getAdapterPosition();
@@ -128,12 +131,12 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             ReceivedViewHolder vh = (ReceivedViewHolder) holder;
             vh.tvMessageNickname.setText(msg.getSenderUsername());
             vh.tvMessage.setText(msg.getText());
-            vh.tvMessageTime.setText(msg.getTimestamp());
+            vh.tvMessageTime.setText(formatTime(msg.getTimestamp()));
 
         } else if (holder instanceof ImageSentViewHolder) {
             ImageSentViewHolder vh = (ImageSentViewHolder) holder;
             loadImage(vh.ivMessageImage, msg.getImageUrl());
-            vh.tvMessageTime.setText(msg.getTimestamp());
+            vh.tvMessageTime.setText(formatTime(msg.getTimestamp()));
             if (msg.getText() != null && !msg.getText().isEmpty()) {
                 vh.tvMessageCaption.setVisibility(View.VISIBLE);
                 vh.tvMessageCaption.setText(msg.getText());
@@ -145,7 +148,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             ImageReceivedViewHolder vh = (ImageReceivedViewHolder) holder;
             vh.tvMessageNickname.setText(msg.getSenderUsername());
             loadImage(vh.ivMessageImage, msg.getImageUrl());
-            vh.tvMessageTime.setText(msg.getTimestamp());
+            vh.tvMessageTime.setText(formatTime(msg.getTimestamp()));
             if (msg.getText() != null && !msg.getText().isEmpty()) {
                 vh.tvMessageCaption.setVisibility(View.VISIBLE);
                 vh.tvMessageCaption.setText(msg.getText());
@@ -153,6 +156,11 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                 vh.tvMessageCaption.setVisibility(View.GONE);
             }
         }
+    }
+
+    private String formatTime(long millis) {
+        if (millis <= 0) return "";
+        return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(millis));
     }
 
     private void loadImage(ImageView imageView, String url) {

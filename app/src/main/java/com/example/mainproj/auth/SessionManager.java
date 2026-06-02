@@ -121,8 +121,6 @@ public class SessionManager {
     public static void clearAllPrefs(Context context) {
         String[] prefNames = {
                 "MainProjPrefs",
-                "action_queue",
-                "muted_chats_prefs",
                 "chat_metadata",
                 "message_cache"
         };

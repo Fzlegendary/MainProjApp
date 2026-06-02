@@ -17,7 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.example.mainproj.Action;
 import com.example.mainproj.R;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -25,8 +24,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -176,10 +174,30 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                             notifyDataSetChanged();
 
                             if (!NetworkMonitor.getInstance(context).isConnected()) {
-                                ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
-                                ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
-                                Action.enqueue(context, new Action("delete_chat", selectedChat.getChatId(), null, null));
-                                Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                if (context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                        .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                                    ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                    ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                    Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+                                new AlertDialog.Builder(context)
+                                        .setTitle("No Internet Connection")
+                                        .setMessage("No internet connection, action will not be synced out of device.")
+                                        .setPositiveButton("OK", (d, w) -> {
+                                            ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                            ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                            Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                            context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                                    .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                            ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                            ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                            Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .setNeutralButton("Cancel", null)
+                                        .show();
                                 return;
                             }
 
@@ -224,14 +242,24 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
 
                 if (chat.getChatId() != null) {
                     if (!NetworkMonitor.getInstance(context).isConnected()) {
-                        ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
-                        try {
-                            JSONObject payload = new JSONObject();
-                            payload.put("chatName", newName);
-                            Action.enqueue(context, new Action("rename_chat", chat.getChatId(), null, payload.toString()));
-                        } catch (JSONException e) {
-                            // fall through
+                        if (context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                            ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                            return;
                         }
+                        new AlertDialog.Builder(context)
+                                .setTitle("No Internet Connection")
+                                .setMessage("No internet connection, action will not be synced out of device.")
+                                .setPositiveButton("OK", (d, w) -> {
+                                    ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                                })
+                                .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                    context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                            .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                    ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                                })
+                                .setNeutralButton("Cancel", null)
+                                .show();
                         return;
                     }
                     DatabaseReference chatNameRef = FirebaseDatabase.getInstance()

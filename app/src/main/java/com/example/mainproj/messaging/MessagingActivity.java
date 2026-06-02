@@ -1,5 +1,6 @@
 package com.example.mainproj.messaging;
 
+import android.app.AlertDialog;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -32,7 +33,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.example.mainproj.Action;
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.userSystem.Login_activity;
@@ -55,14 +55,12 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+
 
 public class MessagingActivity extends AppCompatActivity implements MessageAdapter.OnMessageDeleteListener {
 
@@ -170,13 +168,39 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                         .setMessage("Are you sure you want to delete this chat?")
                         .setPositiveButton("Delete", (dialog, which) -> {
                             if (!NetworkMonitor.getInstance(this).isConnected()) {
-                                ChatCacheManager.getInstance(this).clearChat(chatId);
-                                if (currentUserSafeEmail != null) {
-                                    ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                        .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                                    ChatCacheManager.getInstance(this).clearChat(chatId);
+                                    if (currentUserSafeEmail != null) {
+                                        ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                    }
+                                    Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                    finish();
+                                    return;
                                 }
-                                Action.enqueue(this, new Action("delete_chat", chatId, null, null));
-                                Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
-                                finish();
+                                new AlertDialog.Builder(this)
+                                        .setTitle("No Internet Connection")
+                                        .setMessage("No internet connection, action will not be synced out of device.")
+                                        .setPositiveButton("OK", (d, w) -> {
+                                            ChatCacheManager.getInstance(this).clearChat(chatId);
+                                            if (currentUserSafeEmail != null) {
+                                                ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                            }
+                                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        })
+                                        .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                            getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                                    .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                            ChatCacheManager.getInstance(this).clearChat(chatId);
+                                            if (currentUserSafeEmail != null) {
+                                                ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                            }
+                                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        })
+                                        .setNeutralButton("Cancel", null)
+                                        .show();
                                 return;
                             }
                             ChatCacheManager.getInstance(this).clearAll();
@@ -370,8 +394,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
                     String text = msgSnap.child("text").getValue(String.class);
                     String senderUsername = msgSnap.child("senderUsername").getValue(String.class);
-                    String time = msgSnap.child("time").getValue(String.class);
-                    Long timestampLong = msgSnap.child("timestamp").getValue(Long.class);
+                    Long timestamp = msgSnap.child("timestamp").getValue(Long.class);
                     String imageUrl = msgSnap.child("imageUrl").getValue(String.class);
 
                     if ((text == null || text.isEmpty()) && imageUrl == null) continue;
@@ -382,31 +405,30 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                     String textVal = text != null ? text : "";
                     MessageModel msg = new MessageModel(
                             textVal, senderUsername,
-                            time != null ? time : "",
-                            timestampLong != null ? timestampLong : 0L,
+                            timestamp != null ? timestamp : 0L,
                             sentByMe);
                     msg.setMessageId(messageId);
                     msg.setImageUrl(imageUrl);
 
-                    if (timestampLong != null && timestampLong > 0) {
-                        if (previousMessage != null && previousMessage.getTimestampLong() > 0) {
+                    if (timestamp != null && timestamp > 0) {
+                        if (previousMessage != null && previousMessage.getTimestamp() > 0) {
                             Calendar prevCal = Calendar.getInstance();
-                            prevCal.setTimeInMillis(previousMessage.getTimestampLong());
+                            prevCal.setTimeInMillis(previousMessage.getTimestamp());
 
                             Calendar currCal = Calendar.getInstance();
-                            currCal.setTimeInMillis(timestampLong);
+                            currCal.setTimeInMillis(timestamp);
 
                             if (prevCal.get(Calendar.YEAR) != currCal.get(Calendar.YEAR) ||
                                     prevCal.get(Calendar.DAY_OF_YEAR) != currCal.get(Calendar.DAY_OF_YEAR)) {
                                 MessageModel separator = new MessageModel(
-                                        formatDateMessage(timestampLong),
-                                        "date_separator", "", timestampLong, false);
+                                        formatDateMessage(timestamp),
+                                        "date_separator", timestamp, false);
                                 messagesList.add(separator);
                             }
                         } else {
                             MessageModel separator = new MessageModel(
-                                    formatDateMessage(timestampLong),
-                                    "date_separator", "", timestampLong, false);
+                                    formatDateMessage(timestamp),
+                                    "date_separator", timestamp, false);
                             messagesList.add(separator);
                         }
                     }
@@ -448,59 +470,80 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     private void sendTextMessageOnly(String text) {
         if (chatId == null || currentUsername == null) return;
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String timeStr = sdf.format(new Date());
         long now = System.currentTimeMillis();
 
         if (!NetworkMonitor.getInstance(this).isConnected()) {
-            String localId = "local_" + UUID.randomUUID().toString();
-            MessageModel msg = new MessageModel(text, currentUsername, timeStr, now, true);
-            msg.setMessageId(localId);
-            messagesList.add(msg);
-            messageAdapter.notifyDataSetChanged();
-            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-            ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+            if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                    .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                String localId = "local_" + UUID.randomUUID().toString();
+                MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                msg.setMessageId(localId);
+                messagesList.add(msg);
+                messageAdapter.notifyDataSetChanged();
+                messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
 
-            ChatModel chat = new ChatModel();
-            chat.setChatId(chatId);
-            chat.setUsername(partnerUsername);
-            chat.setLastMessage(currentUsername + ": " + text);
-            chat.setTimestamp(now);
-            if (currentUserSafeEmail != null) {
-                ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
-            }
-
-            Map<String, Object> messageData = new HashMap<>();
-            messageData.put("text", text);
-            messageData.put("senderUsername", currentUsername);
-            messageData.put("time", timeStr);
-            String payloadJson;
-            try {
-                JSONObject payload = new JSONObject();
-                for (Map.Entry<String, Object> e : messageData.entrySet()) {
-                    payload.put(e.getKey(), e.getValue());
+                ChatModel chat = new ChatModel();
+                chat.setChatId(chatId);
+                chat.setUsername(partnerUsername);
+                chat.setLastMessage(currentUsername + ": " + text);
+                chat.setTimestamp(now);
+                if (currentUserSafeEmail != null) {
+                    ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
                 }
-                payloadJson = payload.toString();
-            } catch (JSONException e) {
-                payloadJson = "{}";
-            }
-            Action.enqueue(this, new Action("send_message", chatId, localId, payloadJson));
 
-            Map<String, Object> headerUpdate = new HashMap<>();
-            headerUpdate.put("lastMessage/text", text);
-            headerUpdate.put("lastMessage/senderUsername", currentUsername);
-            headerUpdate.put("lastMessage/timestamp", now);
-            try {
-                JSONObject headerPayload = new JSONObject();
-                for (Map.Entry<String, Object> e : headerUpdate.entrySet()) {
-                    headerPayload.put(e.getKey(), e.getValue());
-                }
-                Action.enqueue(this, new Action("update_chat_header", chatId, null, headerPayload.toString()));
-            } catch (JSONException e) {
-                // fall through
+                messageInput.setText("");
+                return;
             }
 
-            messageInput.setText("");
+            new AlertDialog.Builder(this)
+                    .setTitle("No Internet Connection")
+                    .setMessage("No internet connection, action will not be synced out of device.")
+                    .setPositiveButton("OK", (d, w) -> {
+                        String localId = "local_" + UUID.randomUUID().toString();
+                        MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                        msg.setMessageId(localId);
+                        messagesList.add(msg);
+                        messageAdapter.notifyDataSetChanged();
+                        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+                        ChatModel chat = new ChatModel();
+                        chat.setChatId(chatId);
+                        chat.setUsername(partnerUsername);
+                        chat.setLastMessage(currentUsername + ": " + text);
+                        chat.setTimestamp(now);
+                        if (currentUserSafeEmail != null) {
+                            ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+                        }
+
+                        messageInput.setText("");
+                    })
+                    .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                        getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+
+                        String localId = "local_" + UUID.randomUUID().toString();
+                        MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                        msg.setMessageId(localId);
+                        messagesList.add(msg);
+                        messageAdapter.notifyDataSetChanged();
+                        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+                        ChatModel chat = new ChatModel();
+                        chat.setChatId(chatId);
+                        chat.setUsername(partnerUsername);
+                        chat.setLastMessage(currentUsername + ": " + text);
+                        chat.setTimestamp(now);
+                        if (currentUserSafeEmail != null) {
+                            ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+                        }
+
+                        messageInput.setText("");
+                    })
+                    .setNeutralButton("Cancel", null)
+                    .show();
             return;
         }
 
@@ -508,7 +551,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         messageData.put("text", text);
         messageData.put("senderUsername", currentUsername);
         messageData.put("timestamp", ServerValue.TIMESTAMP);
-        messageData.put("time", timeStr);
 
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -579,9 +621,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         messageData.put("timestamp", ServerValue.TIMESTAMP);
         messageData.put("imageUrl", imageUrl);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        messageData.put("time", sdf.format(new Date()));
-
         messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
             sendButton.setEnabled(true);
             if (task.isSuccessful()) {
@@ -616,10 +655,30 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         if (message.getMessageId() == null || chatId == null) return;
 
         if (!NetworkMonitor.getInstance(this).isConnected()) {
-            messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
-            messageAdapter.notifyDataSetChanged();
-            ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
-            Action.enqueue(this, new Action("delete_message", chatId, message.getMessageId(), null));
+            if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                    .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                messageAdapter.notifyDataSetChanged();
+                ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle("No Internet Connection")
+                    .setMessage("No internet connection, action will not be synced out of device.")
+                    .setPositiveButton("OK", (d, w) -> {
+                        messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                        messageAdapter.notifyDataSetChanged();
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                    })
+                    .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                        getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                        messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                        messageAdapter.notifyDataSetChanged();
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                    })
+                    .setNeutralButton("Cancel", null)
+                    .show();
             return;
         }
 

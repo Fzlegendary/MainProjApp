@@ -24,6 +24,8 @@ public class ChatCacheApplication extends Application implements Application.Act
         Log.d("ChatCacheApplication", "Channels created on startup");
         fetchFCMToken();
         SessionManager.init();
+        getSharedPreferences("action_queue", MODE_PRIVATE).edit().clear().apply();
+        getSharedPreferences("muted_chats_prefs", MODE_PRIVATE).edit().clear().apply();
     }
 
     private void fetchFCMToken() {
