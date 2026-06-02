@@ -95,6 +95,7 @@ public class SessionManager {
     }
 
     public static void setUserRole(String targetSafeEmail, String newRole, int newLevel) {
+        if (!canModifyUser(newLevel)) return;
         Map<String, Object> updates = new HashMap<>();
         updates.put("role", newRole);
         updates.put("roleLevel", newLevel);
@@ -116,6 +117,34 @@ public class SessionManager {
         FirebaseDatabase.getInstance()
                 .getReference("gates").child(gateId).child("disabled")
                 .setValue(disabled);
+    }
+
+    public static void sendFriendRequest(String targetSafeEmail, String targetUsername) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.getEmail() == null || currentUsername.isEmpty()) return;
+
+        String rawEmail = user.getEmail();
+        String mySafeEmail = currentSafeEmail.isEmpty() ? rawEmail.replace(".", "_") : currentSafeEmail;
+
+        Map<String, Object> requestData = new HashMap<>();
+        requestData.put("from", rawEmail);
+        requestData.put("fromUsername", currentUsername);
+        requestData.put("timestamp", System.currentTimeMillis());
+        requestData.put("status", "pending");
+
+        FirebaseDatabase.getInstance()
+                .getReference("friendRequests").child(targetSafeEmail)
+                .child(currentUsername).setValue(requestData);
+
+        Map<String, Object> sentData = new HashMap<>();
+        sentData.put("to", targetSafeEmail);
+        sentData.put("toUsername", targetUsername);
+        sentData.put("timestamp", System.currentTimeMillis());
+        sentData.put("status", "pending");
+
+        FirebaseDatabase.getInstance()
+                .getReference("sentRequests").child(mySafeEmail)
+                .child(targetUsername).setValue(sentData);
     }
 
     public static void clearAllPrefs(Context context) {

@@ -67,7 +67,7 @@ public class FriendRequestAdapter extends RecyclerView.Adapter<FriendRequestAdap
         holder.ivProfilePicture.setOnClickListener(v -> {
             if (context instanceof FragmentActivity) {
                 UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                        request.getFromUsername(), "", "", false
+                        request.getFromUsername(), "", 0L, false
                 );
                 sheet.show(
                         ((FragmentActivity) context).getSupportFragmentManager(),

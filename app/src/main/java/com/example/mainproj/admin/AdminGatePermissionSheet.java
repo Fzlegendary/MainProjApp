@@ -138,15 +138,13 @@ public class AdminGatePermissionSheet extends BottomSheetDialogFragment {
 
         adapter = new UserPermissionAdapter(userList, SessionManager.getRoleLevel() >= 2 ? user -> {
             UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                    user.username, "", "", false, user.safeEmail, user.roleLevel
+                    user.username, "", 0L, false, user.safeEmail, user.roleLevel
             );
             sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
                 @Override
                 public void onSendMessage(String username) {}
                 @Override
                 public void onViewProfile(String username) {}
-                @Override
-                public void onBlockUser(String username) {}
                 @Override
                 public void onManageRole(String username, String safeEmail) {
                     showRoleChangeDialog(username, safeEmail, user.roleLevel);

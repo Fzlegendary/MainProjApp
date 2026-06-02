@@ -6,8 +6,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,16 +17,26 @@ import androidx.fragment.app.Fragment;
 
 import com.example.mainproj.R;
 import com.example.mainproj.SharedPrefDisplayerActivity;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class ProfileFragment extends Fragment {
 
     private boolean showingSettings = false;
     private View profileView;
     private View settingsView;
-    private TextView tvUsername, tvEmail;
+    private TextView tvUsername, tvEmail, tvBio;
+    private EditText etBioInput;
+    private MaterialButton btnSaveBio;
     private ImageView ivAvatar;
+
+    private String safeEmail;
 
     @Nullable
     @Override
@@ -40,7 +52,18 @@ public class ProfileFragment extends Fragment {
         settingsView = view.findViewById(R.id.settingsContent);
         tvUsername = view.findViewById(R.id.tvUsername);
         tvEmail = view.findViewById(R.id.tvEmail);
+        tvBio = view.findViewById(R.id.tvBio);
         ivAvatar = view.findViewById(R.id.ivAvatar);
+        etBioInput = view.findViewById(R.id.etBioInput);
+        btnSaveBio = view.findViewById(R.id.btnSaveBio);
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null && user.getEmail() != null) {
+            safeEmail = user.getEmail().replace(".", "_");
+            loadBio();
+        }
+
+        btnSaveBio.setOnClickListener(v -> saveBio());
 
         setupProfile();
         setupSettings();
@@ -62,6 +85,40 @@ public class ProfileFragment extends Fragment {
                 ivAvatar.setImageURI(user.getPhotoUrl());
             }
         }
+    }
+
+    private void loadBio() {
+        if (safeEmail == null) return;
+        DatabaseReference bioRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(safeEmail).child("bio");
+        bioRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String bio = snapshot.getValue(String.class);
+                if (bio != null && !bio.isEmpty()) {
+                    tvBio.setText(bio);
+                    etBioInput.setText(bio);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private void saveBio() {
+        if (safeEmail == null) return;
+        String bio = etBioInput.getText().toString().trim();
+        DatabaseReference bioRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(safeEmail).child("bio");
+        bioRef.setValue(bio).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                tvBio.setText(bio.isEmpty() ? "No bio yet." : bio);
+                Toast.makeText(requireContext(), "Bio saved", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to save bio", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupSettings() {
@@ -91,6 +148,11 @@ public class ProfileFragment extends Fragment {
         showingSettings = true;
         profileView.setVisibility(View.GONE);
         settingsView.setVisibility(View.VISIBLE);
+        String currentBio = tvBio.getText().toString();
+        if (currentBio.equals("No bio yet.")) currentBio = "";
+        if (etBioInput.getText().toString().trim().isEmpty()) {
+            etBioInput.setText(currentBio);
+        }
     }
 
     public boolean isShowingSettings() {

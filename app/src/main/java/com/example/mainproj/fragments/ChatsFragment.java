@@ -24,6 +24,7 @@ import com.example.mainproj.messaging.ChatCacheApplication;
 import com.example.mainproj.messaging.ChatCacheManager;
 import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -36,8 +37,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+
 
 public class ChatsFragment extends Fragment {
 
@@ -318,7 +318,24 @@ public class ChatsFragment extends Fragment {
                             for (DataSnapshot userSnap : snapshot.getChildren()) {
                                 String targetEmail = userSnap.child("email").getValue(String.class);
                                 if (targetEmail != null) {
-                                    sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl, targetUsername);
+                                    FirebaseDatabase.getInstance()
+                                            .getReference("users").child(safeCurrentEmail)
+                                            .child("friends").child(targetUsername)
+                                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                                @Override
+                                                public void onDataChange(@NonNull DataSnapshot friendSnap) {
+                                                    if (friendSnap.exists()) {
+                                                        Toast.makeText(requireContext(), "Friend already added", Toast.LENGTH_SHORT).show();
+                                                    } else {
+                                                        sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl, targetUsername);
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onCancelled(@NonNull DatabaseError error) {
+                                                    sendRequestToUser(targetEmail, safeCurrentEmail, myUsername, myImageUrl, targetUsername);
+                                                }
+                                            });
                                     return;
                                 }
                             }
@@ -335,32 +352,16 @@ public class ChatsFragment extends Fragment {
 
     private void sendRequestToUser(String targetEmail, String fromEmail, String fromUsername, String fromImageUrl, String targetUsername) {
         String safeTargetEmail = targetEmail.replace(".", "_");
-        DatabaseReference requestsRef = FirebaseDatabase.getInstance()
-                .getReference("friendRequests").child(safeTargetEmail);
+        SessionManager.sendFriendRequest(safeTargetEmail, targetUsername);
 
-        Map<String, Object> requestData = new HashMap<>();
-        requestData.put("from", fromEmail);
-        requestData.put("fromUsername", fromUsername != null ? fromUsername : "Unknown");
-        requestData.put("fromImageUrl", fromImageUrl != null ? fromImageUrl : "");
-        requestData.put("timestamp", System.currentTimeMillis());
-        requestData.put("status", "pending");
+        if (fromImageUrl != null && !fromImageUrl.isEmpty()) {
+            FirebaseDatabase.getInstance()
+                    .getReference("friendRequests").child(safeTargetEmail)
+                    .child(fromUsername).child("fromImageUrl")
+                    .setValue(fromImageUrl);
+        }
 
-        requestsRef.child(fromUsername).setValue(requestData).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                DatabaseReference sentRef = FirebaseDatabase.getInstance()
-                        .getReference("sentRequests").child(fromEmail);
-                Map<String, Object> sentData = new HashMap<>();
-                sentData.put("to", targetEmail.replace(".", "_"));
-                sentData.put("toUsername", targetUsername);
-                sentData.put("timestamp", System.currentTimeMillis());
-                sentData.put("status", "pending");
-                sentRef.child(targetUsername).setValue(sentData);
-
-                Toast.makeText(requireContext(), "Friend request sent to " + targetUsername, Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(requireContext(), "Failed to send request", Toast.LENGTH_SHORT).show();
-            }
-        });
+        Toast.makeText(requireContext(), "Friend request sent to " + targetUsername, Toast.LENGTH_SHORT).show();
     }
 
     private void showFriendRequestsDialog() {

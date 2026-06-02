@@ -46,7 +46,9 @@
         <activity
             android:name=".SharedPrefDisplayerActivity"
             android:exported="false" />
-        
+        <activity
+            android:name=".userSystem.UserProfileActivity"
+            android:exported="false" />
 
         <service
             android:name=".messaging.MessageNotificationService"

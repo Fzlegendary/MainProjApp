@@ -1,0 +1,281 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorBackground">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:minHeight="?attr/actionBarSize"
+        app:titleTextColor="@color/colorFabIcon"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationContentDescription="Back" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="32dp"
+            android:background="@color/colorSurface">
+
+            <ImageView
+                android:id="@+id/ivProfilePicture"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:src="@android:drawable/sym_def_app_icon"
+                android:tint="@color/colorAvatarIcon"
+                android:padding="22dp"
+                android:scaleType="centerInside"
+                android:contentDescription="Profile picture" />
+
+            <TextView
+                android:id="@+id/tvUsername"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:text="Username"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorTextPrimary" />
+
+            <TextView
+                android:id="@+id/tvEmail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="4dp"
+                android:text="email@domain.com"
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary" />
+
+            <TextView
+                android:id="@+id/tvPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="2dp"
+                android:text=""
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvRoleBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:paddingHorizontal="16dp"
+                android:gravity="center"
+                android:text="User"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorFabIcon"
+                android:background="@drawable/bg_avatar_circle" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:backgroundTint="@color/colorOnlineDot"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Online"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/colorDivider" />
+
+            <TextView
+                android:id="@+id/tvBio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginHorizontal="32dp"
+                android:text="No bio yet."
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary"
+                android:gravity="center"
+                android:maxLines="5"
+                android:ellipsize="end" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"
+                android:background="@color/colorDivider" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="STATISTICS"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorTextHint"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/tvJoinedDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="12dp"
+                android:text="Joined: Unknown"
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary" />
+
+            <TextView
+                android:id="@+id/tvMessageCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_gravity="center_horizontal"
+                android:text="Messages: 0"
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary" />
+
+            <LinearLayout
+                android:id="@+id/friendsRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvFriendsCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Friends: 0"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnViewFriends"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="8dp"
+                    android:text="View"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorFabIcon"
+                    app:backgroundTint="@color/colorPrimary"
+                    app:cornerRadius="14dp"
+                    app:strokeWidth="0dp" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"
+                android:background="@color/colorDivider" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendMessage"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginHorizontal="24dp"
+                android:text="Send Message"
+                android:textSize="15sp"
+                android:textColor="@color/colorFabIcon"
+                app:backgroundTint="@color/colorFab"
+                app:cornerRadius="14dp"
+                app:strokeWidth="0dp"/>
+
+            <LinearLayout
+                android:id="@+id/adminSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="24dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@color/colorDivider" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:text="ADMIN CONTROLS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorWarning"
+                    android:letterSpacing="0.08" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnManageRole"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginHorizontal="24dp"
+                    android:layout_marginTop="14dp"
+                    android:text="Manage Role"
+                    android:textSize="15sp"
+                    android:textColor="@color/colorFabIcon"
+                    app:backgroundTint="@color/colorWarning"
+                    app:cornerRadius="14dp"
+                    app:strokeWidth="0dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnManageGatePerms"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginHorizontal="24dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Manage Gate Permissions"
+                    android:textSize="15sp"
+                    android:textColor="@color/colorFabIcon"
+                    app:backgroundTint="@color/colorPurple"
+                    app:cornerRadius="14dp"
+                    app:strokeWidth="0dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

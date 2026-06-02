@@ -2,6 +2,7 @@ package com.example.mainproj.messaging;
 
 import android.app.AlertDialog;
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -35,6 +36,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
+import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -74,6 +76,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private String chatId;
     private String partnerUsername;
+    private String partnerSafeEmail;
     private String currentUsername;
     private String currentUserSafeEmail;
 
@@ -108,6 +111,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         chatId = getIntent().getStringExtra("chatId");
         partnerUsername = getIntent().getStringExtra("username");
+        partnerSafeEmail = getIntent().getStringExtra("safeEmail");
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -153,6 +157,23 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         profileEmail = findViewById(R.id.profileEmail);
 
         loadUserProfile();
+
+        findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
+            UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
+                    partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
+            );
+            sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
+                @Override
+                public void onSendMessage(String username) {}
+                @Override
+                public void onViewProfile(String username) {
+                    Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
+                    intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
+                    startActivity(intent);
+                }
+            });
+            sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        });
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
             SessionManager.clearAllPrefs(this);
@@ -258,17 +279,18 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             return false;
         });
 
-        if (chatId == null) {
-            Toast.makeText(this, "Error: No chat ID", Toast.LENGTH_SHORT).show();
+        if (chatId == null && partnerUsername == null) {
+            Toast.makeText(this, "Error: No user specified", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+        if (chatId != null) {
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+        }
         loadMessages();
     }
 
     public void loadMessages() {
-        // Resolve username: try cache first, then Firebase if online
         if (currentUsername == null) {
             currentUsername = ChatCacheApplication.getCurrentUsername();
         }
@@ -317,7 +339,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                 }
             }
 
-            attachMessagesListener();
+            if (messagesRef != null) attachMessagesListener();
 
         } else {
             if (chatId != null && ChatCacheManager.isCachingEnabled()) {
@@ -457,7 +479,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private void sendMessage() {
         String text = messageInput.getText().toString().trim();
-        if (chatId == null || currentUsername == null) return;
+        if (currentUsername == null) return;
         if (text.isEmpty() && pendingImageFile == null) return;
 
         if (pendingImageFile != null) {
@@ -467,8 +489,45 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         }
     }
 
+    private void setupNewChat() {
+        if (chatId == null || currentUsername == null || partnerUsername == null) return;
+
+        Map<String, Object> chatData = new HashMap<>();
+        chatData.put("lastMessage", "");
+        chatData.put("timestamp", ServerValue.TIMESTAMP);
+        chatData.put("lastSeen", ServerValue.TIMESTAMP);
+        chatData.put("online", false);
+        chatData.put("createdAt", ServerValue.TIMESTAMP);
+
+        Map<String, Object> participants = new HashMap<>();
+        if (currentUserSafeEmail != null) participants.put(currentUserSafeEmail, true);
+        if (partnerSafeEmail != null) participants.put(partnerSafeEmail, true);
+        chatData.put("participants", participants);
+        FirebaseDatabase.getInstance().getReference("chats").child(chatId).setValue(chatData);
+
+        if (partnerSafeEmail != null && currentUsername != null) {
+            Map<String, Object> partnerChatEntry = new HashMap<>();
+            partnerChatEntry.put("username", currentUsername);
+            FirebaseDatabase.getInstance().getReference("users").child(partnerSafeEmail).child("chats").child(chatId).setValue(partnerChatEntry);
+        }
+
+        createAndEnrichChatAsync();
+
+        if (messagesListener != null) {
+            messagesRef.removeEventListener(messagesListener);
+            messagesListener = null;
+        }
+        attachMessagesListener();
+    }
+
     private void sendTextMessageOnly(String text) {
-        if (chatId == null || currentUsername == null) return;
+        if (currentUsername == null) return;
+        if (chatId == null && partnerUsername != null) {
+            chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            setupNewChat();
+        }
+        if (chatId == null) return;
 
         long now = System.currentTimeMillis();
 
@@ -570,6 +629,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                             .getReference("users").child(currentUserSafeEmail)
                             .child("chats").child(chatId);
                     userChatRef.updateChildren(lastMessageUpdate);
+
+                    incrementMessageCount();
                 }
             } else {
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
@@ -577,8 +638,86 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         });
     }
 
+    private void incrementMessageCount() {
+        if (currentUserSafeEmail == null) return;
+        DatabaseReference countRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(currentUserSafeEmail).child("messageCount");
+        countRef.runTransaction(new com.google.firebase.database.Transaction.Handler() {
+            @NonNull
+            @Override
+            public com.google.firebase.database.Transaction.Result doTransaction(@NonNull com.google.firebase.database.MutableData mutableData) {
+                Long current = mutableData.getValue(Long.class);
+                mutableData.setValue(current != null ? current + 1 : 1);
+                return com.google.firebase.database.Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(DatabaseError error, boolean committed, DataSnapshot snapshot) {}
+        });
+    }
+
+    private void createAndEnrichChatAsync() {
+        if (currentUserSafeEmail == null || partnerSafeEmail == null || chatId == null) return;
+        if (currentUsername == null || partnerUsername == null) return;
+
+        DatabaseReference myRef = FirebaseDatabase.getInstance().getReference("users").child(currentUserSafeEmail);
+        DatabaseReference partnerRef = FirebaseDatabase.getInstance().getReference("users").child(partnerSafeEmail);
+
+        myRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot mySnap) {
+                String myNickname = mySnap.child("nickname").getValue(String.class);
+                String myNick = myNickname != null ? myNickname : "";
+                String myImg = mySnap.child("imageUrl").getValue(String.class);
+                if (myImg == null) myImg = "";
+
+                String finalMyImg = myImg;
+                partnerRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot partnerSnap) {
+                        String partnerNickname = partnerSnap.child("nickname").getValue(String.class);
+                        String partnerNick = partnerNickname != null ? partnerNickname : "";
+                        String partnerImg = partnerSnap.child("imageUrl").getValue(String.class);
+                        if (partnerImg == null) partnerImg = "";
+
+                        Map<String, Object> myChatEnrich = new HashMap<>();
+                        myChatEnrich.put("username", partnerUsername);
+                        myChatEnrich.put("nickname", partnerNick);
+                        if (!partnerImg.isEmpty()) myChatEnrich.put("imageUrl", partnerImg);
+                        FirebaseDatabase.getInstance()
+                                .getReference("users").child(currentUserSafeEmail)
+                                .child("chats").child(chatId)
+                                .updateChildren(myChatEnrich);
+
+                        Map<String, Object> partnerChatEnrich = new HashMap<>();
+                        partnerChatEnrich.put("nickname", myNick);
+                        if (!finalMyImg.isEmpty()) partnerChatEnrich.put("imageUrl", finalMyImg);
+                        FirebaseDatabase.getInstance()
+                                .getReference("users").child(partnerSafeEmail)
+                                .child("chats").child(chatId)
+                                .updateChildren(partnerChatEnrich);
+
+                        SessionManager.sendFriendRequest(partnerSafeEmail, partnerUsername);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
     private void uploadPhotoAndSend(String caption) {
-        if (pendingImageFile == null || chatId == null || currentUsername == null) return;
+        if (pendingImageFile == null || currentUsername == null) return;
+        if (chatId == null && partnerUsername != null) {
+            chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            setupNewChat();
+        }
+        if (chatId == null) return;
 
         if (!NetworkMonitor.getInstance(this).isConnected()) {
             Toast.makeText(this, "Cannot send images offline", Toast.LENGTH_SHORT).show();
@@ -643,6 +782,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                             .getReference("users").child(currentUserSafeEmail)
                             .child("chats").child(chatId);
                     userChatRef.updateChildren(lastMessageUpdate);
+
+                    incrementMessageCount();
                 }
             } else {
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();

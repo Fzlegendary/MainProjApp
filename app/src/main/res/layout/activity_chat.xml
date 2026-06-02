@@ -42,40 +42,52 @@
                     android:contentDescription="Back"
                     app:tint="?attr/colorOnPrimary" />
 
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/ivUserAvatar"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_default_avatar"
-                    android:scaleType="centerCrop"
-                    android:background="?attr/colorSurfaceVariant"
-                    android:contentDescription="Avatar"
-                    app:shapeAppearanceOverlay="@style/CircleImageView" />
-
                 <LinearLayout
+                    android:id="@+id/userInfoContainer"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="12dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
 
-                    <TextView
-                        android:id="@+id/tvChatName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnPrimary"
-                        tools:text="Username" />
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivUserAvatar"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@drawable/ic_default_avatar"
+                        android:scaleType="centerCrop"
+                        android:background="?attr/colorSurfaceVariant"
+                        android:contentDescription="Avatar"
+                        app:shapeAppearanceOverlay="@style/CircleImageView" />
 
-                    <TextView
-                        android:id="@+id/tvUserStatus"
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:textSize="12sp"
-                        android:textColor="?attr/colorOnPrimary"
-                        android:text="Online"
-                        android:alpha="0.7" />
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="12dp">
+
+                        <TextView
+                            android:id="@+id/tvChatName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnPrimary"
+                            tools:text="Username" />
+
+                        <TextView
+                            android:id="@+id/tvUserStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="12sp"
+                            android:textColor="?attr/colorOnPrimary"
+                            android:text="Online"
+                            android:alpha="0.7" />
+                    </LinearLayout>
                 </LinearLayout>
 
             </LinearLayout>

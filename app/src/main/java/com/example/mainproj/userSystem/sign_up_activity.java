@@ -302,6 +302,7 @@ public class sign_up_activity extends AppCompatActivity implements
         userData.put("age", age);
         userData.put("uid", uid);
         userData.put("role", "user");
+        userData.put("createdAt", System.currentTimeMillis());
 
         DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("users");
         usersRef.child(safeEmail).setValue(userData)
