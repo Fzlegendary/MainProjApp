@@ -222,10 +222,8 @@ public class MainActivity extends BaseActivity {
                                     .child("senderUsername").getValue(String.class);
                             String currentUsername = ChatCacheApplication.getCurrentUsername();
                             boolean isMe = sender != null && sender.equals(currentUsername);
-                            String prefix = isMe ? "You"
-                                    : (sender != null ? sender : "");
-                            chat.setLastMessage(prefix + ": "
-                                    + (lastText != null ? lastText : ""));
+                            String lastTextSafe = lastText != null ? lastText : "";
+                            chat.setLastMessage(isMe ? "You" + ": " + lastTextSafe : lastTextSafe);
 
                             Long ts = chatSnap.child("lastMessage")
                                     .child("timestamp").getValue(Long.class);

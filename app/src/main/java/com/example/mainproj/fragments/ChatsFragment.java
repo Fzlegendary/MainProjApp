@@ -114,8 +114,7 @@ public class ChatsFragment extends Fragment {
 
         String currentUsername = ChatCacheApplication.getCurrentUsername();
         boolean isMe = sender != null && sender.equals(currentUsername);
-        String prefix = isMe ? "You" : (sender != null ? sender : "");
-        return prefix + ": " + text;
+        return isMe ? "You" + ": " + text : text;
     }
 
     private void setupClickListeners() {

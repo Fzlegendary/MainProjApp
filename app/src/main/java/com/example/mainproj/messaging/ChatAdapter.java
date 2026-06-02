@@ -126,6 +126,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                         if (snapshot.child("lastMessage").exists()) {
                             DataSnapshot lastMsgSnap = snapshot.child("lastMessage");
                             lastMessageText = lastMsgSnap.child("text").getValue(String.class);
+                            String sender = lastMsgSnap.child("senderUsername").getValue(String.class);
+                            String currentUsername = ChatCacheApplication.getCurrentUsername();
+                            boolean isMe = sender != null && sender.equals(currentUsername);
+                            if (lastMessageText != null && isMe) {
+                                lastMessageText = "You" + ": " + lastMessageText;
+                            }
                             Object tsObj = lastMsgSnap.child("timestamp").getValue();
                             if (tsObj instanceof Long) lastTimestamp = (Long) tsObj;
                             else if (tsObj instanceof Double) lastTimestamp = ((Double) tsObj).longValue();
