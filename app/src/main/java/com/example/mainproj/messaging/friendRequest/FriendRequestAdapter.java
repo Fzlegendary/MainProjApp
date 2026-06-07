@@ -13,7 +13,6 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.RequestOptions;
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.UserProfileBottomSheet;
 
@@ -71,7 +70,7 @@ public class FriendRequestAdapter extends RecyclerView.Adapter<FriendRequestAdap
         holder.ivProfilePicture.setOnClickListener(v -> {
             if (context instanceof FragmentActivity) {
                 UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                        request.getFromUsername(), "", "", false
+                        request.getFromUsername(), "", 0L, false
                 );
                 sheet.show(
                         ((FragmentActivity) context).getSupportFragmentManager(),

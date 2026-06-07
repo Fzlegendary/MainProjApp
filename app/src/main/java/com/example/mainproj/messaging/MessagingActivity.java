@@ -1,260 +1,708 @@
 package com.example.mainproj.messaging;
 
 import android.app.AlertDialog;
+import android.Manifest;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.widget.Toolbar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mainproj.BaseActivity;
+import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
-import com.example.mainproj.messaging.friendRequest.IncomingRequestsActivity;
+import com.example.mainproj.auth.SessionManager;
+import com.example.mainproj.messaging.ChatUtils;
+import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.*;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
-public class MessagingActivity extends BaseActivity implements ChatAdapter.OnChatActionListener {
 
-    private RecyclerView chatRecyclerView;
-    private ChatAdapter chatAdapter;
-    private ArrayList<ChatModel> chatList;
 
-    private FloatingActionButton addChatButton;
-    private ImageButton btnFriendRequests;
+public class MessagingActivity extends AppCompatActivity implements MessageAdapter.OnMessageDeleteListener {
 
     private DrawerLayout drawerLayout;
-    private NavigationView navigationView;
-    private Toolbar toolbar;
-    private final String TAG = "msg";
 
-    private static final String PREFS_NAME = "chat_prefs";
-    private static final String CACHE_KEY  = "cached_chats";
+    private RecyclerView messagesRecyclerView;
+    private MessageAdapter messageAdapter;
+    private ArrayList<MessageModel> messagesList;
+    private EditText messageInput;
+    private FloatingActionButton sendButton;
 
-    private DatabaseReference chatsRef;
-    private String tempCurrentUsername;
+    private String chatId;
+    private String partnerUsername;
+    private String partnerSafeEmail;
+    private String currentUsername;
+    private String currentUserSafeEmail;
 
+    private DatabaseReference messagesRef;
+    private ValueEventListener messagesListener;
+
+    // Callback that watches for network recovery while offline
+    private ConnectivityManager.NetworkCallback networkRecoveryCallback;
+
+    private ImageView profileImage;
+    private TextView profileName, profileUsername, profileEmail;
+
+    private TextView tvChatName;
+
+    private File pendingImageFile;
+    private LinearLayout photoPreviewContainer;
+    private ImageView ivPhotoPreview;
+    private ImageButton btnRemovePhoto;
+    private ImageButton btnCamera;
+    private ImageButton btnGallery;
+
+    private ActivityResultLauncher<Uri> cameraLauncher;
+    private ActivityResultLauncher<String> galleryLauncher;
+    private ActivityResultLauncher<String> cameraPermissionLauncher;
+
+    private StorageReference storageRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_messaging);
+        setContentView(R.layout.activity_chat);
 
-        chatRecyclerView = findViewById(R.id.chatRecyclerView);
-        addChatButton = findViewById(R.id.addChatButton);
-        btnFriendRequests = findViewById(R.id.btnFriendRequests);
-
-        drawerLayout = findViewById(R.id.drawerLayout);
-        navigationView = findViewById(R.id.navigationDrawer);
-        toolbar = findViewById(R.id.toolbar);
-
-        setSupportActionBar(toolbar);
-        clearActiveNav();
-
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawerLayout, toolbar, R.string.open, R.string.close
-        );
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-
-        setupNavigationHeader();
-
-
-        chatList = new ArrayList<>();
-
-        chatRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        chatAdapter = new ChatAdapter(chatList, this);
-        chatAdapter.setOnChatActionListener(this);
-        chatRecyclerView.setAdapter(chatAdapter);
-
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user != null && user.getEmail() != null) {
-            loadCurrentUsername();
-        }
-
-        chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-
-        addChatButton.setOnClickListener(v -> showAddUserDialog());
-        btnFriendRequests.setOnClickListener(v ->
-                startActivity(new Intent(this, IncomingRequestsActivity.class))
-        );
+        chatId = getIntent().getStringExtra("chatId");
+        partnerUsername = getIntent().getStringExtra("username");
+        partnerSafeEmail = getIntent().getStringExtra("safeEmail");
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
-    }
 
-    private void setupNavigationHeader() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
+        drawerLayout = findViewById(R.id.chatDrawerLayout);
 
-        View headerView = navigationView.getHeaderView(0);
-        ImageView headerImage = headerView.findViewById(R.id.profileImage);
-        TextView headerName = headerView.findViewById(R.id.profileName);
-        TextView headerEmail = headerView.findViewById(R.id.profileEmail);
+        tvChatName = findViewById(R.id.tvChatName);
 
-        String email = user.getEmail();
-        String safeEmail = email != null ? email.replace(".", "_") : null;
-
-        if (email != null) {
-            headerEmail.setText(email);
+        if (partnerUsername != null) {
+            tvChatName.setText(partnerUsername);
         }
 
-        if (safeEmail != null) {
-            FirebaseDatabase.getInstance().getReference("users")
-                    .child(safeEmail)
-                    .child("username")
-                    .addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            String username = snapshot.getValue(String.class);
-                            if (username != null && !username.isEmpty()) {
-                                headerName.setText(username);
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView);
+        messageInput = findViewById(R.id.messageInput);
+        sendButton = findViewById(R.id.sendButton);
+        btnCamera = findViewById(R.id.btnCamera);
+        btnGallery = findViewById(R.id.btnGallery);
+        photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
+        ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
+        btnRemovePhoto = findViewById(R.id.btnRemovePhoto);
+
+        messagesList = new ArrayList<>();
+        messageAdapter = new MessageAdapter(messagesList, this);
+        messageAdapter.setOnMessageDeleteListener(this);
+        messagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        messagesRecyclerView.setAdapter(messageAdapter);
+
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (firebaseUser != null && firebaseUser.getEmail() != null) {
+            currentUserSafeEmail = firebaseUser.getEmail().replace(".", "_");
+        }
+
+        storageRef = FirebaseStorage.getInstance().getReference();
+
+        profileImage = findViewById(R.id.profileImage);
+        profileName = findViewById(R.id.profileName);
+        profileUsername = findViewById(R.id.profileUsername);
+        profileEmail = findViewById(R.id.profileEmail);
+
+        loadUserProfile();
+
+        findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
+            UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
+                    partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
+            );
+            sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
+                @Override
+                public void onSendMessage(String username) {}
+                @Override
+                public void onViewProfile(String username) {
+                    Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
+                    intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
+                    startActivity(intent);
+                }
+            });
+            sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        });
+
+        findViewById(R.id.logoutButton).setOnClickListener(v -> {
+            SessionManager.clearAllPrefs(this);
+            FirebaseAuth.getInstance().signOut();
+            android.content.Intent intent = new android.content.Intent(this, Login_activity.class);
+            intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+        });
+
+        findViewById(R.id.clearChatsButton).setOnClickListener(v ->
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Delete Chat")
+                        .setMessage("Are you sure you want to delete this chat?")
+                        .setPositiveButton("Delete", (dialog, which) -> {
+                            if (!NetworkMonitor.getInstance(this).isConnected()) {
+                                if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                        .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                                    ChatCacheManager.getInstance(this).clearChat(chatId);
+                                    if (currentUserSafeEmail != null) {
+                                        ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                    }
+                                    Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                    finish();
+                                    return;
+                                }
+                                new AlertDialog.Builder(this)
+                                        .setTitle("No Internet Connection")
+                                        .setMessage("No internet connection, action will not be synced out of device.")
+                                        .setPositiveButton("OK", (d, w) -> {
+                                            ChatCacheManager.getInstance(this).clearChat(chatId);
+                                            if (currentUserSafeEmail != null) {
+                                                ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                            }
+                                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        })
+                                        .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                            getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                                    .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                            ChatCacheManager.getInstance(this).clearChat(chatId);
+                                            if (currentUserSafeEmail != null) {
+                                                ChatMetadataManager.getInstance(this).clearChat(currentUserSafeEmail, chatId);
+                                            }
+                                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        })
+                                        .setNeutralButton("Cancel", null)
+                                        .show();
+                                return;
                             }
-                        }
+                            ChatCacheManager.getInstance(this).clearAll();
+                            if (chatId != null && currentUserSafeEmail != null) {
+                                FirebaseDatabase.getInstance().getReference("users")
+                                        .child(currentUserSafeEmail).child("chats").child(chatId)
+                                        .removeValue();
+                            }
+                            Toast.makeText(this, "Chat deleted", Toast.LENGTH_SHORT).show();
+                            finish();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show());
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {}
-                    });
+        findViewById(R.id.clearCacheButton).setOnClickListener(v -> {
+            ChatCacheManager.getInstance(this).clearAll();
+            Toast.makeText(this, "Cache cleared", Toast.LENGTH_SHORT).show();
+        });
+
+        cameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                result -> {
+                    if (result && pendingImageFile != null && pendingImageFile.exists()) {
+                        showPhotoPreview(pendingImageFile);
+                    }
+                });
+
+        galleryLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        copyGalleryUriToCache(uri);
+                    }
+                });
+
+        cameraPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) {
+                        launchCameraInternal();
+                    } else {
+                        Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        btnCamera.setOnClickListener(v -> openCamera());
+        btnGallery.setOnClickListener(v -> openGallery());
+        btnRemovePhoto.setOnClickListener(v -> removePhotoPreview());
+        sendButton.setOnClickListener(v -> sendMessage());
+        messageInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                sendMessage();
+                return true;
+            }
+            return false;
+        });
+
+        if (chatId == null && partnerUsername == null) {
+            Toast.makeText(this, "Error: No user specified", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        Uri photoUri = user.getPhotoUrl();
-        if (photoUri != null) {
-            com.bumptech.glide.Glide.with(this)
-                    .load(photoUri)
-                    .circleCrop()
-                    .placeholder(android.R.drawable.sym_def_app_icon)
-                    .into(headerImage);
+        if (chatId != null) {
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
         }
+        loadMessages();
     }
 
-    private void loadCurrentUsername() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
+    public void loadMessages() {
+        if (currentUsername == null) {
+            currentUsername = ChatCacheApplication.getCurrentUsername();
+        }
 
-        String safeEmail = user.getEmail().replace(".", "_");
-        FirebaseDatabase.getInstance().getReference("users")
-                .child(safeEmail)
-                .child("username")
-                .addListenerForSingleValueEvent(new ValueEventListener() {
+        if (currentUsername == null && NetworkMonitor.getInstance(this).isConnected()) {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null && user.getEmail() != null) {
+                String safeEmail = user.getEmail().replace(".", "_");
+                DatabaseReference userRef = FirebaseDatabase.getInstance()
+                        .getReference("users").child(safeEmail);
+                userRef.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        tempCurrentUsername = snapshot.getValue(String.class);
-                        if (tempCurrentUsername != null) {
-                            ChatCacheApplication.setCurrentUsername(tempCurrentUsername);
-                            Log.d(TAG, "loadCurrentUsername: tempUsername: " + tempCurrentUsername);
+                        currentUsername = snapshot.child("username").getValue(String.class);
+                        if (currentUsername != null) {
+                            ChatCacheApplication.setCurrentUsername(currentUsername);
                         }
-                        Log.d(TAG, "onDataChange: load chats:");
-                        loadChats(tempCurrentUsername);
+                        loadMessages();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        currentUsername = "";
+                        loadMessages();
+                    }
+                });
+            }
+            return;
+        }
+
+        if (currentUsername == null) {
+            currentUsername = "";
+        }
+
+        if (NetworkMonitor.getInstance(this).isConnected()) {
+            unregisterNetworkRecoveryCallback();
+
+            if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                ArrayList<MessageModel> cached =
+                        ChatCacheManager.getInstance(this).loadMessages(chatId);
+                if (!cached.isEmpty()) {
+                    messagesList.clear();
+                    messagesList.addAll(cached);
+                    messageAdapter.notifyDataSetChanged();
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+
+            if (messagesRef != null) attachMessagesListener();
+
+        } else {
+            if (chatId != null && ChatCacheManager.isCachingEnabled()) {
+                ArrayList<MessageModel> cached =
+                        ChatCacheManager.getInstance(this).loadMessages(chatId);
+                if (!cached.isEmpty()) {
+                    messagesList.clear();
+                    messagesList.addAll(cached);
+                    messageAdapter.notifyDataSetChanged();
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+            }
+
+            networkRecoveryCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(@NonNull Network network) {
+                    unregisterNetworkRecoveryCallback();
+                    runOnUiThread(() -> loadMessages());
+                }
+            };
+            NetworkMonitor.getInstance(this).registerNetworkCallback(networkRecoveryCallback);
+        }
+    }
+
+    private void unregisterNetworkRecoveryCallback() {
+        if (networkRecoveryCallback != null) {
+            NetworkMonitor.getInstance(this).unregisterNetworkCallback(networkRecoveryCallback);
+            networkRecoveryCallback = null;
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (chatId != null) {
+            ChatCacheApplication.setCurrentOpenChatId(chatId);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        ChatCacheApplication.setCurrentOpenChatId(null);
+        if (messagesRef != null && messagesListener != null) {
+            messagesRef.removeEventListener(messagesListener);
+            messagesListener = null;
+        }
+        unregisterNetworkRecoveryCallback();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Firebase real-time listener
+    // ---------------------------------------------------------------------------
+    private void attachMessagesListener() {
+        if (messagesListener != null) return;
+
+        messagesListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                messagesList.clear();
+
+                MessageModel previousMessage = null;
+                for (DataSnapshot msgSnap : snapshot.getChildren()) {
+                    String messageId = msgSnap.getKey();
+
+                    String text = msgSnap.child("text").getValue(String.class);
+                    String senderUsername = msgSnap.child("senderUsername").getValue(String.class);
+                    Long timestamp = msgSnap.child("timestamp").getValue(Long.class);
+                    String imageUrl = msgSnap.child("imageUrl").getValue(String.class);
+
+                    if ((text == null || text.isEmpty()) && imageUrl == null) continue;
+                    if (senderUsername == null) continue;
+
+                    boolean sentByMe = currentUsername != null && senderUsername.equals(currentUsername);
+
+                    String textVal = text != null ? text : "";
+                    MessageModel msg = new MessageModel(
+                            textVal, senderUsername,
+                            timestamp != null ? timestamp : 0L,
+                            sentByMe);
+                    msg.setMessageId(messageId);
+                    msg.setImageUrl(imageUrl);
+
+                    if (timestamp != null && timestamp > 0) {
+                        if (previousMessage != null && previousMessage.getTimestamp() > 0) {
+                            Calendar prevCal = Calendar.getInstance();
+                            prevCal.setTimeInMillis(previousMessage.getTimestamp());
+
+                            Calendar currCal = Calendar.getInstance();
+                            currCal.setTimeInMillis(timestamp);
+
+                            if (prevCal.get(Calendar.YEAR) != currCal.get(Calendar.YEAR) ||
+                                    prevCal.get(Calendar.DAY_OF_YEAR) != currCal.get(Calendar.DAY_OF_YEAR)) {
+                                MessageModel separator = new MessageModel(
+                                        formatDateMessage(timestamp),
+                                        "date_separator", timestamp, false);
+                                messagesList.add(separator);
+                            }
+                        } else {
+                            MessageModel separator = new MessageModel(
+                                    formatDateMessage(timestamp),
+                                    "date_separator", timestamp, false);
+                            messagesList.add(separator);
+                        }
+                    }
+
+                    messagesList.add(msg);
+                    previousMessage = msg;
+                }
+
+                messageAdapter.notifyDataSetChanged();
+                if (!messagesList.isEmpty()) {
+                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                }
+                if (chatId != null) {
+                    ChatCacheManager.getInstance(MessagingActivity.this).saveMessages(chatId, messagesList);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(MessagingActivity.this, "Failed to load messages", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        messagesRef.addValueEventListener(messagesListener);
+    }
+
+    private void sendMessage() {
+        String text = messageInput.getText().toString().trim();
+        if (currentUsername == null) return;
+        if (text.isEmpty() && pendingImageFile == null) return;
+
+        if (pendingImageFile != null) {
+            uploadPhotoAndSend(text);
+        } else {
+            sendTextMessageOnly(text);
+        }
+    }
+
+    private void setupNewChat() {
+        if (chatId == null || currentUsername == null || partnerUsername == null) return;
+
+        Map<String, Object> chatData = new HashMap<>();
+        chatData.put("lastMessage", "");
+        chatData.put("timestamp", ServerValue.TIMESTAMP);
+        chatData.put("lastSeen", ServerValue.TIMESTAMP);
+        chatData.put("online", false);
+        chatData.put("createdAt", ServerValue.TIMESTAMP);
+
+        Map<String, Object> participants = new HashMap<>();
+        if (currentUserSafeEmail != null) participants.put(currentUserSafeEmail, true);
+        if (partnerSafeEmail != null) participants.put(partnerSafeEmail, true);
+        chatData.put("participants", participants);
+        FirebaseDatabase.getInstance().getReference("chats").child(chatId).setValue(chatData);
+
+        if (partnerSafeEmail != null && currentUsername != null) {
+            Map<String, Object> partnerChatEntry = new HashMap<>();
+            partnerChatEntry.put("username", currentUsername);
+            FirebaseDatabase.getInstance().getReference("users").child(partnerSafeEmail).child("chats").child(chatId).setValue(partnerChatEntry);
+        }
+
+        createAndEnrichChatAsync();
+
+        if (messagesListener != null) {
+            messagesRef.removeEventListener(messagesListener);
+            messagesListener = null;
+        }
+        attachMessagesListener();
+    }
+
+    private void sendTextMessageOnly(String text) {
+        if (currentUsername == null) return;
+        if (chatId == null && partnerUsername != null) {
+            chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            setupNewChat();
+        }
+        if (chatId == null) return;
+
+        long now = System.currentTimeMillis();
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                    .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                String localId = "local_" + UUID.randomUUID().toString();
+                MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                msg.setMessageId(localId);
+                messagesList.add(msg);
+                messageAdapter.notifyDataSetChanged();
+                messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+                ChatModel chat = new ChatModel();
+                chat.setChatId(chatId);
+                chat.setUsername(partnerUsername);
+                chat.setLastMessage(currentUsername + ": " + text);
+                chat.setTimestamp(now);
+                if (currentUserSafeEmail != null) {
+                    ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+                }
+
+                messageInput.setText("");
+                return;
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle("No Internet Connection")
+                    .setMessage("No internet connection, action will not be synced out of device.")
+                    .setPositiveButton("OK", (d, w) -> {
+                        String localId = "local_" + UUID.randomUUID().toString();
+                        MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                        msg.setMessageId(localId);
+                        messagesList.add(msg);
+                        messageAdapter.notifyDataSetChanged();
+                        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+                        ChatModel chat = new ChatModel();
+                        chat.setChatId(chatId);
+                        chat.setUsername(partnerUsername);
+                        chat.setLastMessage(currentUsername + ": " + text);
+                        chat.setTimestamp(now);
+                        if (currentUserSafeEmail != null) {
+                            ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+                        }
+
+                        messageInput.setText("");
+                    })
+                    .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                        getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+
+                        String localId = "local_" + UUID.randomUUID().toString();
+                        MessageModel msg = new MessageModel(text, currentUsername, now, true);
+                        msg.setMessageId(localId);
+                        messagesList.add(msg);
+                        messageAdapter.notifyDataSetChanged();
+                        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+
+                        ChatModel chat = new ChatModel();
+                        chat.setChatId(chatId);
+                        chat.setUsername(partnerUsername);
+                        chat.setLastMessage(currentUsername + ": " + text);
+                        chat.setTimestamp(now);
+                        if (currentUserSafeEmail != null) {
+                            ChatMetadataManager.getInstance(this).saveChat(currentUserSafeEmail, chat);
+                        }
+
+                        messageInput.setText("");
+                    })
+                    .setNeutralButton("Cancel", null)
+                    .show();
+            return;
+        }
+
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("text", text);
+        messageData.put("senderUsername", currentUsername);
+        messageData.put("timestamp", ServerValue.TIMESTAMP);
+
+        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                messageInput.setText("");
+
+                Map<String, Object> lastMessageUpdate = new HashMap<>();
+                lastMessageUpdate.put("lastMessage/text", text);
+                lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
+                lastMessageUpdate.put("lastMessage/timestamp", now);
+
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.updateChildren(lastMessageUpdate);
+
+                if (currentUserSafeEmail != null) {
+                    DatabaseReference userChatRef = FirebaseDatabase.getInstance()
+                            .getReference("users").child(currentUserSafeEmail)
+                            .child("chats").child(chatId);
+                    userChatRef.updateChildren(lastMessageUpdate);
+
+                    incrementMessageCount();
+                }
+            } else {
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void incrementMessageCount() {
+        if (currentUserSafeEmail == null) return;
+        DatabaseReference countRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(currentUserSafeEmail).child("messageCount");
+        countRef.runTransaction(new com.google.firebase.database.Transaction.Handler() {
+            @NonNull
+            @Override
+            public com.google.firebase.database.Transaction.Result doTransaction(@NonNull com.google.firebase.database.MutableData mutableData) {
+                Long current = mutableData.getValue(Long.class);
+                mutableData.setValue(current != null ? current + 1 : 1);
+                return com.google.firebase.database.Transaction.success(mutableData);
+            }
+
+            @Override
+            public void onComplete(DatabaseError error, boolean committed, DataSnapshot snapshot) {}
+        });
+    }
+
+    private void createAndEnrichChatAsync() {
+        if (currentUserSafeEmail == null || partnerSafeEmail == null || chatId == null) return;
+        if (currentUsername == null || partnerUsername == null) return;
+
+        DatabaseReference myRef = FirebaseDatabase.getInstance().getReference("users").child(currentUserSafeEmail);
+        DatabaseReference partnerRef = FirebaseDatabase.getInstance().getReference("users").child(partnerSafeEmail);
+
+        myRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot mySnap) {
+                String myNickname = mySnap.child("nickname").getValue(String.class);
+                String myNick = myNickname != null ? myNickname : "";
+                String myImg = mySnap.child("imageUrl").getValue(String.class);
+                if (myImg == null) myImg = "";
+
+                String finalMyImg = myImg;
+                partnerRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot partnerSnap) {
+                        String partnerNickname = partnerSnap.child("nickname").getValue(String.class);
+                        String partnerNick = partnerNickname != null ? partnerNickname : "";
+                        String partnerImg = partnerSnap.child("imageUrl").getValue(String.class);
+                        if (partnerImg == null) partnerImg = "";
+
+                        Map<String, Object> myChatEnrich = new HashMap<>();
+                        myChatEnrich.put("username", partnerUsername);
+                        myChatEnrich.put("nickname", partnerNick);
+                        if (!partnerImg.isEmpty()) myChatEnrich.put("imageUrl", partnerImg);
+                        FirebaseDatabase.getInstance()
+                                .getReference("users").child(currentUserSafeEmail)
+                                .child("chats").child(chatId)
+                                .updateChildren(myChatEnrich);
+
+                        Map<String, Object> partnerChatEnrich = new HashMap<>();
+                        partnerChatEnrich.put("nickname", myNick);
+                        if (!finalMyImg.isEmpty()) partnerChatEnrich.put("imageUrl", finalMyImg);
+                        FirebaseDatabase.getInstance()
+                                .getReference("users").child(partnerSafeEmail)
+                                .child("chats").child(chatId)
+                                .updateChildren(partnerChatEnrich);
+
+                        SessionManager.sendFriendRequest(partnerSafeEmail, partnerUsername);
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {}
                 });
-    }
-
-    // ✅ LOAD CHATS ASYNC
-    private void loadChats(String username) {
-        Log.d(TAG, "loadChats: currentusername: " + username);
-        if (username == null) return;
-
-        chatsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                Log.d(TAG, "onDataChange: in onDataChange");
-                
-                Map<String, ChatModel> updatedChats = new HashMap<>();
-
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    String chatId = child.getKey();
-                    Log.d(TAG, "onDataChange: chatId: " + chatId);
-                    if (chatId == null) continue;
-
-                    DataSnapshot participantsSnapshot = child.child("participants");
-                    if (participantsSnapshot == null || !participantsSnapshot.hasChild(username)) continue;
-
-                    Log.d(TAG, "onDataChange: has child: true");
-
-                    String partnerUsername = null;
-                    for (DataSnapshot participant : participantsSnapshot.getChildren()) {
-                        String key = participant.getKey();
-                        if (key != null && !key.equals(username)) {
-                            partnerUsername = key;
-                            break;
-                        }
-                    }
-
-                    String nickname = child.child("nickname_of_" + username).getValue(String.class);
-                    String lastMessage = child.child("lastMessage").getValue(String.class);
-                    Long timeLong = child.child("time").getValue(Long.class);
-                    String bio = child.child("bio").getValue(String.class);
-                    String lastSeen = child.child("lastSeen").getValue(String.class);
-                    Boolean online = child.child("online").getValue(Boolean.class);
-
-                    String time = "null";
-                    if (timeLong != null) {
-                        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
-                        time = sdf.format(new Date(timeLong));
-                    }
-
-                    Log.d(TAG, "onDataChange: chatid: " + chatId);
-                    
-                    int unreadCount = 0;
-                    String currentOpenChatId = ChatCacheApplication.getCurrentOpenChatId();
-                    if (chatId != null && chatId.equals(currentOpenChatId)) {
-                        unreadCount = 0;
-                    } else {
-                        DataSnapshot unreadSnapshot = child.child("unread").child(username);
-                        if (unreadSnapshot != null) {
-                            Integer unread = unreadSnapshot.getValue(Integer.class);
-                            unreadCount = unread != null ? unread : 0;
-                        }
-                    }
-
-                    ChatModel chat = new ChatModel(
-                            chatId,
-                            partnerUsername != null ? partnerUsername : "null",
-                            nickname != null ? nickname : "null",
-                            lastMessage != null ? lastMessage : "null",
-                            time,
-                            bio != null ? bio : "null",
-                            lastSeen != null ? lastSeen : "null",
-                            online != null && online,
-                            unreadCount
-                    );
-                    updatedChats.put(chatId, chat);
-                    Log.d(TAG, "onDataChange: templist: " + chat.toString());
-                }
-
-                updateChatList(updatedChats);
             }
 
             @Override
@@ -262,168 +710,250 @@ public class MessagingActivity extends BaseActivity implements ChatAdapter.OnCha
         });
     }
 
-    private void updateChatList(Map<String, ChatModel> updatedChats) {
-        Set<String> newChatIds = updatedChats.keySet();
-        
-        for (int i = chatList.size() - 1; i >= 0; i--) {
-            ChatModel existingChat = chatList.get(i);
-            String chatId = existingChat.getChatId();
-            
-            if (!newChatIds.contains(chatId)) {
-                chatList.remove(i);
-                chatAdapter.notifyItemRemoved(i);
-            }
+    private void uploadPhotoAndSend(String caption) {
+        if (pendingImageFile == null || currentUsername == null) return;
+        if (chatId == null && partnerUsername != null) {
+            chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
+            messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            setupNewChat();
         }
-        
-        for (int i = 0; i < chatList.size(); i++) {
-            ChatModel existingChat = chatList.get(i);
-            String chatId = existingChat.getChatId();
-            ChatModel updatedChat = updatedChats.get(chatId);
-            
-            if (updatedChat != null) {
-                boolean changed = false;
-                
-                if (!Objects.equals(existingChat.getLastMessage(), updatedChat.getLastMessage())) {
-                    existingChat.setLastMessage(updatedChat.getLastMessage());
-                    changed = true;
-                }
-                if (!Objects.equals(existingChat.getTime(), updatedChat.getTime())) {
-                    existingChat.setTime(updatedChat.getTime());
-                    changed = true;
-                }
-                if (existingChat.getUnreadCount() != updatedChat.getUnreadCount()) {
-                    existingChat.setUnreadCount(updatedChat.getUnreadCount());
-                    changed = true;
-                }
-                if (existingChat.isOnline() != updatedChat.isOnline()) {
-                    existingChat.setOnline(updatedChat.isOnline());
-                    changed = true;
-                }
-                
-                if (changed) {
-                    chatAdapter.notifyItemChanged(i);
-                }
-            }
+        if (chatId == null) return;
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            Toast.makeText(this, "Cannot send images offline", Toast.LENGTH_SHORT).show();
+            return;
         }
-        
-        for (String chatId : updatedChats.keySet()) {
-            boolean found = false;
-            for (ChatModel chat : chatList) {
-                if (chat.getChatId().equals(chatId)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                chatList.add(updatedChats.get(chatId));
-                chatAdapter.notifyItemInserted(chatList.size() - 1);
-            }
+
+        sendButton.setEnabled(false);
+        String fileName = "chat_" + chatId + "/" + UUID.randomUUID() + ".jpg";
+        StorageReference fileRef = storageRef.child("chat_images").child(fileName);
+
+        byte[] imageBytes = compressImage(pendingImageFile);
+        if (imageBytes == null) {
+            Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show();
+            sendButton.setEnabled(true);
+            return;
         }
-        
-        Collections.sort(chatList, (a, b) -> {
-            long timeA = parseTimeToTimestamp(a.getTime());
-            long timeB = parseTimeToTimestamp(b.getTime());
-            return Long.compare(timeB, timeA);
+
+        fileRef.putBytes(imageBytes)
+                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl()
+                        .addOnSuccessListener(uri -> {
+                            String imageUrl = uri.toString();
+                            sendImageMessage(caption, imageUrl);
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
+                            sendButton.setEnabled(true);
+                        }))
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+                    sendButton.setEnabled(true);
+                });
+    }
+
+    private void sendImageMessage(String caption, String imageUrl) {
+        String text = caption != null && !caption.isEmpty() ? caption : "";
+
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("text", text);
+        messageData.put("senderUsername", currentUsername);
+        messageData.put("timestamp", ServerValue.TIMESTAMP);
+        messageData.put("imageUrl", imageUrl);
+
+        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+            sendButton.setEnabled(true);
+            if (task.isSuccessful()) {
+                messageInput.setText("");
+                removePhotoPreview();
+
+                String displayText = text.isEmpty() ? "Photo" : text;
+                long now = System.currentTimeMillis();
+                Map<String, Object> lastMessageUpdate = new HashMap<>();
+                lastMessageUpdate.put("lastMessage/text", displayText);
+                lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
+                lastMessageUpdate.put("lastMessage/timestamp", now);
+
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.updateChildren(lastMessageUpdate);
+
+                if (currentUserSafeEmail != null) {
+                    DatabaseReference userChatRef = FirebaseDatabase.getInstance()
+                            .getReference("users").child(currentUserSafeEmail)
+                            .child("chats").child(chatId);
+                    userChatRef.updateChildren(lastMessageUpdate);
+
+                    incrementMessageCount();
+                }
+            } else {
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
+            }
         });
-        chatAdapter.notifyDataSetChanged();
     }
 
-    private long parseTimeToTimestamp(String timeStr) {
-        if (timeStr == null || timeStr.equals("null")) return 0;
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
-            return sdf.parse(timeStr).getTime();
-        } catch (Exception e) {
-            return 0;
+    @Override
+    public void onDeleteMessage(MessageModel message) {
+        if (message.getMessageId() == null || chatId == null) return;
+
+        if (!NetworkMonitor.getInstance(this).isConnected()) {
+            if (getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                    .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                messageAdapter.notifyDataSetChanged();
+                ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle("No Internet Connection")
+                    .setMessage("No internet connection, action will not be synced out of device.")
+                    .setPositiveButton("OK", (d, w) -> {
+                        messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                        messageAdapter.notifyDataSetChanged();
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                    })
+                    .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                        getSharedPreferences("offline_snooze_prefs", MODE_PRIVATE)
+                                .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                        messagesList.removeIf(m -> message.getMessageId() != null && message.getMessageId().equals(m.getMessageId()));
+                        messageAdapter.notifyDataSetChanged();
+                        ChatCacheManager.getInstance(this).saveMessages(chatId, messagesList);
+                    })
+                    .setNeutralButton("Cancel", null)
+                    .show();
+            return;
+        }
+
+        FirebaseDatabase.getInstance().getReference("chats")
+                .child(chatId).child("messages")
+                .child(message.getMessageId())
+                .removeValue();
+    }
+
+    private void loadUserProfile() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.getEmail() == null) return;
+
+        profileEmail.setText(user.getEmail());
+
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(user.getEmail().replace(".", "_"));
+
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                String name = snapshot.child("name").getValue(String.class);
+                String username = snapshot.child("username").getValue(String.class);
+                if (name != null) profileName.setText(name);
+                if (username != null) profileUsername.setText(username);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
+        });
+    }
+
+    private String formatDateMessage(long timestamp) {
+        Calendar cal = Calendar.getInstance();
+        Calendar msgCal = Calendar.getInstance();
+        msgCal.setTimeInMillis(timestamp);
+
+        int today = cal.get(Calendar.DAY_OF_YEAR);
+        int msgDay = msgCal.get(Calendar.DAY_OF_YEAR);
+        int year = cal.get(Calendar.YEAR);
+        int msgYear = msgCal.get(Calendar.YEAR);
+
+        if (year == msgYear && today == msgDay) return "Today";
+        else if (year == msgYear && today - msgDay == 1) return "Yesterday";
+        else
+            return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
+    }
+
+    private void openCamera() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            launchCameraInternal();
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA);
         }
     }
 
+    private void launchCameraInternal() {
+        File cameraDir = new File(getCacheDir(), "camera");
+        cameraDir.mkdirs();
+        pendingImageFile = new File(cameraDir, "IMG_" + System.currentTimeMillis() + ".jpg");
+        Uri photoUri = FileProvider.getUriForFile(this,
+                getPackageName() + ".fileprovider", pendingImageFile);
+        cameraLauncher.launch(photoUri);
+    }
 
-    // ✅ CACHE
-    private void loadFromCache() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String json = prefs.getString(CACHE_KEY, null);
-        if (json == null) return;
+    private void openGallery() {
+        galleryLauncher.launch("image/*");
+    }
 
+    private void copyGalleryUriToCache(Uri sourceUri) {
         try {
-            JSONArray array = new JSONArray(json);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
+            File galleryDir = new File(getCacheDir(), "gallery");
+            galleryDir.mkdirs();
+            pendingImageFile = new File(galleryDir, "IMG_" + System.currentTimeMillis() + ".jpg");
 
-                chatList.add(new ChatModel(
-                        obj.optString("chatId"),
-                        obj.optString("username"),
-                        obj.optString("nickname"),
-                        obj.optString("lastMessage"),
-                        obj.optString("time"),
-                        obj.optString("bio"),
-                        obj.optString("lastSeen"),
-                        obj.optBoolean("online", false)
-                ));
+            InputStream inputStream = getContentResolver().openInputStream(sourceUri);
+            FileOutputStream outputStream = new FileOutputStream(pendingImageFile);
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
             }
-        } catch (Exception ignored) {}
+            outputStream.close();
+            inputStream.close();
+
+            showPhotoPreview(pendingImageFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+            pendingImageFile = null;
+        }
     }
 
-    private void saveToCache(ArrayList<ChatModel> list) {
+    private void showPhotoPreview(File photoFile) {
+        Glide.with(this)
+                .load(photoFile)
+                .centerCrop()
+                .into(ivPhotoPreview);
+        photoPreviewContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void removePhotoPreview() {
+        photoPreviewContainer.setVisibility(View.GONE);
+        if (pendingImageFile != null) {
+            pendingImageFile.delete();
+            pendingImageFile = null;
+        }
+    }
+
+    private byte[] compressImage(File imageFile) {
         try {
-            JSONArray array = new JSONArray();
-            for (ChatModel chat : list) {
-                JSONObject obj = new JSONObject();
-                obj.put("chatId", chat.getChatId());
-                obj.put("username", chat.getUsername());
-                obj.put("nickname", chat.getNickname());
-                obj.put("lastMessage", chat.getLastMessage());
-                obj.put("time", chat.getTime());
-                obj.put("bio", chat.getBio());
-                obj.put("lastSeen", chat.getLastSeen());
-                obj.put("online", chat.isOnline());
-                array.put(obj);
-            }
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
 
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                    .edit().putString(CACHE_KEY, array.toString()).apply();
+            int maxDimension = 1024;
+            int sampleSize = 1;
+            while (opts.outWidth / sampleSize > maxDimension
+                    || opts.outHeight / sampleSize > maxDimension) {
+                sampleSize *= 2;
+            }   
 
-        } catch (Exception ignored) {}
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = sampleSize;
+            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            bitmap.recycle();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
     }
-
-    private void showAddUserDialog() {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_user, null);
-        EditText etUsername = dialogView.findViewById(R.id.etUsername);
-
-        new AlertDialog.Builder(this)
-                .setTitle("Add Friend")
-                .setView(dialogView)
-                .setPositiveButton("Send Request", (dialog, which) -> {
-                    String username = etUsername.getText().toString().trim();
-                    if (!username.isEmpty()) {
-                        DatabaseReference friendReq = FirebaseDatabase.getInstance().getReference("friend_request");
-                        String safeEmail = FirebaseAuth.getInstance().getCurrentUser().getEmail().replace(".","_");
-                        DatabaseReference dr = FirebaseDatabase.getInstance().getReference("users").child(safeEmail).child("username");
-                        dr.addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                String value = snapshot.getValue(String.class);
-                                HashMap<String, Object> requestData = new HashMap<>();
-                                requestData.put("from", safeEmail);
-                                requestData.put("fromUsername", value);
-                                requestData.put("timestamp", System.currentTimeMillis());
-                                requestData.put("status", "pending");
-                                friendReq.child(username).child(value).setValue(requestData);
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError error) {}
-                        });
-
-                        Toast.makeText(this, "sent request to " + username, Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    @Override
-    public void onOpenProfile(ChatModel chat) {}
-    @Override
-    public void onCloseDM(ChatModel chat) {}
 }

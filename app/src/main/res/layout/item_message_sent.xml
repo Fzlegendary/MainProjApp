@@ -1,51 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<!--
-    item_message_sent.xml
-    Layout for a message sent by the current user.
-    Bubble sits on the RIGHT side; the bottom-right corner has a 4 dp radius
-    acting as the "tail". No profile picture needed since it's always the user.
--->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="end"
-    android:paddingStart="56dp"
-    android:paddingEnd="8dp"
-    android:paddingTop="3dp"
-    android:paddingBottom="3dp">
+    android:padding="4dp">
 
-    <!-- ── Bubble with tail pointing right ── -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_bubble_sent"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:layout_gravity="end"
+        android:layout_marginStart="64dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp"
+        app:cardBackgroundColor="@color/message_sent_background">
 
-        <TextView
-            android:id="@+id/msgSentText"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
-            android:textSize="15sp"
-            android:maxWidth="220dp"
-            android:lineSpacingExtra="2dp"/>
+            android:orientation="vertical"
+            android:padding="12dp">
 
-        <TextView
-            android:id="@+id/msgSentTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#CCFFFFFF"
-            android:textSize="10sp"
-            android:layout_marginTop="3dp"
-            android:gravity="end"/>
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/message_sent_text"
+                android:textSize="16sp"
+                android:text="Sent message" />
 
-    </LinearLayout>
-
-</LinearLayout>
+            <TextView
+                android:id="@+id/tvMessageTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="4dp"
+                android:textSize="11sp"
+                android:textColor="@color/message_sent_text"
+                android:alpha="0.7"
+                android:text="12:34" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

@@ -7,6 +7,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.example.mainproj.MainActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -51,12 +52,6 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                     return;
                 }
 
-                MutedChatManager mutedChatManager = MutedChatManager.getInstance(this);
-                if (mutedChatManager.isMuted(chatId)) {
-                    Log.d(TAG, "Chat is muted, suppressing notification for: " + chatId);
-                    return;
-                }
-
                 if (ChatCacheApplication.isAppInForeground()) {
                     showInAppDialog(chatId, senderUsername, messageText);
                 } else {
@@ -83,6 +78,8 @@ public class NotificationHandlerService extends FirebaseMessagingService {
     }
 
     private void showInAppDialog(String chatId, String senderUsername, String messageText) {
+        if (!NetworkMonitor.getInstance(this).isConnected()) return;
+
         Activity foregroundActivity = ChatCacheApplication.getCurrentForegroundActivity();
         if (foregroundActivity == null || foregroundActivity.isFinishing()) {
             return;
@@ -95,17 +92,9 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, ChatActivity.class);
-                    intent.putExtra("chatId", chatId);
-                    intent.putExtra("username", senderUsername);
-                    intent.putExtra("nickname", senderUsername);
-                    intent.putExtra("bio", "");
-                    intent.putExtra("lastSeen", "");
-                    intent.putExtra("online", false);
+                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
+                    intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
-                })
-                .setNegativeButton("Mute", (dialog, which) -> {
-                    MutedChatManager.getInstance(this).muteChat(chatId);
                 })
                 .setNeutralButton("Dismiss", null)
                 .setCancelable(true)

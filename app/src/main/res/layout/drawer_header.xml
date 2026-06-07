@@ -4,14 +4,14 @@
     android:layout_height="176dp"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="#2196F3"
+    android:background="@color/colorPrimary"
     android:gravity="bottom">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Gate Control"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:textSize="20sp"
         android:textStyle="bold" />
 
@@ -19,7 +19,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="user@example.com"
-        android:textColor="#E3F2FD"
+        android:textColor="@color/colorAvatarBackground"
         android:textSize="14sp"
         android:layout_marginTop="4dp" />
 

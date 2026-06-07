@@ -14,16 +14,15 @@
 
     <!-- Dark theme colors -->
     <color name="input_stroke_color_dark">#8b9dff</color>
-    <color name="button_primary_dark">#7c8fff</color>
     <color name="text_secondary_dark">#b0b0b0</color>
     <color name="button_google_bg_dark">#2d2d2d</color>
     <color name="button_google_text_dark">#e0e0e0</color>
     <color name="button_google_stroke_dark">#4a4a4a</color>
 
 
-    <color name="colorPrimary">#1E88E5</color>
-    <color name="colorPrimaryDark">#1565C0</color>
-    <color name="colorAccent">#42A5F5</color>
+    <color name="colorPrimary">#4A8EC9</color>
+    <color name="colorPrimaryDark">#3A72B4</color>
+    <color name="colorAccent">#6BADD9</color>
     <color name="colorBackground">#F5F7FA</color>
     <color name="colorSurface">#FFFFFF</color>
     <color name="colorCardBackground">#FFFFFF</color>
@@ -35,12 +34,42 @@
     <color name="colorCardBorder">#E9ECF0</color>
     <color name="colorSearchBackground">#FFFFFF</color>
     <color name="colorSearchStroke">#D1D5DB</color>
-    <color name="colorFab">#1E88E5</color>
+    <color name="colorFab">#4A8EC9</color>
     <color name="colorFabIcon">#FFFFFF</color>
-    <color name="colorDeleteFab">#E53935</color>
-    <color name="colorAddFab">#4CAF50</color>
+    <color name="colorDeleteFab">#BF616A</color>
+    <color name="colorAddFab">#5A8F6B</color>
     <color name="colorCardShadow">#1A000000</color>
     <color name="colorAvatarBackground">#DBEAFE</color>
-    <color name="colorAvatarIcon">#1E88E5</color>
+    <color name="colorAvatarIcon">#4A8EC9</color>
+    <color name="colorStatusAccepted">#5A8F6B</color>
+    <color name="colorStatusDeclined">#BF616A</color>
+    <color name="colorOfflineBanner">#757575</color>
 
+    <!-- Semantic colors for consistent theming -->
+    <color name="colorWarning">#E08A4E</color>
+    <color name="colorPurple">#9B6D9B</color>
+    <color name="colorTabIndicator">#7C6DB0</color>
+    <color name="colorBlockUser">#BF616A</color>
+    <color name="colorToggleDisabled">#BF616A</color>
+    <color name="colorToggleEnabled">#5A8F6B</color>
+    <color name="colorOnlineDot">#5A8F6B</color>
+    <color name="colorServerBg">#E3F2FD</color>
+    <color name="colorPillBg">#E0E0E0</color>
+    <color name="colorBadgeGray">#B0B0B0</color>
+    <color name="colorToastWarningBg">#FFF3CD</color>
+    <color name="colorToastWarningText">#856404</color>
+    <color name="colorTextOnPrimary">#FFFFFF</color>
+    <color name="colorIconGray">#9E9E9E</color>
+    <color name="colorGateCardBg">#F8FAFE</color>
+
+    <!-- ChattingApp-style message colors -->
+    <color name="button_primary">#2196F3</color>
+    <color name="button_primary_dark">#1976D2</color>
+    <color name="dialog_border">#E0E0E0</color>
+    <color name="input_background">#F5F5F5</color>
+    <color name="message_sent_background">#2196F3</color>
+    <color name="message_received_background">#F5F5F5</color>
+    <color name="message_sent_text">#FFFFFF</color>
+    <color name="message_received_text">#000000</color>
+    <color name="send_button_background">#2196F3</color>
 </resources>

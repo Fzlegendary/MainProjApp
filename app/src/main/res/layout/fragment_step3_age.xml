@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Age"
-        android:textColor="#1A1A1A"
+        android:textColor="@color/colorTextPrimary"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Select your birthdate (private)"
-        android:textColor="#666666"
+        android:textColor="@color/colorTextSecondary"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -34,7 +34,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -50,7 +50,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Birthdate"
-                android:textColor="#666666"
+                android:textColor="@color/colorTextSecondary"
                 android:textSize="14sp" />
 
             <TextView
@@ -59,7 +59,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Tap to select"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="18sp" />
 
         </LinearLayout>
@@ -70,7 +70,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:textColor="#2196F3"
+        android:textColor="@color/colorPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
         android:visibility="gone"
@@ -85,7 +85,7 @@
         android:layout_marginTop="16dp"
         android:gravity="center"
         android:text="Your age is private and will not be visible to other users"
-        android:textColor="#999999"
+        android:textColor="@color/colorTextHint"
         android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -96,12 +96,12 @@
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="24dp"
-        android:backgroundTint="#2196F3"
+        android:backgroundTint="@color/colorPrimary"
         android:text="Next"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:cornerRadius="12dp"
+        app:cornerRadius="14dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvPrivacyNote" />

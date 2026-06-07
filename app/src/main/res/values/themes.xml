@@ -9,4 +9,9 @@
             <item name="buttonGoogleText">@color/button_google_text_light</item>
             <item name="buttonGoogleStroke">@color/button_google_stroke_light</item>
         </style>
+
+        <style name="CircleImageView" parent="">
+            <item name="cornerFamily">rounded</item>
+            <item name="cornerSize">50%</item>
+        </style>
     </resources>

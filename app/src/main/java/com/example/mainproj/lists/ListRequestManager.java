@@ -12,7 +12,6 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -25,11 +24,9 @@ public class ListRequestManager {
     private final String baseUrl;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final boolean trustAllCertificates;
 
     public ListRequestManager(String baseUrl, boolean trustAllCertificates) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-        this.trustAllCertificates = trustAllCertificates;
         if (trustAllCertificates) disableSSLCertificateChecking();
     }
 

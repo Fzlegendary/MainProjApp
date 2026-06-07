@@ -1,219 +1,324 @@
 package com.example.mainproj.messaging;
 
-// Android imports for context, intents, views, and layouts
 import android.app.AlertDialog;
-import android.content.Context;        // used to access app resources and start activities
-import android.content.Intent;         // used to navigate between activities
-import android.view.LayoutInflater;    // inflates (converts) XML layout files into View objects
-import android.view.View;              // base class for all UI components
-import android.view.ViewGroup;         // a view that can contain other views (the list container)
-import android.widget.ImageView;       // displays images (profile pictures)
-import android.widget.TextView;        // displays text in the UI
+import android.content.Context;
+import android.content.Intent;
+import android.text.InputType;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
-// AndroidX imports for fragment support and RecyclerView
-import androidx.fragment.app.FragmentActivity; // needed to get a FragmentManager for the bottom sheet
-import androidx.recyclerview.widget.RecyclerView; // scrollable list component
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 
-// App-specific imports
-import com.example.mainproj.R; // gives access to resources like layouts, ids, colors
-import com.bumptech.glide.Glide; // image loading library
+import com.bumptech.glide.Glide;
+import com.example.mainproj.R;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-// Java utility
-import java.util.ArrayList; // dynamic list to hold chat items
 
-// ChatAdapter connects the list of ChatModel data to the RecyclerView UI
-public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
 
-    private ArrayList<ChatModel> chatList; // holds all chat items to display
-    private final Context context;               // used to inflate views and start activities
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
 
-    public interface OnChatActionListener {
-        void onOpenProfile(ChatModel chat);
-        void onCloseDM(ChatModel chat);
+public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
+
+    private List<ChatModel> chatList;
+    private List<ChatModel> fullList;
+    private Context context;
+    private String safeEmail;
+
+    public ChatAdapter(Context context, List<ChatModel> chatList, String safeEmail) {
+        this.context = context;
+        this.chatList = chatList;
+        this.fullList = new ArrayList<>(chatList);
+        this.safeEmail = safeEmail;
     }
 
-    private OnChatActionListener actionListener;
-
-    public void setOnChatActionListener(OnChatActionListener listener) {
-        this.actionListener = listener;
+    public void updateFullList(List<ChatModel> newList) {
+        fullList = new ArrayList<>(newList);
     }
 
-    // Constructor — called when creating the adapter, receives the data list and context
-    public ChatAdapter(ArrayList<ChatModel> chatList, Context context) {
-        this.chatList = chatList; // store the list of chats
-        this.context = context;   // store the context (usually the Activity)
+    public void filter(String text) {
+        chatList.clear();
+        if (TextUtils.isEmpty(text)) {
+            chatList.addAll(fullList);
+        } else {
+            String search = text.toLowerCase();
+            for (ChatModel item : fullList) {
+                String name = item.getNickname() != null ? item.getNickname().toLowerCase() : "";
+                String username = item.getUsername() != null ? item.getUsername().toLowerCase() : "";
+                if (name.contains(search) || username.contains(search)) {
+                    chatList.add(item);
+                }
+            }
+        }
+        notifyDataSetChanged();
     }
 
-    // Called by RecyclerView when it needs a new row view — inflates the XML layout for one chat item
+    @NonNull
     @Override
-    public ChatViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context)
-                .inflate(R.layout.chat_item, parent, false); // turn chat_item.xml into an actual View
-        return new ChatViewHolder(view); // wrap the view in a ViewHolder and return it
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_chat, parent, false);
+        return new ViewHolder(view);
     }
 
-    // Called for each visible row — binds data from ChatModel into the views for that row
     @Override
-    public void onBindViewHolder(ChatViewHolder holder, int position) {
-
-        ChatModel chat = chatList.get(position); // get the chat data for this row's position
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        ChatModel chat = chatList.get(position);
 
         String displayName = chat.getNickname() != null && !chat.getNickname().isEmpty()
                 ? chat.getNickname() : chat.getUsername();
-        holder.chatName.setText(displayName);
+        holder.tvName.setText(displayName);
 
-        // Load profile image with Glide
-        Glide.with(context)
-                .load(android.R.drawable.sym_def_app_icon)
-                .placeholder(android.R.drawable.sym_def_app_icon)
-                .circleCrop()
-                .into(holder.profileImage);
+        if (chat.getImageUrl() != null && !chat.getImageUrl().isEmpty()) {
+            Glide.with(holder.itemView.getContext())
+                    .load(chat.getImageUrl())
+                    .placeholder(R.drawable.ic_default_avatar)
+                    .into(holder.imgProfile);
+        } else {
+            holder.imgProfile.setImageResource(R.drawable.ic_default_avatar);
+        }
 
-        holder.lastMessage.setText(chat.getLastMessage()); // set the last message preview text
-        holder.chatTime.setText(chat.getTime());           // set the timestamp text
-
-        // Online indicator
         if (chat.isOnline()) {
             holder.onlineIndicator.setVisibility(View.VISIBLE);
         } else {
             holder.onlineIndicator.setVisibility(View.GONE);
         }
 
-        // Unread badge
-        int unreadCount = chat.getUnreadCount();
-        if (unreadCount > 0) {
-            holder.unreadBadge.setText(String.valueOf(unreadCount > 99 ? "99+" : unreadCount));
+        Long unread = chat.getUnreadCount();
+        if (unread != null && unread > 0) {
             holder.unreadBadge.setVisibility(View.VISIBLE);
+            holder.unreadBadge.setText(String.valueOf(unread));
         } else {
             holder.unreadBadge.setVisibility(View.GONE);
         }
 
-        // Short tap — opens the chat conversation screen
+        String chatId = chat.getChatId();
+        if (chatId != null) {
+            if (!NetworkMonitor.getInstance(context).isConnected()) {
+                holder.tvLastMessage.setText(chat.getLastMessage() != null ? chat.getLastMessage() : "");
+                Long ts = chat.getTimestamp();
+                holder.tvTime.setText(ts != null ? formatTimestamp(ts) : "");
+            } else {
+                DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chatId);
+                chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String lastMessageText = "";
+                        long lastTimestamp = 0;
+
+                        if (snapshot.child("lastMessage").exists()) {
+                            DataSnapshot lastMsgSnap = snapshot.child("lastMessage");
+                            lastMessageText = lastMsgSnap.child("text").getValue(String.class);
+                            String sender = lastMsgSnap.child("senderUsername").getValue(String.class);
+                            String currentUsername = ChatCacheApplication.getCurrentUsername();
+                            boolean isMe = sender != null && sender.equals(currentUsername);
+                            if (lastMessageText != null && isMe) {
+                                lastMessageText = "You" + ": " + lastMessageText;
+                            }
+                            Object tsObj = lastMsgSnap.child("timestamp").getValue();
+                            if (tsObj instanceof Long) lastTimestamp = (Long) tsObj;
+                            else if (tsObj instanceof Double) lastTimestamp = ((Double) tsObj).longValue();
+                        }
+
+                        holder.tvLastMessage.setText(lastMessageText != null ? lastMessageText : "");
+                        holder.tvTime.setText(formatTimestamp(lastTimestamp));
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        holder.tvLastMessage.setText(chat.getLastMessage() != null ? chat.getLastMessage() : "");
+                        Long ts = chat.getTimestamp();
+                        holder.tvTime.setText(ts != null ? formatTimestamp(ts) : "");
+                        Toast.makeText(context, "Failed to get from firebase", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }
+
         holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(context, ChatActivity.class);
-            intent.putExtra("username", chat.getUsername());
+            Intent intent = new Intent(context, com.example.mainproj.messaging.MessagingActivity.class);
             intent.putExtra("chatId", chat.getChatId());
-            intent.putExtra("nickname", chat.getNickname());
-            intent.putExtra("bio", chat.getBio());
-            intent.putExtra("lastSeen", chat.getLastSeen());
-            intent.putExtra("online", chat.isOnline());
+            intent.putExtra("username", chat.getUsername());
             context.startActivity(intent);
         });
 
-        // Long press — opens the options dialog
         holder.itemView.setOnLongClickListener(v -> {
-            showChatOptionsDialog(chat);
+            int adapterPos = holder.getAdapterPosition();
+            if (adapterPos == RecyclerView.NO_POSITION) return true;
+
+            new AlertDialog.Builder(context)
+                    .setTitle("Chat Options")
+                    .setItems(new CharSequence[]{"Edit Name", "Delete Chat"}, (dialog, which) -> {
+                        ChatModel selectedChat = chatList.get(adapterPos);
+
+                        if (which == 0) showEditNameDialog(selectedChat, adapterPos);
+                        else if (which == 1) {
+                            chatList.remove(adapterPos);
+                            fullList.removeIf(item -> item.getChatId() != null
+                                    && item.getChatId().equals(selectedChat.getChatId()));
+                            notifyDataSetChanged();
+
+                            if (!NetworkMonitor.getInstance(context).isConnected()) {
+                                if (context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                        .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                                    ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                    ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                    Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+                                new AlertDialog.Builder(context)
+                                        .setTitle("No Internet Connection")
+                                        .setMessage("No internet connection, action will not be synced out of device.")
+                                        .setPositiveButton("OK", (d, w) -> {
+                                            ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                            ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                            Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                            context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                                    .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                            ChatMetadataManager.getInstance(context).clearChat(safeEmail, selectedChat.getChatId());
+                                            ChatCacheManager.getInstance(context).clearChat(selectedChat.getChatId());
+                                            Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .setNeutralButton("Cancel", null)
+                                        .show();
+                                return;
+                            }
+
+                            Toast.makeText(context, "Chat removed", Toast.LENGTH_SHORT).show();
+                            if (selectedChat.getChatId() != null) {
+                                DatabaseReference userChatRef = FirebaseDatabase.getInstance()
+                                        .getReference("users")
+                                        .child(safeEmail)
+                                        .child("chats")
+                                        .child(selectedChat.getChatId());
+                                userChatRef.removeValue();
+                            }
+                        }
+                    }).show();
             return true;
         });
     }
 
-    private void showChatOptionsDialog(ChatModel chat) {
-        String[] options = {"Open Profile", "Close DM"};
-        
-        String displayName = chat.getNickname() != null && !chat.getNickname().isEmpty()
-                ? chat.getNickname() : chat.getUsername();
-
+    private void showEditNameDialog(ChatModel chat, int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle(displayName);
+        builder.setTitle("Edit Chat Name");
 
-        builder.setItems(options, (dialog, which) -> {
-            if (which == 0) {
-                if (actionListener != null) {
-                    actionListener.onOpenProfile(chat);
-                } else {
-                    showProfileSheet(chat);
+        final EditText input = new EditText(context);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        String currentName = chat.getNickname() != null && !chat.getNickname().isEmpty()
+                ? chat.getNickname() : chat.getUsername();
+        input.setText(currentName);
+        builder.setView(input);
+
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String newName = input.getText().toString().trim();
+            if (!newName.isEmpty()) {
+                chat.setNickname(newName);
+                notifyItemChanged(position);
+
+                for (ChatModel item : fullList) {
+                    if (item.getChatId() != null && item.getChatId().equals(chat.getChatId())) {
+                        item.setNickname(newName);
+                        break;
+                    }
                 }
-            } else if (which == 1) {
-                if (actionListener != null) {
-                    actionListener.onCloseDM(chat);
+
+                if (chat.getChatId() != null) {
+                    if (!NetworkMonitor.getInstance(context).isConnected()) {
+                        if (context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                .getLong("snoozed_until", 0) > System.currentTimeMillis()) {
+                            ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                            return;
+                        }
+                        new AlertDialog.Builder(context)
+                                .setTitle("No Internet Connection")
+                                .setMessage("No internet connection, action will not be synced out of device.")
+                                .setPositiveButton("OK", (d, w) -> {
+                                    ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                                })
+                                .setNegativeButton("Don't show for 30 min", (d, w) -> {
+                                    context.getSharedPreferences("offline_snooze_prefs", Context.MODE_PRIVATE)
+                                            .edit().putLong("snoozed_until", System.currentTimeMillis() + 1800000).apply();
+                                    ChatMetadataManager.getInstance(context).saveChat(safeEmail, chat);
+                                })
+                                .setNeutralButton("Cancel", null)
+                                .show();
+                        return;
+                    }
+                    DatabaseReference chatNameRef = FirebaseDatabase.getInstance()
+                            .getReference("users")
+                            .child(safeEmail)
+                            .child("chats")
+                            .child(chat.getChatId())
+                            .child("chatName");
+                    chatNameRef.setValue(newName)
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(context, "Failed to update name", Toast.LENGTH_SHORT).show());
                 }
+            } else {
+                input.setError("Name cannot be empty");
             }
         });
 
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
         builder.show();
     }
 
-    // Builds and shows the UserProfileBottomSheet for the given chat item
-    private void showProfileSheet(ChatModel chat) {
-
-        // Bottom sheets require a FragmentManager, which only FragmentActivity has
-        // If context is not a FragmentActivity (e.g. an Application context), bail out safely
-        if (!(context instanceof FragmentActivity)) return;
-
-        // Create a new instance of the bottom sheet, passing in the user's data
-        UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                chat.getUsername(),  // display name shown at the top of the sheet
-                chat.getBio(),       // bio/status text shown below the divider
-                chat.getLastSeen(),  // shown when the user is offline e.g. "Last seen 5m ago"
-                chat.isOnline()      // true = show green dot + "Online", false = show last seen text
-        );
-
-        // Set up callbacks for each button inside the bottom sheet
-        sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
-
-            @Override
-            public void onSendMessage(String username) {
-                Intent intent = new Intent(context, ChatActivity.class);
-                intent.putExtra("username", username);
-                intent.putExtra("chatId", chat.getChatId());
-                intent.putExtra("nickname", chat.getNickname());
-                intent.putExtra("bio", chat.getBio());
-                intent.putExtra("lastSeen", chat.getLastSeen());
-                intent.putExtra("online", chat.isOnline());
-                context.startActivity(intent);
-            }
-
-            @Override
-            public void onViewProfile(String username) {
-                // "View Full Profile" button tapped — navigate to the user's full profile screen
-                // TODO: uncomment and replace ProfileActivity with your actual activity class name
-                // Intent intent = new Intent(context, ProfileActivity.class);
-                // intent.putExtra("username", username);
-                // context.startActivity(intent);
-            }
-
-            @Override
-            public void onBlockUser(String username) {
-                // "Block User" button tapped — add your block/report logic here
-                // TODO: call your ViewModel, repository, or Firebase method to block the user
-            }
-        });
-
-        // Show the bottom sheet using the FragmentManager from the host Activity
-        sheet.show(
-                ((FragmentActivity) context).getSupportFragmentManager(), // get FragmentManager from Activity
-                UserProfileBottomSheet.TAG  // unique tag to identify this dialog fragment
-        );
-    }
-
-    // Returns the total number of rows in the list — RecyclerView uses this to know when to stop
     @Override
     public int getItemCount() {
-        return chatList.size(); // size of the chat list = number of rows
+        return chatList.size();
     }
 
-    // -------------------------------------------------------------------------
-    // ViewHolder — holds references to the views inside one chat row
-    // Avoids calling findViewById repeatedly on every scroll (improves performance)
-    // -------------------------------------------------------------------------
-    public static class ChatViewHolder extends RecyclerView.ViewHolder {
+    private String formatTimestamp(long timestamp) {
+        if (timestamp == 0) return "";
 
-        ImageView profileImage;
+        Calendar cal = Calendar.getInstance();
+        Calendar msgCal = Calendar.getInstance();
+        msgCal.setTimeInMillis(timestamp);
+
+        int today = cal.get(Calendar.DAY_OF_YEAR);
+        int msgDay = msgCal.get(Calendar.DAY_OF_YEAR);
+        int year = cal.get(Calendar.YEAR);
+        int msgYear = msgCal.get(Calendar.YEAR);
+
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        if (year == msgYear && today == msgDay) return timeFormat.format(msgCal.getTime());
+        else if (year == msgYear && today - msgDay == 1) return "Yesterday";
+        else return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(msgCal.getTime());
+    }
+
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        ImageView imgProfile;
+        TextView tvName, tvLastMessage, tvTime;
         View onlineIndicator;
-        TextView chatName;
-        TextView lastMessage;
-        TextView chatTime;
         TextView unreadBadge;
 
-        // Constructor — finds and stores each view by its ID from the inflated layout
-        public ChatViewHolder(View itemView) {
-            super(itemView);                                          // pass itemView to parent ViewHolder
-            profileImage   = itemView.findViewById(R.id.profileImage);
+        ViewHolder(View itemView) {
+            super(itemView);
+            imgProfile = itemView.findViewById(R.id.imgProfile);
+            tvName = itemView.findViewById(R.id.tvName);
+            tvLastMessage = itemView.findViewById(R.id.tvLastMessage);
+            tvTime = itemView.findViewById(R.id.tvTime);
             onlineIndicator = itemView.findViewById(R.id.onlineIndicator);
-            chatName      = itemView.findViewById(R.id.chatName);    // find the username TextView
-            lastMessage   = itemView.findViewById(R.id.lastMessage); // find the last message TextView
-            chatTime      = itemView.findViewById(R.id.chatTime);    // find the timestamp TextView
-            unreadBadge   = itemView.findViewById(R.id.unreadBadge);
+            unreadBadge = itemView.findViewById(R.id.unreadBadge);
         }
     }
 }

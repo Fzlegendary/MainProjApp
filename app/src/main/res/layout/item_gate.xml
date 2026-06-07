@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="4dp"
-    android:backgroundTint="@android:color/white">
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@android:color/black"
+    app:strokeWidth="1dp"
+    app:cardBackgroundColor="@color/colorGateCardBg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -30,7 +34,7 @@
                 android:text="Gate 1"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:textColor="#333333" />
+                android:textColor="@color/colorTextPrimary" />
 
             <!-- Status Badge -->
             <TextView
@@ -56,8 +60,49 @@
             android:layout_marginTop="8dp"
             android:text="Ready"
             android:textSize="14sp"
-            android:textColor="#666666"
+            android:textColor="@color/colorTextSecondary"
             android:textStyle="italic" />
+
+        <!-- Permission Badge + Admin Gear Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvPermissionBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/colorTextOnPrimary"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@color/colorWarning"
+                android:visibility="gone"
+                tools:text="Admin Only" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/btnGateAdminSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_settings"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Gate settings"
+                android:visibility="gone"
+                android:scaleType="center"
+                android:padding="4dp"
+                app:tint="@color/colorTextSecondary" />
+
+        </LinearLayout>
 
         <!-- Control Button -->
         <Button
@@ -68,10 +113,11 @@
             android:text="OPEN GATE"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:backgroundTint="#4CAF50"
-            android:padding="14dp"
+            android:backgroundTint="@color/colorAddFab"
+            android:padding="10dp"
+            app:cornerRadius="14dp"
             android:textColor="@android:color/white" />
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

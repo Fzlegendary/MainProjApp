@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Phone Verification"
-        android:textColor="#1A1A1A"
+        android:textColor="@color/colorTextPrimary"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Verify your phone number (optional)"
-        android:textColor="#666666"
+        android:textColor="@color/colorTextSecondary"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -34,7 +34,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -52,14 +52,14 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Phone:"
-                android:textColor="#666666"
+                android:textColor="@color/colorTextSecondary"
                 android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/tvPhoneNumber"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#1A1A1A"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="16sp" />
 
         </LinearLayout>
@@ -70,12 +70,12 @@
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
-        android:backgroundTint="#2196F3"
+        android:backgroundTint="@color/colorPrimary"
         android:text="Send Verification SMS"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:cornerRadius="12dp"
+        app:cornerRadius="14dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cardPhone" />
@@ -102,8 +102,8 @@
         app:boxCornerRadiusBottomStart="12dp"
         app:boxCornerRadiusTopEnd="12dp"
         app:boxCornerRadiusTopStart="12dp"
-        app:boxStrokeColor="#2196F3"
-        app:hintTextColor="#666666"
+        app:boxStrokeColor="@color/colorPrimary"
+        app:hintTextColor="@color/colorTextSecondary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btnSendSms">
@@ -114,7 +114,7 @@
             android:layout_height="wrap_content"
             android:inputType="number"
             android:padding="16dp"
-            android:textColor="#1A1A1A"
+            android:textColor="@color/colorTextPrimary"
             android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -123,13 +123,13 @@
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
-        android:backgroundTint="#4CAF50"
+        android:backgroundTint="@color/colorAddFab"
         android:text="Verify"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/colorTextOnPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
         android:visibility="gone"
-        app:cornerRadius="12dp"
+        app:cornerRadius="14dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tilVerificationCode" />
@@ -140,7 +140,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="✓ Phone verified!"
-        android:textColor="#4CAF50"
+        android:textColor="@color/colorAddFab"
         android:textSize="16sp"
         android:textStyle="bold"
         android:visibility="gone"
@@ -155,7 +155,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="Skip"
-        android:textColor="#2196F3"
+        android:textColor="@color/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvVerified" />

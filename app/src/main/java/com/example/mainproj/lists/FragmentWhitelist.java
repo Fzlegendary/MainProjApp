@@ -1,7 +1,9 @@
 package com.example.mainproj.lists;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +19,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListFilter;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
+import com.example.mainproj.messaging.ExpirationReceiver;
+import com.example.mainproj.messaging.NotificationHelper;
 import com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter;
 import com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent;
 import com.google.android.material.textfield.TextInputEditText;
@@ -34,7 +38,6 @@ public class FragmentWhitelist extends FragmentBaseList {
 
     private ListAdapter adapter;
     private List<PlaceholderContent.PlaceholderItem> fullList = new ArrayList<>();
-    private static final String LIST_TYPE = "whitelist";
 
     private DatabaseReference whitelistRef;
     private ValueEventListener whitelistListener;
@@ -68,6 +71,7 @@ public class FragmentWhitelist extends FragmentBaseList {
                     PlaceholderContent.PlaceholderItem item = parseItem(child);
                     fullList.add(item);
                 }
+                fullList.sort((a, b) -> Long.compare(b.timestampWhenAdded, a.timestampWhenAdded));
                 adapter.update(fullList);
                 refreshFilteredList();
             }
@@ -177,6 +181,19 @@ public class FragmentWhitelist extends FragmentBaseList {
                     item.id = newKey;
                     whitelistRef.child(newKey).setValue(item);
 
+                    if (timestampExpiresAt != -1L) {
+                        Intent expIntent = new Intent(requireContext(), ExpirationReceiver.class);
+                        expIntent.putExtra("pushId", newKey);
+                        expIntent.putExtra("listType", "whitelist");
+                        expIntent.putExtra("itemName", name);
+                        expIntent.putExtra("byWho", byWho);
+                        expIntent.putExtra("reason", reason);
+                        expIntent.putExtra("timestampWhenAdded", now);
+                        expIntent.putExtra("timestampExpiresAt", timestampExpiresAt);
+                        NotificationHelper.scheduleAlarm(requireContext(), newKey.hashCode(), timestampExpiresAt, expIntent);
+                        Log.d("FragmentWhitelist", "Item added with expiry: id=" + newKey + ", expiresAt=" + timestampExpiresAt + ", alarm scheduled");
+                    }
+
                     Toast.makeText(requireContext(), "Item added", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
@@ -207,6 +224,8 @@ public class FragmentWhitelist extends FragmentBaseList {
         String query = vm.getSearchQuery().getValue();
         if (query != null && !query.isEmpty()) {
             adapter.update(ListFilter.apply(fullList, query));
+        } else {
+            adapter.update(fullList);
         }
     }
 

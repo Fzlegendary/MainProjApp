@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_unread_badge.xml
+    Red circle badge shown in the top-right corner of a user's profile
+    picture when there are unread messages. Contains white text with
+    the unread count (e.g. "3", "9", "99+").
+    Color: #F44336 (Material Red 500)
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Solid red fill for the unread message badge -->
+    <solid android:color="@color/colorDeleteFab" />
+
+</shape>

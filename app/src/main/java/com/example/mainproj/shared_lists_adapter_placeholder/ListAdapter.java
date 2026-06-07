@@ -9,6 +9,8 @@ import com.example.mainproj.R;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import androidx.annotation.NonNull;
+
 public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
 
     public interface OnDeleteClickListener {

@@ -3,7 +3,9 @@ package com.example.mainproj.messaging;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.util.Log;
 
+import com.example.mainproj.auth.SessionManager;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class ChatCacheApplication extends Application implements Application.ActivityLifecycleCallbacks {
@@ -18,16 +20,21 @@ public class ChatCacheApplication extends Application implements Application.Act
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
         NotificationHelper.createChannel(this);
+        NotificationHelper.createExpirationChannel(this);
+        Log.d("ChatCacheApplication", "Channels created on startup");
         fetchFCMToken();
+        SessionManager.init();
+        getSharedPreferences("action_queue", MODE_PRIVATE).edit().clear().apply();
+        getSharedPreferences("muted_chats_prefs", MODE_PRIVATE).edit().clear().apply();
     }
 
     private void fetchFCMToken() {
-        FirebaseMessaging.getInstance().getToken()
+                FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
                     if (!task.isSuccessful()) {
                         return;
                     }
-                    String token = task.getResult();
+                    task.getResult();
                 });
     }
 
@@ -97,8 +104,6 @@ public class ChatCacheApplication extends Application implements Application.Act
         }
         if (activityCount <= 0) {
             activityCount = 0;
-            ChatCacheManager.getInstance(this).clearAll();
-            MutedChatManager.getInstance(this).clearAll();
         }
     }
 }

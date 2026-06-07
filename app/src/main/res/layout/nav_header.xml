@@ -1,0 +1,49 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="200dp"
+    android:background="?attr/colorPrimary"
+    android:gravity="bottom"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="36dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="2dp"
+        app:strokeColor="?attr/colorOnPrimary">
+
+        <ImageView
+            android:id="@+id/navHeaderImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_default_avatar"
+            android:contentDescription="Profile Picture" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/navHeaderName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Your Name"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnPrimary"
+        android:paddingBottom="4dp" />
+
+    <TextView
+        android:id="@+id/navHeaderEmail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="your.email@example.com"
+        android:textSize="14sp"
+        android:textColor="?attr/colorOnPrimary"
+        android:alpha="0.87" />
+
+</LinearLayout>

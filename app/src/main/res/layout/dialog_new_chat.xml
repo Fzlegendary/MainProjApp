@@ -1,0 +1,86 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="24dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_round"
+    android:layout_gravity="center"
+    android:gravity="center">
+
+    <View
+        android:layout_width="56dp"
+        android:layout_height="4dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/bg_dialog_handle"
+        android:alpha="0.3" />
+
+    <TextView
+        android:id="@+id/dialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start New Chat"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enter details to begin conversation"
+        android:textSize="14sp"
+        android:paddingBottom="24dp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:alpha="0.7" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:hint="Email address"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:textColorHint="?android:attr/textColorSecondary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputUserUid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textEmailAddress"
+            android:padding="16dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:hint="Display name"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:textColorHint="?android:attr/textColorSecondary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName"
+            android:padding="16dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Button
+        android:id="@+id/btnCreateChat"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Create Chat"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/send_button_background"
+        android:elevation="2dp"
+        style="@style/Widget.MaterialComponents.Button" />
+
+</LinearLayout>

@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.example.mainproj.MainActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -21,7 +22,10 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class MessageNotificationService extends Service {
@@ -31,6 +35,7 @@ public class MessageNotificationService extends Service {
 
     private DatabaseReference chatsRef;
     private Map<String, ChildEventListener> chatListeners = new HashMap<>();
+    private final Map<String, Boolean> listenerReady = new HashMap<>();
     private String currentUserSafeEmail;
     private String currentUsername;
 
@@ -95,6 +100,19 @@ public class MessageNotificationService extends Service {
                     FirebaseDatabase.getInstance()
                             .getReference("chats").child(chatId).child("messages")
                             .addChildEventListener(listener);
+
+                    FirebaseDatabase.getInstance()
+                            .getReference("chats").child(chatId).child("messages")
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    listenerReady.put(chatId, true);
+                                }
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    listenerReady.put(chatId, true);
+                                }
+                            });
                 }
             }
 
@@ -109,7 +127,10 @@ public class MessageNotificationService extends Service {
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
                 String messageSender = snapshot.child("senderUsername").getValue(String.class);
                 String messageText = snapshot.child("text").getValue(String.class);
-                String messageTime = snapshot.child("time").getValue(String.class);
+                Long messageTs = snapshot.child("timestamp").getValue(Long.class);
+                String messageTime = messageTs != null && messageTs > 0
+                        ? new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(messageTs))
+                        : "";
                 String messageKey = snapshot.getKey();
 
                 if (messageSender == null || messageText == null) return;
@@ -123,10 +144,8 @@ public class MessageNotificationService extends Service {
                     return;
                 }
 
-                MutedChatManager mutedChatManager = MutedChatManager.getInstance(MessageNotificationService.this);
-                if (mutedChatManager.isMuted(chatId)) {
-                    return;
-                }
+                if (!Boolean.TRUE.equals(listenerReady.get(chatId))) return;
+                if (!NetworkMonitor.getInstance(MessageNotificationService.this).isConnected()) return;
 
                 if (ChatCacheApplication.isAppInForeground()) {
                     showInAppDialog(chatId, senderUsername != null ? senderUsername : "Unknown", messageText);
@@ -169,17 +188,9 @@ public class MessageNotificationService extends Service {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, ChatActivity.class);
-                    intent.putExtra("chatId", chatId);
-                    intent.putExtra("username", senderUsername);
-                    intent.putExtra("nickname", senderUsername);
-                    intent.putExtra("bio", "");
-                    intent.putExtra("lastSeen", "");
-                    intent.putExtra("online", false);
+                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
+                    intent.putExtra("tab_position", 1);
                     foregroundActivity.startActivity(intent);
-                })
-                .setNegativeButton("Mute", (dialog, which) -> {
-                    MutedChatManager.getInstance(MessageNotificationService.this).muteChat(chatId);
                 })
                 .setNeutralButton("Dismiss", null)
                 .setCancelable(true)
@@ -187,7 +198,7 @@ public class MessageNotificationService extends Service {
     }
 
     private Notification buildForegroundNotification() {
-        Intent notificationIntent = new Intent(this, MessagingActivity.class);
+        Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -228,6 +239,7 @@ public class MessageNotificationService extends Service {
                     .removeEventListener(entry.getValue());
         }
         chatListeners.clear();
+        listenerReady.clear();
     }
 
     public static void startService(android.content.Context context) {
