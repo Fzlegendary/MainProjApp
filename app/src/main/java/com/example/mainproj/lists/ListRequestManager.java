@@ -11,13 +11,12 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class ListRequestManager {
     private static final String TAG = "ListRequestManager";
@@ -25,9 +24,8 @@ public class ListRequestManager {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public ListRequestManager(String baseUrl, boolean trustAllCertificates) {
+    public ListRequestManager(String baseUrl) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-        if (trustAllCertificates) disableSSLCertificateChecking();
     }
 
     public interface ListCallback {
@@ -93,7 +91,7 @@ public class ListRequestManager {
         executor.execute(() -> {
             try {
                 URL url = new URL(baseUrl + endpoint);
-                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setDoOutput(true);
@@ -145,23 +143,5 @@ public class ListRequestManager {
 
     private void postError(ListCallback cb, String error) {
         mainHandler.post(() -> cb.onError(error));
-    }
-
-    private void disableSSLCertificateChecking() {
-        try {
-            javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
-                    new javax.net.ssl.X509TrustManager() {
-                        public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) { }
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) { }
-                    }
-            };
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-        } catch (Exception e) {
-            Log.e(TAG, "SSL bypass error", e);
-        }
     }
 }

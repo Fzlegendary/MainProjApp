@@ -29,6 +29,10 @@
             android:name=".messaging.MessagingActivity"
             android:exported="true" />
         <activity
+            android:name=".messaging.ImageViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MainProj" />
+        <activity
             android:name=".MainActivity"
             android:exported="false" />
         <activity

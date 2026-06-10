@@ -41,6 +41,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    // PhotoView for zoomable images
+    implementation("com.github.chrisbanes:photoview:2.3.0")
     //m
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth:24.0.1")

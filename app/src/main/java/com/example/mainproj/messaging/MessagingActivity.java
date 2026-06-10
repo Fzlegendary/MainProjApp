@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.Uri;
@@ -47,11 +49,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -66,9 +66,25 @@ import java.util.UUID;
 
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.util.Log;
 import android.view.ViewGroup;
 
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButton;
+
+import android.content.SharedPreferences;
+
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 
 
@@ -106,11 +122,21 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     private ImageButton btnCamera;
     private ImageButton btnGallery;
 
+    private static final String PREFS_NAME = "MainProjPrefs";
+    private static final String KEY_HOST = "server_host";
+    private static final String KEY_PORT = "server_port";
+
+    private String getServerBaseUrl() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String host = prefs.getString(KEY_HOST, "localhost");
+        String port = prefs.getString(KEY_PORT, "8080");
+        return "http://" + host + ":" + port;
+    }
+
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<String> cameraPermissionLauncher;
 
-    private StorageReference storageRef;
     private String currentMessagesPath;
 
     private LinearLayout archiveContainer;
@@ -177,8 +203,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         if (firebaseUser != null && firebaseUser.getEmail() != null) {
             currentUserSafeEmail = firebaseUser.getEmail().replace(".", "_");
         }
-
-        storageRef = FirebaseStorage.getInstance().getReference();
 
         profileImage = findViewById(R.id.profileImage);
         profileName = findViewById(R.id.profileName);
@@ -552,7 +576,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         }
 
         if (pendingImageFile != null) {
-            uploadPhotoAndSend(text);
+            sendImageViaServer(text);
         } else {
             sendTextMessageOnly(text);
         }
@@ -779,49 +803,84 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         });
     }
 
-    private void uploadPhotoAndSend(String caption) {
+    private void sendImageViaServer(String caption) {
         if (pendingImageFile == null || currentUsername == null) return;
+        Log.d("imageUpload", "sendImageViaServer: starting, file=" + pendingImageFile.getName() + " size=" + pendingImageFile.length());
         if (chatId == null && partnerUsername != null) {
             chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
             messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            Log.d("imageUpload", "sendImageViaServer: created new chatId=" + chatId);
             setupNewChat();
         }
-        if (chatId == null) return;
-
-        if (!NetworkMonitor.getInstance(this).isConnected()) {
-            Toast.makeText(this, "Cannot send images offline", Toast.LENGTH_SHORT).show();
+        if (chatId == null) {
+            Log.d("imageUpload", "sendImageViaServer: chatId is null, aborting");
             return;
         }
 
         sendButton.setEnabled(false);
-        String fileName = "chat_" + chatId + "/" + UUID.randomUUID() + ".jpg";
-        StorageReference fileRef = storageRef.child("chat_images").child(fileName);
 
         byte[] imageBytes = compressImage(pendingImageFile);
         if (imageBytes == null) {
+            Log.d("imageUpload", "sendImageViaServer: compressImage returned null");
             Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show();
             sendButton.setEnabled(true);
             return;
         }
+        Log.d("imageUpload", "sendImageViaServer: compressed to " + imageBytes.length + " bytes");
 
-        fileRef.putBytes(imageBytes)
-                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl()
-                        .addOnSuccessListener(uri -> {
-                            String imageUrl = uri.toString();
-                            sendImageMessage(caption, imageUrl);
-                        })
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
-                            sendButton.setEnabled(true);
-                        }))
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+        String url = getServerBaseUrl() + "/chat/upload-image";
+
+        OkHttpClient client = new OkHttpClient();
+
+        RequestBody body = RequestBody.create(imageBytes, MediaType.parse("image/jpeg"));
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader("Content-Type", "image/jpeg")
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("imageUpload", "sendImageViaServer: onFailure " + e.getMessage());
+                runOnUiThread(() -> {
                     sendButton.setEnabled(true);
+                    Toast.makeText(MessagingActivity.this, "Upload failed", Toast.LENGTH_SHORT).show();
                 });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String res = response.body() != null ? response.body().string() : "";
+
+                if (!response.isSuccessful()) {
+                    Log.d("imageUpload", "sendImageViaServer: HTTP " + response.code() + " " + res);
+                    runOnUiThread(() -> {
+                        sendButton.setEnabled(true);
+                        Toast.makeText(MessagingActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
+                    return;
+                }
+
+                try {
+                    JSONObject json = new JSONObject(res);
+                    String imageUrl = json.getString("imageUrl");
+                    Log.d("imageUpload", "sendImageViaServer: got imageUrl=" + imageUrl);
+                    runOnUiThread(() -> sendImageMessage(caption, imageUrl));
+                } catch (Exception e) {
+                    Log.d("imageUpload", "sendImageViaServer: parse error " + e.getMessage());
+                    runOnUiThread(() -> {
+                        sendButton.setEnabled(true);
+                        Toast.makeText(MessagingActivity.this, "Bad server response", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 
     private void sendImageMessage(String caption, String imageUrl) {
         String text = caption != null && !caption.isEmpty() ? caption : "";
+        Log.d("imageUpload", "sendImageMessage: text='" + text + "' imageUrl.length=" + imageUrl.length());
 
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
@@ -829,14 +888,34 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         messageData.put("timestamp", ServerValue.TIMESTAMP);
         messageData.put("imageUrl", imageUrl);
 
-        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+        DatabaseReference msgRef = messagesRef.push();
+        Log.d("imageUpload", "sendImageMessage: push key=" + msgRef.getKey());
+
+        Task<Void> dbTask = msgRef.setValue(messageData);
+
+        dbTask.addOnSuccessListener(aVoid -> {
+            Log.d("imageUpload", "sendImageMessage: setValue SUCCESS");
+        }).addOnFailureListener(e -> {
+            Log.d("imageUpload", "sendImageMessage: setValue FAILED error=" + e.getMessage());
+        });
+
+        dbTask.addOnCompleteListener(task -> {
             sendButton.setEnabled(true);
             if (task.isSuccessful()) {
+                Log.d("imageUpload", "sendImageMessage: onComplete isSuccessful=true");
                 messageInput.setText("");
                 removePhotoPreview();
 
-                String displayText = text.isEmpty() ? "Photo" : text;
                 long now = System.currentTimeMillis();
+                String textVal = text != null ? text : "";
+                MessageModel localMsg = new MessageModel(textVal, currentUsername, now, true);
+                localMsg.setMessageId(msgRef.getKey());
+                localMsg.setImageUrl(imageUrl);
+                messagesList.add(localMsg);
+                messageAdapter.notifyDataSetChanged();
+                messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+
+                String displayText = text.isEmpty() ? "Photo" : text;
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
                 lastMessageUpdate.put("lastMessage/text", displayText);
                 lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
@@ -855,6 +934,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                     incrementMessageCount();
                 }
             } else {
+                Log.d("imageUpload", "sendImageMessage: onComplete isSuccessful=false error="
+                        + (task.getException() != null ? task.getException().getMessage() : "unknown"));
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
             }
         });
@@ -1171,26 +1252,56 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private byte[] compressImage(File imageFile) {
         try {
+            long fileSize = imageFile.length();
+            Log.d("imageUpload", "compressImage: fileSize=" + fileSize + " threshold=" + (120 * 1024));
+
+            if (fileSize <= 120 * 1024) {
+                Log.d("imageUpload", "compressImage: small file, reading raw bytes");
+                FileInputStream fis = new FileInputStream(imageFile);
+                byte[] bytes = new byte[(int) fileSize];
+                int read = 0;
+                while (read < bytes.length) {
+                    int result = fis.read(bytes, read, bytes.length - read);
+                    if (result == -1) break;
+                    read += result;
+                }
+                fis.close();
+                Log.d("imageUpload", "compressImage: read " + bytes.length + " raw bytes");
+                return bytes;
+            }
+
+            Log.d("imageUpload", "compressImage: large file, quality 95");
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
-
-            int maxDimension = 1024;
-            int sampleSize = 1;
-            while (opts.outWidth / sampleSize > maxDimension
-                    || opts.outHeight / sampleSize > maxDimension) {
-                sampleSize *= 2;
-            }   
+            Log.d("imageUpload", "compressImage: original dimensions=" + opts.outWidth + "x" + opts.outHeight);
 
             opts.inJustDecodeBounds = false;
-            opts.inSampleSize = sampleSize;
+            int maxDim = Math.max(opts.outWidth, opts.outHeight);
+            opts.inSampleSize = maxDim > 1200 ? 2 : 1;
             Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
 
+            ExifInterface exif = new ExifInterface(imageFile.getAbsolutePath());
+            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+                Matrix matrix = new Matrix();
+                switch (orientation) {
+                    case ExifInterface.ORIENTATION_ROTATE_90:  matrix.postRotate(90);  break;
+                    case ExifInterface.ORIENTATION_ROTATE_180: matrix.postRotate(180); break;
+                    case ExifInterface.ORIENTATION_ROTATE_270: matrix.postRotate(270); break;
+                }
+                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                Log.d("imageUpload", "compressImage: applied EXIF rotation " + orientation);
+            }
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, baos);
             bitmap.recycle();
-            return baos.toByteArray();
+            byte[] result = baos.toByteArray();
+            Log.d("imageUpload", "compressImage: compressed to " + result.length + " bytes");
+            return result;
         } catch (Exception e) {
+            Log.d("imageUpload", "compressImage: exception=" + e.getMessage());
             return null;
         }
     }

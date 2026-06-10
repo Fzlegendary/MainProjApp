@@ -2,6 +2,10 @@ package com.example.mainproj.messaging;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -144,6 +148,30 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                 vh.tvMessageCaption.setVisibility(View.GONE);
             }
 
+            vh.ivMessageImage.setOnClickListener(v -> showImageFullscreen(msg.getImageUrl()));
+
+            vh.itemView.setOnLongClickListener(v -> {
+                int adapterPos = holder.getAdapterPosition();
+                if (adapterPos == RecyclerView.NO_POSITION) return true;
+
+                new AlertDialog.Builder(context)
+                        .setTitle("Delete Message")
+                        .setMessage("Are you sure you want to delete this message?")
+                        .setPositiveButton("Delete", (dialog, which) -> {
+                            int pos = holder.getAdapterPosition();
+                            if (pos == RecyclerView.NO_POSITION) return;
+                            MessageModel m = messages.get(pos);
+                            if (deleteListener != null) {
+                                deleteListener.onDeleteMessage(m);
+                            }
+                            messages.remove(pos);
+                            notifyItemRemoved(pos);
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                return true;
+            });
+
         } else if (holder instanceof ImageReceivedViewHolder) {
             ImageReceivedViewHolder vh = (ImageReceivedViewHolder) holder;
             vh.tvMessageNickname.setText(msg.getSenderUsername());
@@ -155,7 +183,15 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             } else {
                 vh.tvMessageCaption.setVisibility(View.GONE);
             }
+
+            vh.ivMessageImage.setOnClickListener(v -> showImageFullscreen(msg.getImageUrl()));
         }
+    }
+
+    private void showImageFullscreen(String imageUrl) {
+        Intent intent = new Intent(context, ImageViewerActivity.class);
+        intent.putExtra(ImageViewerActivity.EXTRA_IMAGE_URL, imageUrl);
+        context.startActivity(intent);
     }
 
     private String formatTime(long millis) {
@@ -164,11 +200,23 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     private void loadImage(ImageView imageView, String url) {
-        Glide.with(context)
-                .load(url)
-                .placeholder(com.google.android.material.R.drawable.mtrl_ic_error)
-                .centerCrop()
-                .into(imageView);
+        if (url == null || url.isEmpty()) return;
+
+        if (url.startsWith("http")) {
+            Glide.with(context)
+                    .load(url)
+                    .placeholder(com.google.android.material.R.drawable.mtrl_ic_error)
+                    .fitCenter()
+                    .into(imageView);
+        } else {
+            try {
+                byte[] decodedBytes = Base64.decode(url, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                imageView.setImageBitmap(bitmap);
+            } catch (Exception e) {
+                imageView.setImageResource(com.google.android.material.R.drawable.mtrl_ic_error);
+            }
+        }
     }
 
     @Override

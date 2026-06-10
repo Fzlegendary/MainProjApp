@@ -338,17 +338,21 @@ public class MessagesFragment extends Fragment implements MessageAdapter.OnMessa
                     String text           = msgSnap.child("text").getValue(String.class);
                     String senderUsername = msgSnap.child("senderUsername").getValue(String.class);
                     Long   timestamp      = msgSnap.child("timestamp").getValue(Long.class);
+                    String imageUrl       = msgSnap.child("imageUrl").getValue(String.class);
 
-                    if (text == null || senderUsername == null) continue;
+                    if ((text == null || text.isEmpty()) && imageUrl == null) continue;
+                    if (senderUsername == null) continue;
 
                     boolean sentByMe = currentUsername != null
                             && senderUsername.equals(currentUsername);
 
+                    String textVal = text != null ? text : "";
                     MessageModel msg = new MessageModel(
-                            text, senderUsername,
+                            textVal, senderUsername,
                             timestamp != null ? timestamp : 0L,
                             sentByMe);
                     msg.setMessageId(messageId);
+                    msg.setImageUrl(imageUrl);
 
                     if (timestamp != null && timestamp > 0) {
                         if (previousMessage != null && previousMessage.getTimestamp() > 0) {

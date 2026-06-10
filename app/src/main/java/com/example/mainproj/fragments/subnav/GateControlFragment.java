@@ -83,9 +83,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String host = prefs.getString("server_host", "localhost");
         String port = prefs.getString("server_port", "8080");
-        boolean ssl = prefs.getBoolean("server_ssl", false);
-        String scheme = ssl ? "https" : "http";
-        return scheme + "://" + host + ":" + port + "/gate/control";
+        return "http://" + host + ":" + port + "/gate/control";
     }
 
     private void setupFirebase() {

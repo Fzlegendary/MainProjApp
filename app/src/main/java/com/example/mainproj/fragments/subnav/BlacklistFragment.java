@@ -74,10 +74,10 @@ public class BlacklistFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Base URL for the API (SSL bypass enabled for local dev)
-        String baseUrl = "https://localhost:8080";
+        // Base URL for the API
+        String baseUrl = "http://localhost:8080";
         // Initialize the API client for list operations
-        apiClient = new ListRequestManager(baseUrl, true);
+        apiClient = new ListRequestManager(baseUrl);
 
         // Bind UI elements from the layout
         tabLayout = view.findViewById(R.id.tabLayout);
