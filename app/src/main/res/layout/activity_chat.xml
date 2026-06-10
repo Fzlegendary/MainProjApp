@@ -90,6 +90,16 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <ImageButton
+                    android:id="@+id/btnNewConversation"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_add"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="New Conversation"
+                    android:visibility="gone"
+                    app:tint="?attr/colorOnPrimary" />
+
             </LinearLayout>
         </com.google.android.material.appbar.MaterialToolbar>
 
@@ -272,6 +282,23 @@
             android:layout_marginVertical="16dp"
             android:background="?android:attr/textColorSecondary"
             android:alpha="0.2"/>
+
+        <LinearLayout
+            android:id="@+id/archiveContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:gravity="top" />
+
+        <View
+            android:id="@+id/archiveDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="8dp"
+            android:background="@color/colorDivider"
+            android:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/logoutButton"

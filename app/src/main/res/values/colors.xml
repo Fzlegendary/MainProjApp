@@ -35,6 +35,7 @@
     <color name="colorSearchBackground">#FFFFFF</color>
     <color name="colorSearchStroke">#D1D5DB</color>
     <color name="colorFab">#4A8EC9</color>
+    <color name="colorGeminiFab">#64B5F6</color>
     <color name="colorFabIcon">#FFFFFF</color>
     <color name="colorDeleteFab">#BF616A</color>
     <color name="colorAddFab">#5A8F6B</color>
