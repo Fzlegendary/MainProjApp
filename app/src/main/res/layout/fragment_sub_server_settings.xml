@@ -52,28 +52,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Use SSL (HTTPS)"
-                android:textSize="16sp"
-                android:textColor="@color/colorTextPrimary" />
-
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchUseSsl"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-        </LinearLayout>
-
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilShutdownKey"
             android:layout_width="match_parent"
@@ -88,6 +66,47 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textPassword" />
+            <!-- Add this block to fragment_sub_server_settings.xml
+     Place it after etShutdownKey and before btnCheckStatus / btnToggleServer -->
+
+            <!-- Shows whether values come from Firebase or a local override -->
+            <TextView
+                android:id="@+id/tvConfigSource"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Using: Firebase config"
+                android:textSize="12sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:paddingTop="4dp"
+                android:paddingBottom="12dp" />
+
+            <!-- Save current host/port as a local override (overrides Firebase for this device) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveLocalOverride"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Save as Local Override"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Clear the local override and pull fresh values from Firebase -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearLocalOverride"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Clear Local Override (use Firebase)"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Push current host/port/key to Firebase — only visible to roleLevel=2 users -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPushToFirebase"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Push to Firebase (Global)"
+                android:visibility="gone"
+                android:layout_marginBottom="16dp" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

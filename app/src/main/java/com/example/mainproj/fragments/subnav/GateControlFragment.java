@@ -162,13 +162,17 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     private void testServerConnection() {
         TextView statusText = requireView().findViewById(R.id.textview);
         statusText.setText("Testing connection...");
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String host = prefs.getString("server_host", "localhost");
+        String port = prefs.getString("server_port", "8080");
+        String url = "http://" + host + ":" + port + "/server/control";
 
         try {
             JSONObject json = new JSONObject();
-            json.put("test", true);
+            json.put("action", "status");
 
             Request request = new Request.Builder()
-                    .url(getGateControlUrl())
+                    .url(url)
                     .post(RequestBody.create(json.toString(), MediaType.get("application/json")))
                     .build();
 
@@ -185,13 +189,18 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) {
-                    response.close();
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
-                            statusText.setText("Connected to server");
-                            Toast.makeText(requireContext(), "Server connected!", Toast.LENGTH_SHORT).show();
+                            if (response.isSuccessful()) {
+                                statusText.setText("Connected to server");
+                                Toast.makeText(requireContext(), "Server connected!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                statusText.setText("Server error: " + response.code());
+                                Toast.makeText(requireContext(), "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                            }
                         });
                     }
+                    response.close();
                 }
             });
         } catch (Exception e) {

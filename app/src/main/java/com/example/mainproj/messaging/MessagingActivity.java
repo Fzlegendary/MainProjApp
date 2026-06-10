@@ -51,7 +51,6 @@ import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -836,7 +835,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         Request request = new Request.Builder()
                 .url(url)
                 .post(body)
-                .addHeader("Content-Type", "image/jpeg")
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -879,8 +877,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     }
 
     private void sendImageMessage(String caption, String imageUrl) {
-        String text = caption != null && !caption.isEmpty() ? caption : "";
-        Log.d("imageUpload", "sendImageMessage: text='" + text + "' imageUrl.length=" + imageUrl.length());
+        String text = caption != null && !caption.isEmpty() ? caption : "Photo";
+        Log.d("imageUpload", "sendImageMessage: text='" + text + "' imageUrl=" + imageUrl);
 
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
@@ -1122,32 +1120,46 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         GeminiManager.getInstance(this).saveMessageToFirebase(userMsg, currentMessagesPath);
 
         sendButton.setEnabled(false);
-        GeminiManager.getInstance(this).sendMessage(text, historySnapshot, currentUsername, new GeminiManager.GeminiCallback() {
-            @Override
-            public void onResponse(String replyText) {
-                runOnUiThread(() -> {
-                    MessageModel aiMsg = new MessageModel(replyText, "Gemini", System.currentTimeMillis(), false);
-                    String aiLocalId = "local_" + UUID.randomUUID().toString();
-                    aiMsg.setMessageId(aiLocalId);
-                    messagesList.add(aiMsg);
-                    messageAdapter.notifyDataSetChanged();
-                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+        GeminiManager.getInstance(this).sendMessage(text, historySnapshot, currentUsername,
+                new GeminiManager.GeminiCallback() {
 
-                    GeminiManager.getInstance(MessagingActivity.this).saveMessageToFirebase(aiMsg, currentMessagesPath);
-                    sendButton.setEnabled(true);
-                });
-            }
+                    @Override
+                    public void onResponse(String replyText) {
+                        runOnUiThread(() -> {
+                            MessageModel aiMsg = new MessageModel(replyText, "Gemini",
+                                    System.currentTimeMillis(), false);
+                            String aiLocalId = "local_" + UUID.randomUUID().toString();
+                            aiMsg.setMessageId(aiLocalId);
+                            messagesList.add(aiMsg);
+                            messageAdapter.notifyDataSetChanged();
+                            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
 
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    Toast.makeText(MessagingActivity.this, error, Toast.LENGTH_SHORT).show();
-                    sendButton.setEnabled(true);
+                            GeminiManager.getInstance(MessagingActivity.this)
+                                    .saveMessageToFirebase(aiMsg, currentMessagesPath);
+                            sendButton.setEnabled(true);
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(MessagingActivity.this, error, Toast.LENGTH_LONG).show();
+                            sendButton.setEnabled(true);
+                        });
+                    }
+
+                    @Override
+                    public void onRateLimited(int secondsUntilRetry, int attempt, int maxAttempts) {
+                        runOnUiThread(() -> {
+                            // Show a temporary "retrying" message in the chat
+                            String retryMsg = "Rate limited — retrying in " + secondsUntilRetry
+                                    + "s (attempt " + attempt + "/" + maxAttempts + ")";
+                            Toast.makeText(MessagingActivity.this, retryMsg, Toast.LENGTH_LONG).show();
+                            // Keep send button disabled while we wait for the retry
+                        });
+                    }
                 });
-            }
-        });
     }
-
     private void loadUserProfile() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) return;
@@ -1253,53 +1265,59 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     private byte[] compressImage(File imageFile) {
         try {
             long fileSize = imageFile.length();
-            Log.d("imageUpload", "compressImage: fileSize=" + fileSize + " threshold=" + (120 * 1024));
+            Log.d("imageUpload", "compressImage: fileSize=" + fileSize);
 
-            if (fileSize <= 120 * 1024) {
-                Log.d("imageUpload", "compressImage: small file, reading raw bytes");
-                FileInputStream fis = new FileInputStream(imageFile);
-                byte[] bytes = new byte[(int) fileSize];
-                int read = 0;
-                while (read < bytes.length) {
-                    int result = fis.read(bytes, read, bytes.length - read);
-                    if (result == -1) break;
-                    read += result;
-                }
-                fis.close();
-                Log.d("imageUpload", "compressImage: read " + bytes.length + " raw bytes");
-                return bytes;
-            }
-
-            Log.d("imageUpload", "compressImage: large file, quality 95");
+            // Always decode and re-encode — never pass raw bytes through
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
-            Log.d("imageUpload", "compressImage: original dimensions=" + opts.outWidth + "x" + opts.outHeight);
+            Log.d("imageUpload", "compressImage: dimensions=" + opts.outWidth + "x" + opts.outHeight);
 
-            opts.inJustDecodeBounds = false;
-            int maxDim = Math.max(opts.outWidth, opts.outHeight);
-            opts.inSampleSize = maxDim > 1200 ? 2 : 1;
-            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
-
-            ExifInterface exif = new ExifInterface(imageFile.getAbsolutePath());
-            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-            if (orientation != ExifInterface.ORIENTATION_NORMAL) {
-                Matrix matrix = new Matrix();
-                switch (orientation) {
-                    case ExifInterface.ORIENTATION_ROTATE_90:  matrix.postRotate(90);  break;
-                    case ExifInterface.ORIENTATION_ROTATE_180: matrix.postRotate(180); break;
-                    case ExifInterface.ORIENTATION_ROTATE_270: matrix.postRotate(270); break;
-                }
-                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-                Log.d("imageUpload", "compressImage: applied EXIF rotation " + orientation);
+            // Scale down so the longest side is at most 1024px
+            int maxDim = 1440;
+            opts.inSampleSize = 1;
+            int w = opts.outWidth;
+            int h = opts.outHeight;
+            while (Math.max(w, h) / opts.inSampleSize > maxDim) {
+                opts.inSampleSize *= 2;
             }
 
+            opts.inJustDecodeBounds = false;
+            Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+            if (bitmap == null) {
+                Log.d("imageUpload", "compressImage: decodeFile returned null");
+                return null;
+            }
+
+            // Fix EXIF rotation
+            try {
+                ExifInterface exif = new ExifInterface(imageFile.getAbsolutePath());
+                int orientation = exif.getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+                if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+                    Matrix matrix = new Matrix();
+                    switch (orientation) {
+                        case ExifInterface.ORIENTATION_ROTATE_90:  matrix.postRotate(90);  break;
+                        case ExifInterface.ORIENTATION_ROTATE_180: matrix.postRotate(180); break;
+                        case ExifInterface.ORIENTATION_ROTATE_270: matrix.postRotate(270); break;
+                    }
+                    bitmap = Bitmap.createBitmap(
+                            bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                    Log.d("imageUpload", "compressImage: applied EXIF rotation " + orientation);
+                }
+            } catch (Exception e) {
+                Log.d("imageUpload", "compressImage: EXIF error=" + e.getMessage());
+            }
+
+            // Compress at quality 80 — good visuals, well under 500KB for most photos
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, baos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, baos);
             bitmap.recycle();
+
             byte[] result = baos.toByteArray();
-            Log.d("imageUpload", "compressImage: compressed to " + result.length + " bytes");
+            Log.d("imageUpload", "compressImage: final size=" + result.length + " bytes");
             return result;
+
         } catch (Exception e) {
             Log.d("imageUpload", "compressImage: exception=" + e.getMessage());
             return null;

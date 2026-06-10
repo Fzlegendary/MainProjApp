@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -36,6 +37,9 @@ public class GeminiManager {
     private static final String API_BASE =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
 
+    // How long to wait before each retry attempt (ms)
+    private static final long[] RETRY_DELAYS_MS = { 10_000, 20_000, 30_000 };
+
     private static GeminiManager instance;
     private final OkHttpClient httpClient;
     private final String apiKey;
@@ -43,7 +47,10 @@ public class GeminiManager {
 
     private GeminiManager(Context context) {
         this.context = context.getApplicationContext();
-        this.httpClient = new OkHttpClient();
+        this.httpClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
         this.apiKey = context.getString(R.string.gemini_api_key);
     }
 
@@ -58,107 +65,155 @@ public class GeminiManager {
         return username + "_gemini_ai";
     }
 
-    public void sendMessage(String userInput, List<MessageModel> conversationHistory, String currentUsername, final GeminiCallback callback) {
-        String url = API_BASE + apiKey;
-
-        try {
-            JSONObject json = new JSONObject();
-            JSONArray contents = new JSONArray();
-
-            for (MessageModel msg : conversationHistory) {
-                String text = msg.getText();
-                if (text == null || text.isEmpty()) continue;
-                if ("date_separator".equals(msg.getSenderUsername())) continue;
-
-                String role = msg.getSenderUsername().equals("Gemini") ? "model" : "user";
-                JSONObject histContent = new JSONObject();
-                JSONArray histParts = new JSONArray();
-                JSONObject histPart = new JSONObject();
-                histPart.put("text", text);
-                histParts.put(histPart);
-                histContent.put("parts", histParts);
-                histContent.put("role", role);
-                contents.put(histContent);
-            }
-
-            JSONObject content = new JSONObject();
-            JSONArray parts = new JSONArray();
-            JSONObject part = new JSONObject();
-            part.put("text", userInput);
-            parts.put(part);
-            content.put("parts", parts);
-            content.put("role", "user");
-            contents.put(content);
-            json.put("contents", contents);
-
-            RequestBody body = RequestBody.create(
-                    json.toString(),
-                    MediaType.get("application/json; charset=utf-8")
-            );
-
-            Request request = new Request.Builder()
-                    .url(url)
-                    .post(body)
-                    .build();
-
-            httpClient.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "API call failed", e);
-                    if (callback != null) {
-                        callback.onError("Network error: " + e.getMessage());
-                    }
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        String errorBody = response.body() != null ? response.body().string() : "Unknown error";
-                        Log.e(TAG, "API error " + response.code() + ": " + errorBody);
-                        Log.e(TAG, "Response headers: " + response.headers());
-                        if (callback != null) {
-                            callback.onError("API error (" + response.code() + "): " + errorBody);
-                        }
-                        return;
-                    }
-
-                    try {
-                        String responseBody = response.body() != null ? response.body().string() : "";
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-                        JSONArray candidates = jsonResponse.optJSONArray("candidates");
-                        if (candidates != null && candidates.length() > 0) {
-                            JSONObject candidate = candidates.getJSONObject(0);
-                            JSONObject contentObj = candidate.optJSONObject("content");
-                            if (contentObj != null) {
-                                JSONArray partsArray = contentObj.optJSONArray("parts");
-                                if (partsArray != null && partsArray.length() > 0) {
-                                    String text = partsArray.getJSONObject(0).optString("text", "");
-                                    if (callback != null) {
-                                        callback.onResponse(text);
-                                    }
-                                    return;
-                                }
-                            }
-                        }
-                        if (callback != null) {
-                            callback.onError("Empty response from AI");
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to parse response", e);
-                        if (callback != null) {
-                            callback.onError("Failed to parse response");
-                        }
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to build request", e);
-            if (callback != null) {
-                callback.onError("Failed to build request");
-            }
-        }
+    // ── Public entry point ────────────────────────────────────────────────────
+    public void sendMessage(String userInput, List<MessageModel> conversationHistory,
+                            String currentUsername, final GeminiCallback callback) {
+        sendWithRetry(userInput, conversationHistory, 0, callback);
     }
 
+    // ── Internal retry loop ───────────────────────────────────────────────────
+    private void sendWithRetry(String userInput, List<MessageModel> conversationHistory,
+                               int attempt, final GeminiCallback callback) {
+        String url = API_BASE + apiKey;
+
+        Request request;
+        try {
+            request = buildRequest(url, userInput, conversationHistory);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to build request", e);
+            if (callback != null) callback.onError("Failed to build request");
+            return;
+        }
+
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "API call failed (attempt " + attempt + ")", e);
+                if (callback != null) {
+                    callback.onError("Network error: " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                // ── 429: rate limited — retry with backoff ────────────────
+                if (response.code() == 429) {
+                    response.close();
+
+                    if (attempt < RETRY_DELAYS_MS.length) {
+                        long delayMs = RETRY_DELAYS_MS[attempt];
+                        int nextAttempt = attempt + 1;
+                        int secondsLeft = (int) (delayMs / 1000);
+
+                        Log.w(TAG, "429 rate limited. Retrying in " + secondsLeft + "s (attempt " + nextAttempt + ")");
+
+                        // Tell the UI we're waiting so the user isn't left staring at nothing
+                        if (callback != null) {
+                            callback.onRateLimited(secondsLeft, nextAttempt, RETRY_DELAYS_MS.length);
+                        }
+
+                        android.os.Handler handler = new android.os.Handler(
+                                android.os.Looper.getMainLooper());
+                        handler.postDelayed(() ->
+                                        sendWithRetry(userInput, conversationHistory, nextAttempt, callback),
+                                delayMs
+                        );
+                    } else {
+                        // All retries exhausted
+                        Log.e(TAG, "429 rate limit — all retries exhausted");
+                        if (callback != null) {
+                            callback.onError("Too many requests. Please wait a moment and try again.");
+                        }
+                    }
+                    return;
+                }
+
+                // ── Other HTTP error ──────────────────────────────────────
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "Unknown error";
+                    Log.e(TAG, "API error " + response.code() + ": " + errorBody);
+                    if (callback != null) {
+                        callback.onError("API error (" + response.code() + ")");
+                    }
+                    return;
+                }
+
+                // ── Success ───────────────────────────────────────────────
+                try {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    JSONObject jsonResponse = new JSONObject(responseBody);
+                    JSONArray candidates = jsonResponse.optJSONArray("candidates");
+                    if (candidates != null && candidates.length() > 0) {
+                        JSONObject candidate = candidates.getJSONObject(0);
+                        JSONObject contentObj = candidate.optJSONObject("content");
+                        if (contentObj != null) {
+                            JSONArray partsArray = contentObj.optJSONArray("parts");
+                            if (partsArray != null && partsArray.length() > 0) {
+                                String text = partsArray.getJSONObject(0).optString("text", "");
+                                if (callback != null) {
+                                    callback.onResponse(text);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    if (callback != null) {
+                        callback.onError("Empty response from AI");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to parse response", e);
+                    if (callback != null) {
+                        callback.onError("Failed to parse response");
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Build the Gemini request ──────────────────────────────────────────────
+    private Request buildRequest(String url, String userInput,
+                                 List<MessageModel> conversationHistory) throws Exception {
+        JSONObject json = new JSONObject();
+        JSONArray contents = new JSONArray();
+
+        for (MessageModel msg : conversationHistory) {
+            String text = msg.getText();
+            if (text == null || text.isEmpty()) continue;
+            if ("date_separator".equals(msg.getSenderUsername())) continue;
+
+            String role = "Gemini".equals(msg.getSenderUsername()) ? "model" : "user";
+            JSONObject histContent = new JSONObject();
+            JSONArray histParts = new JSONArray();
+            JSONObject histPart = new JSONObject();
+            histPart.put("text", text);
+            histParts.put(histPart);
+            histContent.put("parts", histParts);
+            histContent.put("role", role);
+            contents.put(histContent);
+        }
+
+        JSONObject content = new JSONObject();
+        JSONArray parts = new JSONArray();
+        JSONObject part = new JSONObject();
+        part.put("text", userInput);
+        parts.put(part);
+        content.put("parts", parts);
+        content.put("role", "user");
+        contents.put(content);
+        json.put("contents", contents);
+
+        RequestBody body = RequestBody.create(
+                json.toString(),
+                MediaType.get("application/json; charset=utf-8")
+        );
+
+        return new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+    }
+
+    // ── Firebase / cache helpers ──────────────────────────────────────────────
     public ArrayList<MessageModel> loadMessages(String chatId) {
         if (!ChatCacheManager.isCachingEnabled()) return new ArrayList<>();
         return ChatCacheManager.getInstance(context).loadMessages(chatId);
@@ -238,9 +293,20 @@ public class GeminiManager {
         });
     }
 
+    // ── Callbacks ─────────────────────────────────────────────────────────────
     public interface GeminiCallback {
         void onResponse(String replyText);
         void onError(String error);
+
+        /**
+         * Called when a 429 is received and a retry is scheduled.
+         * @param secondsUntilRetry how long until the next attempt
+         * @param attempt           which retry this is (1-based)
+         * @param maxAttempts       total retries available
+         */
+        default void onRateLimited(int secondsUntilRetry, int attempt, int maxAttempts) {
+            // Default: no-op. Override in MessagingActivity to show UI feedback.
+        }
     }
 
     public interface ArchiveCallback {
