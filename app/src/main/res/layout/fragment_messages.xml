@@ -75,6 +75,19 @@
         app:layout_constraintEnd_toEndOf="parent"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnGemini"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_gemini"
+        app:backgroundTint="@color/colorGeminiFab"
+        app:tint="@android:color/white"
+        android:contentDescription="AI Assistant"
+        app:layout_constraintBottom_toTopOf="@id/addChatButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="20dp"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/addChatButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
