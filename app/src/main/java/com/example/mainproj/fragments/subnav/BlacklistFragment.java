@@ -23,7 +23,6 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
-import com.example.mainproj.adapters.SearchSuggestionAdapter;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.lists.ListRequestManager;
 import com.example.mainproj.adapters.ListsPagerAdapter;
@@ -55,9 +54,6 @@ public class BlacklistFragment extends Fragment {
     // The search field for typing queries (free text or filter commands)
     private EditText searchView;
     // RecyclerView showing suggestion dropdown when typing "by:"
-    private RecyclerView searchSuggestions;
-    // Adapter that provides suggestion items to the RecyclerView
-    private SearchSuggestionAdapter suggestionAdapter;
     // ViewModel holding the current search query as LiveData
     // Shared across all list fragments so they all filter together
     private ListsSearchViewModel searchViewModel;
@@ -82,7 +78,6 @@ public class BlacklistFragment extends Fragment {
         tabLayout = view.findViewById(R.id.tabLayout);
         viewPager = view.findViewById(R.id.listViewPager);
         searchView = view.findViewById(R.id.searchView);
-        searchSuggestions = view.findViewById(R.id.searchSuggestions);
         btnFilter = view.findViewById(R.id.btnFilter);
         filterBadge = view.findViewById(R.id.filterBadge);
 
@@ -98,28 +93,6 @@ public class BlacklistFragment extends Fragment {
         // across the Whitelist/Blacklist tabs. Both tabs observe this same query.
         searchViewModel = new ViewModelProvider(requireActivity()).get(ListsSearchViewModel.class);
 
-        // Initialize the suggestion adapter — callback fires when user taps a suggestion
-        suggestionAdapter = new SearchSuggestionAdapter(s -> {
-            // Get whatever the user has typed so far
-            String current = searchView.getText().toString();
-            // Find where "by:" starts in the query
-            int byIndex = current.toLowerCase().lastIndexOf("by:");
-            if (byIndex >= 0) {
-                // Keep everything before "by:" (including "by:")
-                // Replace what comes after with the suggestion value
-                String prefix = current.substring(0, byIndex + 3);
-                searchView.setText(prefix + s.value + " ");
-                searchView.setSelection(searchView.getText().length());
-            } else {
-                // No "by:" found — just append the suggestion as the new query
-                searchView.setText(s.value + " ");
-                searchView.setSelection(searchView.getText().length());
-            }
-        });
-
-        // Set up the RecyclerView to show suggestions as a vertical list
-        searchSuggestions.setLayoutManager(new LinearLayoutManager(requireContext()));
-        searchSuggestions.setAdapter(suggestionAdapter);
 
         // Listen for text changes — update live as user types
         searchView.addTextChangedListener(new TextWatcher() {
@@ -144,7 +117,6 @@ public class BlacklistFragment extends Fragment {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 String query = searchView.getText().toString();
                 searchViewModel.setSearchQuery(query);
-                searchSuggestions.setVisibility(View.GONE);
                 updateFilterBadge();
                 return true;
             }
