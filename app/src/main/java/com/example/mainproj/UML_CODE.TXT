@@ -1,0 +1,83 @@
+flowchart TD
+    LOAD["🚀 LoadingScreenActivity"]
+
+    LOGIN["🔐 Login_activity"]
+    SIGNUP["📝 sign_up_activity"]
+
+    subgraph STEPS["📋 שלבי הרשמה"]
+        direction LR
+        S0["📧 Entry"] --> S1["📱 Phone"] --> S2["👤 Username"] --> S3["🎂 Age"] --> S4["✅ Verify"]
+    end
+
+    MAIN["🏠 MainActivity"]
+
+    subgraph TABS["📑 Tabs"]
+        direction LR
+        HOME["🏠 Home"] ~~~ CHATS["💬 Chats"] ~~~ PROF["👤 Profile"]
+    end
+
+    subgraph SUBNAV["🎛️ Home Sub-Navigation"]
+        direction LR
+        GATE["🚪 GateControl"] ~~~ BL["🚫 Blacklist"] ~~~ SS["⚙️ ServerSettings"] ~~~ ACC["👥 AccountMgmt"]
+    end
+
+    subgraph SHEETS["📋 Bottom Sheets"]
+        direction LR
+        UPS["👤 UserProfile\nBottomSheet"] ~~~ AGP["🔑 AdminGate\nPermissionSheet"] ~~~ UGP["🔒 UserGate\nPermissionSheet"]
+    end
+
+    MSG["💬 MessagingActivity"]
+    USERP["👤 UserProfileActivity"]
+    IMG["🖼️ ImageViewerActivity"]
+    SHARED["🔧 SharedPrefDisplayerActivity"]
+
+    LOAD -->|"✅ מחובר"| MAIN
+    LOAD -->|"❌ לא מחובר"| LOGIN
+
+    LOGIN -->|"📝 הרשמה"| SIGNUP
+    LOGIN -->|"✅ כניסה"| MAIN
+
+    SIGNUP --- STEPS
+    STEPS -->|"🎉 סיום"| MAIN
+    SIGNUP -->|"⬅️ חזרה"| LOGIN
+
+    MAIN --- TABS
+    HOME --- SUBNAV
+    GATE --> AGP
+    GATE --> UGP
+    CHATS -->|"🖱️ לחיצה על שיחה"| MSG
+    PROF -->|"🔧 debug"| SHARED
+
+    MSG -->|"👤 לחיצה על שם"| USERP
+    MSG -->|"🖼️ לחיצה על תמונה"| IMG
+    MSG -->|"⬅️ חזרה"| MAIN
+
+    USERP -->|"💬 שלח הודעה"| MSG
+    USERP --> UPS
+
+    MAIN -->|"🚪 logout"| LOGIN
+    MSG -->|"⚠️ session פג"| LOGIN
+
+    style LOAD fill:#6C63FF,color:#fff,stroke:none
+    style LOGIN fill:#FF6B6B,color:#fff,stroke:none
+    style SIGNUP fill:#FF9F43,color:#fff,stroke:none
+    style MAIN fill:#26de81,color:#fff,stroke:none
+    style MSG fill:#45aaf2,color:#fff,stroke:none
+    style USERP fill:#45aaf2,color:#fff,stroke:none
+    style IMG fill:#a55eea,color:#fff,stroke:none
+    style SHARED fill:#778ca3,color:#fff,stroke:none
+    style HOME fill:#26de81,color:#fff,stroke:none
+    style CHATS fill:#45aaf2,color:#fff,stroke:none
+    style PROF fill:#fd9644,color:#fff,stroke:none
+    style GATE fill:#20bf6b,color:#fff,stroke:none
+    style BL fill:#eb3b5a,color:#fff,stroke:none
+    style SS fill:#778ca3,color:#fff,stroke:none
+    style ACC fill:#fd9644,color:#fff,stroke:none
+    style UPS fill:#a55eea,color:#fff,stroke:none
+    style AGP fill:#fc5c65,color:#fff,stroke:none
+    style UGP fill:#45aaf2,color:#fff,stroke:none
+    style S0 fill:#f7b731,color:#fff,stroke:none
+    style S1 fill:#f7b731,color:#fff,stroke:none
+    style S2 fill:#f7b731,color:#fff,stroke:none
+    style S3 fill:#f7b731,color:#fff,stroke:none
+    style S4 fill:#20bf6b,color:#fff,stroke:none
