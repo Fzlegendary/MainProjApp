@@ -138,9 +138,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private String currentMessagesPath;
 
-    private LinearLayout archiveContainer;
-    private View archiveDivider;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -160,7 +157,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         tvChatName = findViewById(R.id.tvChatName);
 
-        if (partnerUsername != null && !isAiMode()) {
+        if (partnerUsername != null) {
             tvChatName.setText(partnerUsername);
         }
 
@@ -175,22 +172,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
         btnRemovePhoto = findViewById(R.id.btnRemovePhoto);
 
-        if (isAiMode()) {
-            tvChatName.setText("AI Assistant");
-            btnCamera.setVisibility(View.GONE);
-            btnGallery.setVisibility(View.GONE);
-            messageInput.setHint("Ask Gemini...");
-            ImageView ivAvatar = findViewById(R.id.ivUserAvatar);
-            if (ivAvatar != null) ivAvatar.setImageResource(R.drawable.ic_gemini);
-            TextView tvStatus = findViewById(R.id.tvUserStatus);
-            if (tvStatus != null) tvStatus.setText("Online");
-            findViewById(R.id.btnNewConversation).setVisibility(View.VISIBLE);
-            findViewById(R.id.clearChatsButton).setVisibility(View.GONE);
-            findViewById(R.id.clearCacheButton).setVisibility(View.GONE);
-        }
-
-        archiveContainer = findViewById(R.id.archiveContainer);
-        archiveDivider = findViewById(R.id.archiveDivider);
 
         messagesList = new ArrayList<>();
         messageAdapter = new MessageAdapter(messagesList, this);
@@ -210,24 +191,22 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         loadUserProfile();
 
-        if (!isAiMode()) {
-            findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
-                UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                        partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
-                );
-                sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
-                    @Override
-                    public void onSendMessage(String username) {}
-                    @Override
-                    public void onViewProfile(String username) {
-                        Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
-                        intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
-                        startActivity(intent);
-                    }
-                });
-                sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
+            UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
+                    partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
+            );
+            sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
+                @Override
+                public void onSendMessage(String username) {}
+                @Override
+                public void onViewProfile(String username) {
+                    Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
+                    intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
+                    startActivity(intent);
+                }
             });
-        }
+            sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        });
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
             SessionManager.clearAllPrefs(this);
@@ -295,37 +274,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             Toast.makeText(this, "Cache cleared", Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnNewConversation).setOnClickListener(v -> {
-            if (messagesList == null || messagesList.isEmpty()) return;
-            new AlertDialog.Builder(this)
-                    .setTitle("New Conversation")
-                    .setMessage("Archive the current chat and start fresh?")
-                    .setPositiveButton("Archive & Start New", (dialog, which) -> {
-                        ArrayList<MessageModel> snapshot = new ArrayList<>(messagesList);
-                        GeminiManager.getInstance(this).archiveConversation(
-                                currentUsername, chatId, snapshot,
-                                new GeminiManager.ArchiveCallback() {
-                                    @Override
-                                    public void onComplete(String archiveChatId) {
-                                        runOnUiThread(() -> {
-                                            messagesList.clear();
-                                            messageAdapter.notifyDataSetChanged();
-                                            loadArchivedChats();
-                                            Toast.makeText(MessagingActivity.this,
-                                                    "Archived", Toast.LENGTH_SHORT).show();
-                                        });
-                                    }
-                                    @Override
-                                    public void onError(String error) {
-                                        runOnUiThread(() -> Toast.makeText(MessagingActivity.this,
-                                                "Archive failed: " + error, Toast.LENGTH_SHORT).show());
-                                    }
-                                });
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-        });
-
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
                 result -> {
@@ -374,7 +322,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             messagesRef = FirebaseDatabase.getInstance().getReference(currentMessagesPath);
         }
         loadMessages();
-        loadArchivedChats();
     }
 
     public void loadMessages() {
@@ -568,11 +515,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         String text = messageInput.getText().toString().trim();
         if (currentUsername == null) return;
         if (text.isEmpty() && pendingImageFile == null) return;
-
-        if (isAiMode()) {
-            sendAIMessage(text);
-            return;
-        }
 
         if (pendingImageFile != null) {
             sendImageViaServer(text);
@@ -977,189 +919,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                 .removeValue();
     }
 
-    private boolean isAiMode() {
-        return chatId != null && chatId.endsWith("_gemini_ai");
-    }
-
-    private void switchToChat(String newMessagesPath) {
-        if (messagesRef != null && messagesListener != null) {
-            messagesRef.removeEventListener(messagesListener);
-            messagesListener = null;
-        }
-
-        currentMessagesPath = newMessagesPath;
-        messagesRef = FirebaseDatabase.getInstance().getReference(currentMessagesPath);
-
-        if (newMessagesPath.startsWith("gemini_ai/")) {
-            String label = newMessagesPath.replaceAll(".*/(chat\\d+)/.*", "$1");
-            tvChatName.setText(label);
-        } else {
-            tvChatName.setText("AI Assistant");
-        }
-
-        messagesList.clear();
-        messageAdapter.notifyDataSetChanged();
-        attachMessagesListener();
-        drawerLayout.closeDrawer(GravityCompat.START);
-        loadArchivedChats();
-    }
-
-    private void loadArchivedChats() {
-        if (!isAiMode() || currentUsername == null) return;
-
-        archiveContainer.removeAllViews();
-        archiveContainer.setVisibility(View.VISIBLE);
-        archiveDivider.setVisibility(View.VISIBLE);
-
-        TextView header = new TextView(this);
-        header.setText("Saved Conversations");
-        header.setTextSize(14);
-        header.setTypeface(null, Typeface.BOLD);
-        header.setTextColor(ContextCompat.getColor(this, R.color.colorTextPrimary));
-        header.setPadding(0, 8, 0, 12);
-        archiveContainer.addView(header);
-
-        String activePath = "chats/" + chatId + "/messages";
-        DatabaseReference archiveRef = FirebaseDatabase.getInstance()
-                .getReference("gemini_ai/" + currentUsername);
-
-        archiveRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<String> chatKeys = new ArrayList<>();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    chatKeys.add(child.getKey());
-                }
-                Collections.sort(chatKeys);
-
-                for (String key : chatKeys) {
-                    String archivePath = "gemini_ai/" + currentUsername + "/" + key + "/messages";
-                    boolean isActive = archivePath.equals(currentMessagesPath);
-
-                    MaterialButton btn = new MaterialButton(MessagingActivity.this);
-                    btn.setText(key);
-                    btn.setLayoutParams(new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                    btn.setCornerRadius(14);
-                    btn.setMinimumHeight(0);
-                    btn.setMinimumWidth(0);
-                    btn.setPadding(16, 12, 16, 12);
-                    btn.setStrokeWidth(0);
-
-                    if (isActive) {
-                        btn.setBackgroundTintList(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorPrimary)));
-                        btn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextOnPrimary));
-                    } else {
-                        btn.setBackgroundTintList(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBackground)));
-                        btn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextPrimary));
-                        btn.setStrokeWidth(1);
-                        btn.setStrokeColor(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBorder)));
-                    }
-
-                    btn.setOnClickListener(v -> switchToChat(archivePath));
-
-                    LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) btn.getLayoutParams();
-                    params.bottomMargin = 8;
-                    btn.setLayoutParams(params);
-                    archiveContainer.addView(btn);
-                }
-
-                boolean isActive = activePath.equals(currentMessagesPath);
-                MaterialButton currentBtn = new MaterialButton(MessagingActivity.this);
-                currentBtn.setText(isActive ? "Current Conversation \u2713" : "Current Conversation");
-                currentBtn.setLayoutParams(new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                currentBtn.setCornerRadius(14);
-                currentBtn.setMinimumHeight(0);
-                currentBtn.setMinimumWidth(0);
-                currentBtn.setPadding(16, 12, 16, 12);
-                currentBtn.setStrokeWidth(0);
-
-                if (isActive) {
-                    currentBtn.setBackgroundTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorPrimary)));
-                    currentBtn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextOnPrimary));
-                } else {
-                    currentBtn.setBackgroundTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBackground)));
-                    currentBtn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextPrimary));
-                    currentBtn.setStrokeWidth(1);
-                    currentBtn.setStrokeColor(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBorder)));
-                }
-
-                currentBtn.setOnClickListener(v -> switchToChat(activePath));
-                archiveContainer.addView(currentBtn);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(MessagingActivity.this,
-                        "Failed to load archives", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void sendAIMessage(String text) {
-        if (currentUsername == null) return;
-
-        ArrayList<MessageModel> historySnapshot = new ArrayList<>(messagesList);
-
-        long now = System.currentTimeMillis();
-        String localId = "local_" + UUID.randomUUID().toString();
-        MessageModel userMsg = new MessageModel(text, currentUsername, now, true);
-        userMsg.setMessageId(localId);
-        messagesList.add(userMsg);
-        messageAdapter.notifyDataSetChanged();
-        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-        messageInput.setText("");
-
-        GeminiManager.getInstance(this).saveMessageToFirebase(userMsg, currentMessagesPath);
-
-        sendButton.setEnabled(false);
-        GeminiManager.getInstance(this).sendMessage(text, historySnapshot, currentUsername,
-                new GeminiManager.GeminiCallback() {
-
-                    @Override
-                    public void onResponse(String replyText) {
-                        runOnUiThread(() -> {
-                            MessageModel aiMsg = new MessageModel(replyText, "Gemini",
-                                    System.currentTimeMillis(), false);
-                            String aiLocalId = "local_" + UUID.randomUUID().toString();
-                            aiMsg.setMessageId(aiLocalId);
-                            messagesList.add(aiMsg);
-                            messageAdapter.notifyDataSetChanged();
-                            messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-
-                            GeminiManager.getInstance(MessagingActivity.this)
-                                    .saveMessageToFirebase(aiMsg, currentMessagesPath);
-                            sendButton.setEnabled(true);
-                        });
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            Toast.makeText(MessagingActivity.this, error, Toast.LENGTH_LONG).show();
-                            sendButton.setEnabled(true);
-                        });
-                    }
-
-                    @Override
-                    public void onRateLimited(int secondsUntilRetry, int attempt, int maxAttempts) {
-                        runOnUiThread(() -> {
-                            // Show a temporary "retrying" message in the chat
-                            String retryMsg = "Rate limited — retrying in " + secondsUntilRetry
-                                    + "s (attempt " + attempt + "/" + maxAttempts + ")";
-                            Toast.makeText(MessagingActivity.this, retryMsg, Toast.LENGTH_LONG).show();
-                            // Keep send button disabled while we wait for the retry
-                        });
-                    }
-                });
-    }
     private void loadUserProfile() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) return;

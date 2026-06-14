@@ -25,7 +25,6 @@ import com.example.mainproj.messaging.ChatCacheApplication;
 import com.example.mainproj.messaging.ChatCacheManager;
 import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
-import com.example.mainproj.messaging.GeminiManager;
 import com.example.mainproj.messaging.MessagingActivity;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.messaging.NetworkMonitor;
@@ -129,97 +128,7 @@ public class ChatsFragment extends Fragment {
         addChatButton.setOnClickListener(v -> showAddUserDialog());
         btnFriendRequests.setOnClickListener(v -> showFriendRequestsDialog());
         btnFriends.setOnClickListener(v -> showFriendsDialog());
-
-        View btnGemini = getView().findViewById(R.id.btnGemini);
-        if (btnGemini != null) {
-            btnGemini.setOnClickListener(v -> openGeminiChat());
-        }
     }
-
-    private void openGeminiChat() {
-        String cachedUsername = ChatCacheApplication.getCurrentUsername();
-        if (cachedUsername != null) {
-            launchGeminiWithUsername(cachedUsername);
-            return;
-        }
-
-        FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (fbUser == null || fbUser.getEmail() == null) {
-            Toast.makeText(requireContext(), "Not logged in", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String safeEmail = fbUser.getEmail().replace(".", "_");
-        FirebaseDatabase.getInstance().getReference("users").child(safeEmail)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String username = snapshot.child("username").getValue(String.class);
-                        if (username != null) {
-                            ChatCacheApplication.setCurrentUsername(username);
-                            launchGeminiWithUsername(username);
-                        } else {
-                            Toast.makeText(requireContext(), "Could not identify user", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(requireContext(), "Error fetching user", Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    private void launchGeminiWithUsername(String username) {
-        String chatId = GeminiManager.getInstance(requireContext()).buildChatId(username);
-
-        FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (fbUser == null || fbUser.getEmail() == null) {
-            startGeminiActivity(chatId);
-            return;
-        }
-        String mySafeEmail = fbUser.getEmail().replace(".", "_");
-
-        DatabaseReference chatRootRef = FirebaseDatabase.getInstance()
-                .getReference("chats").child(chatId);
-        chatRootRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (!snapshot.exists()) {
-                    Map<String, Object> chatData = new HashMap<>();
-                    chatData.put("lastMessage", "");
-                    chatData.put("timestamp", ServerValue.TIMESTAMP);
-                    chatData.put("lastSeen", ServerValue.TIMESTAMP);
-                    chatData.put("online", false);
-                    chatData.put("createdAt", ServerValue.TIMESTAMP);
-
-                    chatRootRef.setValue(chatData);
-
-                    Map<String, Object> userChatEntry = new HashMap<>(chatData);
-                    userChatEntry.put("username", "Gemini");
-                    userChatEntry.put("nickname", "AI Assistant");
-                    FirebaseDatabase.getInstance()
-                            .getReference("users").child(mySafeEmail)
-                            .child("chats").child(chatId)
-                            .setValue(userChatEntry);
-                }
-                startGeminiActivity(chatId);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                startGeminiActivity(chatId);
-            }
-        });
-    }
-
-    private void startGeminiActivity(String chatId) {
-        Intent intent = new Intent(requireContext(), MessagingActivity.class);
-        intent.putExtra("chatId", chatId);
-        intent.putExtra("username", "Gemini");
-        startActivity(intent);
-    }
-
     private void loadChats() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) {
