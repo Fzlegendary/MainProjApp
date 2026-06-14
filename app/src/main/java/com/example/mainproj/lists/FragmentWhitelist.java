@@ -41,6 +41,7 @@ public class FragmentWhitelist extends FragmentBaseList {
 
     private DatabaseReference whitelistRef;
     private ValueEventListener whitelistListener;
+    private View loadingState;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -48,6 +49,7 @@ public class FragmentWhitelist extends FragmentBaseList {
 
         View view = inflater.inflate(R.layout.fragment_list, container, false);
 
+        loadingState = view.findViewById(R.id.loadingState);
         RecyclerView rv = view.findViewById(R.id.recyclerViewList);
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
 
@@ -66,6 +68,7 @@ public class FragmentWhitelist extends FragmentBaseList {
         whitelistListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 fullList.clear();
                 for (DataSnapshot child : snapshot.getChildren()) {
                     PlaceholderContent.PlaceholderItem item = parseItem(child);
@@ -78,6 +81,7 @@ public class FragmentWhitelist extends FragmentBaseList {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 Toast.makeText(requireContext(), "Firebase error", Toast.LENGTH_SHORT).show();
             }
         };

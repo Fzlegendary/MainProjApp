@@ -51,6 +51,7 @@ public class ChatsFragment extends Fragment {
     private ChatAdapter chatAdapter;
     private ArrayList<ChatModel> chatList = new ArrayList<>();
     private ArrayList<ChatModel> filteredChatList = new ArrayList<>();
+    private View loadingState;
 
     private EditText searchChats;
     private FloatingActionButton addChatButton;
@@ -75,6 +76,7 @@ public class ChatsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         chatRecyclerView = view.findViewById(R.id.chatRecyclerView);
+        loadingState = view.findViewById(R.id.loadingState);
         searchChats = view.findViewById(R.id.searchChats);
         addChatButton = view.findViewById(R.id.addChatButton);
         btnFriendRequests = view.findViewById(R.id.btnFriendRequests);
@@ -253,6 +255,10 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                if (!initialLoadDone && loadingState != null) {
+                    loadingState.setVisibility(View.GONE);
+                    initialLoadDone = true;
+                }
                 String chatId = snapshot.getKey();
                 if (chatId == null) return;
 
@@ -334,6 +340,7 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 Toast.makeText(requireContext(), "Error loading chats", Toast.LENGTH_SHORT).show();
             }
         };

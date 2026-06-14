@@ -50,6 +50,7 @@ public class UserGatePermissionSheet extends BottomSheetDialogFragment {
     private TabLayout tabLayout;
     private RecyclerView recyclerGates;
     private MaterialButton btnSave;
+    private View loadingState;
 
     private List<GateCheckEntry> gateList = new ArrayList<>();
     private GateCheckAdapter adapter;
@@ -107,6 +108,7 @@ public class UserGatePermissionSheet extends BottomSheetDialogFragment {
         tabLayout = view.findViewById(R.id.tabLayout);
         recyclerGates = view.findViewById(R.id.recyclerGates);
         btnSave = view.findViewById(R.id.btnSave);
+        loadingState = view.findViewById(R.id.loadingState);
 
         tvTitle.setText("Gate Permissions");
         tvSubtitle.setText(targetUsername != null ? "Select gates for " + targetUsername : "");
@@ -147,6 +149,7 @@ public class UserGatePermissionSheet extends BottomSheetDialogFragment {
         gatesRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 gateList.clear();
                 for (DataSnapshot g : snapshot.getChildren()) {
                     String gateId = g.getKey();
@@ -176,6 +179,7 @@ public class UserGatePermissionSheet extends BottomSheetDialogFragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 Toast.makeText(requireContext(), "Failed to load gates", Toast.LENGTH_SHORT).show();
             }
         });

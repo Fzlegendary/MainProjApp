@@ -52,6 +52,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     private GateAdapter adapter;
     private DatabaseReference gatesRef;
     private ValueEventListener gatesListener;
+    private View loadingState;
 
     private OkHttpClient client;
 
@@ -69,6 +70,8 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new GateAdapter(gateList, this);
         recyclerView.setAdapter(adapter);
+
+        loadingState = view.findViewById(R.id.loadingState);
 
         setupOkHttpClient();
         setupFirebase();
@@ -92,6 +95,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         gatesListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 gateList.clear();
                 for (DataSnapshot g : snapshot.getChildren()) {
                     String id = g.getKey();
@@ -146,6 +150,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 if (getContext() != null) {
                     Toast.makeText(requireContext(), "Firebase error", Toast.LENGTH_SHORT).show();
                 }

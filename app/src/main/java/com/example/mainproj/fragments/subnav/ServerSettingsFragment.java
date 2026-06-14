@@ -64,7 +64,8 @@ public class ServerSettingsFragment extends Fragment {
     private MaterialButton btnPushToFirebase;
     private MaterialButton btnClearLocalOverride;
     private TextView tvStatus;
-    private TextView tvConfigSource;   // shows "Using: Firebase config" or "Using: Local override"
+    private TextView tvConfigSource;
+    private View loadingState;
 
     private boolean serverEnabled = true;
     private int currentUserRoleLevel = 0;
@@ -94,6 +95,7 @@ public class ServerSettingsFragment extends Fragment {
         btnClearLocalOverride = view.findViewById(R.id.btnClearLocalOverride);
         tvStatus           = view.findViewById(R.id.tvServerStatus);
         tvConfigSource     = view.findViewById(R.id.tvConfigSource);
+        loadingState       = view.findViewById(R.id.loadingState);
 
         // Load role level, then load config
         loadRoleLevelThenConfig();
@@ -155,6 +157,7 @@ public class ServerSettingsFragment extends Fragment {
 
         // Pull from Firebase and store locally (no override flag set)
         setConfigSource("Loading from Firebase...");
+        if (loadingState != null) loadingState.setVisibility(View.VISIBLE);
         FirebaseDatabase.getInstance()
                 .getReference(FB_SERVER_CONFIG)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -174,6 +177,7 @@ public class ServerSettingsFragment extends Fragment {
                                 etPort.setText(prefs.getString(KEY_PORT, "8080"));
                                 etShutdownKey.setText(prefs.getString(KEY_SHUTDOWN_KEY, ""));
                                 setConfigSource("Firebase config");
+                                if (loadingState != null) loadingState.setVisibility(View.GONE);
                             });
                         }
                     }
@@ -187,6 +191,7 @@ public class ServerSettingsFragment extends Fragment {
                                 etPort.setText(prefs.getString(KEY_PORT, "8080"));
                                 etShutdownKey.setText(prefs.getString(KEY_SHUTDOWN_KEY, ""));
                                 setConfigSource("Firebase unavailable — using cached");
+                                if (loadingState != null) loadingState.setVisibility(View.GONE);
                             });
                         }
                     }

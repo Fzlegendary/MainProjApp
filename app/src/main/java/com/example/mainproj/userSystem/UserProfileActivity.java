@@ -49,6 +49,7 @@ public class UserProfileActivity extends AppCompatActivity {
     private MaterialButton btnSendMessage, btnViewFriends;
     private LinearLayout adminSection;
     private MaterialButton btnManageRole, btnManageGatePerms;
+    private View loadingState;
 
     private String username;
     private String safeEmail;
@@ -64,6 +65,7 @@ public class UserProfileActivity extends AppCompatActivity {
         roleLevel = getIntent().getIntExtra(EXTRA_ROLE_LEVEL, -1);
 
         toolbar = findViewById(R.id.toolbar);
+        loadingState = findViewById(R.id.loadingState);
         ivProfilePicture = findViewById(R.id.ivProfilePicture);
         tvUsername = findViewById(R.id.tvUsername);
         tvEmail = findViewById(R.id.tvEmail);
@@ -189,6 +191,7 @@ public class UserProfileActivity extends AppCompatActivity {
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 String un = snapshot.child("username").getValue(String.class);
                 if (un != null) {
                     tvUsername.setText(un);
@@ -284,6 +287,7 @@ public class UserProfileActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 tvUsername.setText(username != null ? username : "Unknown");
                 setRoleBadge(roleLevel);
             }

@@ -37,6 +37,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
     private List<FriendRequest> requests = new ArrayList<>();
     private DatabaseReference requestsRef;
     private ValueEventListener requestsListener;
+    private View loadingState;
 
     @Nullable
     @Override
@@ -49,6 +50,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         super.onViewCreated(view, savedInstanceState);
 
         recyclerView = view.findViewById(R.id.recyclerView);
+        loadingState = view.findViewById(R.id.loadingState);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new FriendRequestAdapter(requireContext(), this);
         recyclerView.setAdapter(adapter);
@@ -69,6 +71,7 @@ public class IncomingRequestsFragment extends Fragment implements FriendRequestA
         requestsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 requests.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     if ("pending".equals(snap.child("status").getValue(String.class))) {
