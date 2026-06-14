@@ -20,7 +20,6 @@ import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialException;
 
-import com.example.mainproj.MainActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
@@ -59,13 +58,6 @@ public class Login_activity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         mAuth = FirebaseAuth.getInstance();
         credentialManager = CredentialManager.create(this);
-
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null && currentUser.getEmail() != null) {
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-            return;
-        }
 
         etEmail = findViewById(com.example.mainproj.R.id.etEmail);
         etPassword = findViewById(com.example.mainproj.R.id.etPassword);

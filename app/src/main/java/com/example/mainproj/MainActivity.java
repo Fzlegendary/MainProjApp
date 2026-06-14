@@ -67,6 +67,7 @@ public class MainActivity extends BaseActivity {
     private AlertDialog offlineDialog;
     private boolean wasOfflineDialogShown = false;
     private boolean isCaching = false;
+    private View loadingOverlay;
     private final Handler connectivityHandler = new Handler(Looper.getMainLooper());
     private final Runnable connectivityCheckRunnable = () -> checkConnectivityAndShowDialog();
 
@@ -78,6 +79,8 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        loadingOverlay = findViewById(R.id.loadingOverlay);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -184,6 +187,22 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private void showLoadingOverlay() {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void hideLoadingOverlay() {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.GONE);
+            }
+        });
+    }
+
     private void cacheAllData() {
         if (isCaching) return;
         if (!NetworkMonitor.getInstance(this).isConnected()) return;
@@ -192,6 +211,7 @@ public class MainActivity extends BaseActivity {
         if (firebaseUser == null || firebaseUser.getEmail() == null) return;
 
         isCaching = true;
+        showLoadingOverlay();
         String safeEmail = firebaseUser.getEmail().replace(".", "_");
 
         DatabaseReference userRef = FirebaseDatabase.getInstance()
@@ -340,11 +360,13 @@ public class MainActivity extends BaseActivity {
                             });
                         }
                         isCaching = false;
+                        hideLoadingOverlay();
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         isCaching = false;
+                        hideLoadingOverlay();
                     }
                 });
             }
@@ -352,6 +374,7 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 isCaching = false;
+                hideLoadingOverlay();
             }
         });
     }
