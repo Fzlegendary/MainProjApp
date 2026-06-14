@@ -1,6 +1,8 @@
 package com.example.mainproj.fragments.subnav;
 
 import android.app.AlertDialog;
+import android.app.job.JobScheduler;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,8 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
-import com.example.mainproj.messaging.DeletionReceiver;
-import com.example.mainproj.messaging.NotificationHelper;
+import com.example.mainproj.messaging.AdminNotificationHelper;
 import com.example.mainproj.userSystem.UserProfileActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.ChipGroup;
@@ -50,8 +51,8 @@ public class AccountMgmtFragment extends Fragment {
 
     // Pending deletions
     private Button btnPendingDeletions;
-    private DatabaseReference scheduledRef;
-    private ValueEventListener scheduledListener;
+    private DatabaseReference listsRef;
+    private ValueEventListener expiredListener;
     private List<PendingItem> pendingItems = new ArrayList<>();
     private Handler countdownHandler = new Handler(Looper.getMainLooper());
     private AlertDialog activeDialog;
@@ -109,10 +110,10 @@ public class AccountMgmtFragment extends Fragment {
 
         contentSection.setVisibility(View.VISIBLE);
 
-        // Set up pending deletions (original logic)
+        // Set up pending deletions — listen on /lists/ for expired items
         btnPendingDeletions.setOnClickListener(v -> showPendingDeletionsDialog());
-        scheduledRef = FirebaseDatabase.getInstance().getReference("scheduledForDeletion");
-        scheduledListener = new ValueEventListener() {
+        listsRef = FirebaseDatabase.getInstance().getReference("lists");
+        expiredListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 pendingItems.clear();
@@ -122,9 +123,12 @@ public class AccountMgmtFragment extends Fragment {
                     for (DataSnapshot itemSnap : listTypeSnap.getChildren()) {
                         String pushId = itemSnap.getKey();
                         String name = itemSnap.child("name").getValue(String.class);
+                        Boolean isExpired = itemSnap.child("isExpired").getValue(Boolean.class);
                         Long deleteAt = itemSnap.child("deleteAt").getValue(Long.class);
                         Long expiresAt = itemSnap.child("timestampExpiresAt").getValue(Long.class);
-                        if (pushId != null && name != null && deleteAt != null && deleteAt > now) {
+                        if (pushId != null && name != null
+                                && isExpired != null && isExpired
+                                && deleteAt != null && deleteAt > now) {
                             pendingItems.add(new PendingItem(
                                     pushId, listType, name, deleteAt,
                                     expiresAt != null ? expiresAt : 0L));
@@ -140,7 +144,7 @@ public class AccountMgmtFragment extends Fragment {
                 Log.d(TAG, "Firebase error: " + error.getMessage());
             }
         };
-        scheduledRef.addValueEventListener(scheduledListener);
+        listsRef.addValueEventListener(expiredListener);
 
         // Set up user management
         adapter = new UserManagementAdapter(requireContext(), filteredUsers, user -> {
@@ -201,8 +205,8 @@ public class AccountMgmtFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (scheduledRef != null && scheduledListener != null) {
-            scheduledRef.removeEventListener(scheduledListener);
+        if (listsRef != null && expiredListener != null) {
+            listsRef.removeEventListener(expiredListener);
         }
         if (usersRef != null && usersListener != null) {
             usersRef.removeEventListener(usersListener);
@@ -452,35 +456,34 @@ public class AccountMgmtFragment extends Fragment {
     }
 
     private void performUndo(PendingItem item) {
-        Log.d(TAG, "Undo: pushId=" + item.pushId + ", listType=" + item.listType + ", moving back to /lists/");
+        Log.d(TAG, "Undo: pushId=" + item.pushId + ", listType=" + item.listType);
 
-        Intent delIntent = new Intent(requireContext(), DeletionReceiver.class);
-        delIntent.putExtra("pushId", item.pushId);
-        delIntent.putExtra("listType", item.listType);
-        NotificationHelper.cancelAlarm(requireContext(), (item.pushId + "_del").hashCode(), delIntent);
+        // Cancel the deletion job
+        JobScheduler scheduler = (JobScheduler) requireContext()
+                .getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        if (scheduler != null) {
+            scheduler.cancel(("del_" + item.pushId).hashCode());
+        }
 
-        DatabaseReference scheduledItemRef = FirebaseDatabase.getInstance()
-                .getReference("scheduledForDeletion").child(item.listType).child(item.pushId);
+        // Reset expiry flags on the item in the active list
+        DatabaseReference itemRef = FirebaseDatabase.getInstance()
+                .getReference("lists").child(item.listType).child(item.pushId);
 
-        scheduledItemRef.get().addOnCompleteListener(task -> {
-            if (task.isSuccessful() && task.getResult().getValue() != null) {
-                Object raw = task.getResult().getValue();
-                if (raw instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data = new HashMap<>((Map<String, Object>) raw);
-                    data.remove("deleteAt");
-                    FirebaseDatabase.getInstance()
-                            .getReference("lists").child(item.listType).child(item.pushId)
-                            .setValue(data);
-                    scheduledItemRef.removeValue();
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("isExpired", false);
+        updates.put("deleteAt", -1L);
+        itemRef.updateChildren(updates)
+                .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Undo complete: pushId=" + item.pushId);
                     Toast.makeText(requireContext(), item.name + " restored", Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                Log.d(TAG, "Undo failed: could not read data for pushId=" + item.pushId);
-                Toast.makeText(requireContext(), "Undo failed", Toast.LENGTH_SHORT).show();
-            }
-        });
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Undo failed", e);
+                    Toast.makeText(requireContext(), "Undo failed", Toast.LENGTH_SHORT).show();
+                });
+
+        // Remove admin notifications for this item
+        AdminNotificationHelper.removeNotifications(item.pushId);
     }
 
     private String formatTimeAgo(long millis) {

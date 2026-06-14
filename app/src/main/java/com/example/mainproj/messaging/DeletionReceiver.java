@@ -23,7 +23,7 @@ public class DeletionReceiver extends BroadcastReceiver {
         final PendingResult pendingResult = goAsync();
 
         FirebaseDatabase.getInstance()
-                .getReference("scheduledForDeletion").child(listType).child(pushId)
+                .getReference("lists").child(listType).child(pushId)
                 .removeValue()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {

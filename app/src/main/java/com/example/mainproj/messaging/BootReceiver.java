@@ -1,8 +1,12 @@
 package com.example.mainproj.messaging;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.PersistableBundle;
 import android.util.Log;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -45,6 +49,10 @@ public class BootReceiver extends BroadcastReceiver {
                     for (DataSnapshot itemSnap : listTypeSnap.getChildren()) {
                         String pushId = itemSnap.getKey();
                         Long expiresAt = itemSnap.child("timestampExpiresAt").getValue(Long.class);
+                        Boolean isExpired = itemSnap.child("isExpired").getValue(Boolean.class);
+                        Long deleteAt = itemSnap.child("deleteAt").getValue(Long.class);
+
+                        // Re-schedule expiration alarm for items that haven't expired yet
                         if (pushId != null && expiresAt != null && expiresAt > now) {
                             String name = itemSnap.child("name").getValue(String.class);
                             String byWho = itemSnap.child("byWho").getValue(String.class);
@@ -63,32 +71,33 @@ public class BootReceiver extends BroadcastReceiver {
                             NotificationHelper.scheduleAlarm(context, pushId.hashCode(), expiresAt, expIntent);
                             expCount[0]++;
                         }
-                    }
-                }
-            }
 
-            DatabaseReference scheduledRef = FirebaseDatabase.getInstance().getReference("scheduledForDeletion");
-            scheduledRef.get().addOnCompleteListener(task2 -> {
-                if (task2.isSuccessful()) {
-                    for (DataSnapshot listTypeSnap : task2.getResult().getChildren()) {
-                        String listType = listTypeSnap.getKey();
-                        for (DataSnapshot itemSnap : listTypeSnap.getChildren()) {
-                            String pushId = itemSnap.getKey();
-                            Long deleteAt = itemSnap.child("deleteAt").getValue(Long.class);
-                            if (pushId != null && deleteAt != null && deleteAt > now) {
-                                Intent delIntent = new Intent(context, DeletionReceiver.class);
-                                delIntent.putExtra("pushId", pushId);
-                                delIntent.putExtra("listType", listType);
-                                NotificationHelper.scheduleAlarm(context,
-                                        (pushId + "_del").hashCode(), deleteAt, delIntent);
+                        // Re-schedule deletion job for items already expired but not yet deleted
+                        if (pushId != null && isExpired != null && isExpired
+                                && deleteAt != null && deleteAt > now) {
+                            ComponentName component = new ComponentName(context, DeletionJobService.class);
+                            PersistableBundle extras = new PersistableBundle();
+                            extras.putString("pushId", pushId);
+                            extras.putString("listType", listType);
+
+                            JobInfo jobInfo = new JobInfo.Builder(("del_" + pushId).hashCode(), component)
+                                    .setMinimumLatency(deleteAt - now)
+                                    .setOverrideDeadline(deleteAt - now + 60000L)
+                                    .setPersisted(true)
+                                    .setExtras(extras)
+                                    .build();
+
+                            JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                            if (scheduler != null) {
+                                scheduler.schedule(jobInfo);
                                 delCount[0]++;
                             }
                         }
                     }
                 }
-                Log.d(TAG, "Re-scheduled " + expCount[0] + " expiration alarms, " + delCount[0] + " deletion alarms on boot");
-                pendingResult.finish();
-            });
+            }
+            Log.d(TAG, "Re-scheduled " + expCount[0] + " expiration alarms, " + delCount[0] + " deletion jobs on boot");
+            pendingResult.finish();
         });
     }
 }

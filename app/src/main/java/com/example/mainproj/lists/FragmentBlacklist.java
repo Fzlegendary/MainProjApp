@@ -1,6 +1,9 @@
 package com.example.mainproj.lists;
 
 import android.app.AlertDialog;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -19,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListFilter;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
+import com.example.mainproj.messaging.AdminNotificationHelper;
 import com.example.mainproj.messaging.ExpirationReceiver;
 import com.example.mainproj.messaging.NotificationHelper;
 import com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter;
@@ -110,6 +114,8 @@ public class FragmentBlacklist extends FragmentBaseList {
         Long timestampWhenAdded = child.child("timestampWhenAdded").getValue(Long.class);
         Long timestampExpiresAt = child.child("timestampExpiresAt").getValue(Long.class);
         Boolean isRemoved = child.child("isRemoved").getValue(Boolean.class);
+        Boolean isExpired = child.child("isExpired").getValue(Boolean.class);
+        Long deleteAt = child.child("deleteAt").getValue(Long.class);
 
         return new PlaceholderContent.PlaceholderItem(
                 id,
@@ -118,7 +124,9 @@ public class FragmentBlacklist extends FragmentBaseList {
                 name != null ? name : "",
                 byWho != null ? byWho : "",
                 reason != null ? reason : "",
-                timestampExpiresAt != null ? timestampExpiresAt : -1L
+                timestampExpiresAt != null ? timestampExpiresAt : -1L,
+                isExpired != null && isExpired,
+                deleteAt != null ? deleteAt : -1L
         );
     }
 
@@ -178,7 +186,9 @@ public class FragmentBlacklist extends FragmentBaseList {
                             name,
                             byWho,
                             reason,
-                            timestampExpiresAt
+                            timestampExpiresAt,
+                            false,
+                            -1L
                     );
 
                     String newKey = blacklistRef.push().getKey();
@@ -209,6 +219,14 @@ public class FragmentBlacklist extends FragmentBaseList {
                 .setTitle("Remove " + item.name + "?")
                 .setMessage("This will remove the item from the blacklist.")
                 .setPositiveButton("Remove", (dialog, which) -> {
+                    if (item.isExpired && item.id != null) {
+                        JobScheduler scheduler = (JobScheduler) requireContext()
+                                .getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                        if (scheduler != null) {
+                            scheduler.cancel(("del_" + item.id).hashCode());
+                        }
+                        AdminNotificationHelper.removeNotifications(item.id);
+                    }
                     fullList.remove(item);
                     adapter.removeItem(position);
                     if (item.id != null) {

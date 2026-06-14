@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -86,6 +87,11 @@
 
         <receiver android:name=".messaging.ExpirationReceiver" android:exported="false" />
         <receiver android:name=".messaging.DeletionReceiver" android:exported="false" />
+
+        <service
+            android:name=".messaging.DeletionJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 
 </manifest>

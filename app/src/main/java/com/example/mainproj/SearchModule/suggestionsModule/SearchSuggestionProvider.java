@@ -32,6 +32,8 @@ public class SearchSuggestionProvider {
 
         // modifier suggestions (optional but recommended)
         if ("".equals(lastToken) || lastToken.length() < 3) {
+            out.add(new SearchSuggestion("expired:true", "expired:true"));
+            out.add(new SearchSuggestion("expired:false", "expired:false"));
             out.add(new SearchSuggestion("expires:", "expires:"));
             out.add(new SearchSuggestion("expiresBefore:", "expiresBefore:"));
             out.add(new SearchSuggestion("expiresAfter:", "expiresAfter:"));
