@@ -21,9 +21,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class PermissionEditorDialog {
 
@@ -132,17 +130,13 @@ public class PermissionEditorDialog {
             return;
         }
 
-        int grantedLevel = spinnerPerm.getSelectedItemPosition() + 1;
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("grantedLevel", grantedLevel);
-        data.put("grantedBy", SessionManager.getCurrentSafeEmail());
-        data.put("grantedAt", System.currentTimeMillis());
+        // Position 0 = View (allowedUsers), Position 1 = Control (allowedAdmins)
+        String fieldName = spinnerPerm.getSelectedItemPosition() == 0 ? "allowedUsers" : "allowedAdmins";
 
         FirebaseDatabase.getInstance()
-                .getReference("gate-permissions")
-                .child(gateId).child("users").child(selectedUser.safeEmail)
-                .setValue(data)
+                .getReference("gates")
+                .child(gateId).child(fieldName).child(selectedUser.username)
+                .setValue(true)
                 .addOnSuccessListener(unused -> {
                     Toast.makeText(context, "Permission granted to " + selectedUser.username, Toast.LENGTH_SHORT).show();
                     if (onSaved != null) onSaved.run();

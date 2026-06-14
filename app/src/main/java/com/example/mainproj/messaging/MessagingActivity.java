@@ -37,8 +37,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
+import com.example.mainproj.adapters.MessageAdapter;
 import com.example.mainproj.auth.SessionManager;
-import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -56,20 +56,14 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import android.content.res.ColorStateList;
-import android.graphics.Typeface;
 import android.util.Log;
-import android.view.ViewGroup;
 
 import com.google.android.gms.tasks.Task;
-import com.google.android.material.button.MaterialButton;
 
 import android.content.SharedPreferences;
 

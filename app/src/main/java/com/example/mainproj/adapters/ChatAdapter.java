@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging;
+package com.example.mainproj.adapters;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -18,6 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.ChatCacheApplication;
+import com.example.mainproj.messaging.ChatCacheManager;
+import com.example.mainproj.messaging.ChatMetadataManager;
+import com.example.mainproj.messaging.ChatModel;
+import com.example.mainproj.messaging.NetworkMonitor;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;

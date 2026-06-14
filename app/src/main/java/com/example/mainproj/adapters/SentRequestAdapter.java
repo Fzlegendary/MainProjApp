@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging.friendRequest;
+package com.example.mainproj.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -11,8 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.friendRequest.SentRequest;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class SentRequestAdapter extends RecyclerView.Adapter<SentRequestAdapter.SentRequestViewHolder> {

@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging;
+package com.example.mainproj.adapters;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -17,6 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.ImageViewerActivity;
+import com.example.mainproj.messaging.MessageModel;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -112,7 +114,6 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                 int adapterPos = holder.getAdapterPosition();
                 if (adapterPos == RecyclerView.NO_POSITION) return true;
 
-                MessageModel msgToDelete = messages.get(adapterPos);
                 new AlertDialog.Builder(context)
                         .setTitle("Delete Message")
                         .setMessage("Are you sure you want to delete this message?")

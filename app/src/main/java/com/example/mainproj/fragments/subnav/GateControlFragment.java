@@ -19,7 +19,7 @@ import com.example.mainproj.R;
 import com.example.mainproj.admin.AdminGatePermissionSheet;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.gates.Gate;
-import com.example.mainproj.gates.GateAdapter;
+import com.example.mainproj.adapters.GateAdapter;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -49,12 +49,14 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
 
     private RecyclerView recyclerView;
     private List<Gate> gateList = new ArrayList<>();
+    private List<Gate> rawGates = new ArrayList<>();
     private GateAdapter adapter;
     private DatabaseReference gatesRef;
     private ValueEventListener gatesListener;
     private View loadingState;
 
     private OkHttpClient client;
+    private String currentListStatus = "none";
 
     @Nullable
     @Override
@@ -75,6 +77,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
 
         setupOkHttpClient();
         setupFirebase();
+        checkUserListStatus();
         setupTestButton(view);
     }
 
@@ -96,7 +99,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (loadingState != null) loadingState.setVisibility(View.GONE);
-                gateList.clear();
+                rawGates.clear();
                 for (DataSnapshot g : snapshot.getChildren()) {
                     String id = g.getKey();
                     String state = g.child("state").getValue(String.class);
@@ -108,21 +111,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                     int cLevel = ctrlLevel != null ? ctrlLevel : 0;
                     boolean isDisabled = disabledVal != null && disabledVal;
 
-                    if (isDisabled && SessionManager.getRoleLevel() < 2) continue;
-
-                    boolean isExplicitlyAllowed = false;
                     DataSnapshot allowedSnap = g.child("allowedUsers");
-                    if (allowedSnap.exists()) {
-                        Boolean val = allowedSnap.child(SessionManager.getCurrentUsername()).getValue(Boolean.class);
-                        isExplicitlyAllowed = (val != null && val);
-                    }
-
-                    if (vLevel == -1) {
-                        if (SessionManager.getRoleLevel() < 2 && !isExplicitlyAllowed) continue;
-                    } else if (!isExplicitlyAllowed && !SessionManager.canViewGate(vLevel)) {
-                        continue;
-                    }
-
                     DataSnapshot adminSnap = g.child("allowedAdmins");
 
                     Gate gate = new Gate(
@@ -141,11 +130,9 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
                     if (adminSnap.exists()) {
                         gate.setAllowedAdmins((java.util.Map<String, Boolean>) adminSnap.getValue());
                     }
-                    gateList.add(gate);
+                    rawGates.add(gate);
                 }
-                if (adapter != null) {
-                    adapter.notifyDataSetChanged();
-                }
+                applyListStatusFilter();
             }
 
             @Override
@@ -214,8 +201,89 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         }
     }
 
+    private void checkUserListStatus() {
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String host = prefs.getString("server_host", "localhost");
+        String port = prefs.getString("server_port", "8080");
+        String url = "http://" + host + ":" + port + "/user/list-status";
+
+        try {
+            JSONObject json = new JSONObject();
+            json.put("userName", SessionManager.getCurrentUsername());
+            json.put("commandId", UUID.randomUUID().toString());
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(json.toString(), MediaType.get("application/json")))
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    currentListStatus = "none";
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) {
+                    try {
+                        if (response.isSuccessful()) {
+                            String body = response.body() != null ? response.body().string() : "";
+                            JSONObject jsonResponse = new JSONObject(body);
+                            String status = jsonResponse.optString("status");
+                            if ("acknowledged".equals(status)) {
+                                currentListStatus = jsonResponse.optString("listStatus", "none");
+                            } else {
+                                currentListStatus = "none";
+                            }
+                        } else {
+                            currentListStatus = "none";
+                        }
+                    } catch (Exception e) {
+                        currentListStatus = "none";
+                    } finally {
+                        response.close();
+                    }
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> applyListStatusFilter());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            currentListStatus = "none";
+        }
+    }
+
+    private void applyListStatusFilter() {
+        gateList.clear();
+        String username = SessionManager.getCurrentUsername();
+        int roleLevel = SessionManager.getRoleLevel();
+
+        for (Gate gate : rawGates) {
+            // Visibility rules apply to all users regardless of list status
+            if (gate.isDisabled() && roleLevel < 2) continue;
+
+            boolean isExplicitlyAllowed = gate.getAllowedUsers() != null
+                    && Boolean.TRUE.equals(gate.getAllowedUsers().get(username));
+
+            if (gate.getVisibilityLevel() == -1) {
+                if (roleLevel < 2 && !isExplicitlyAllowed) continue;
+            } else if (!isExplicitlyAllowed && !SessionManager.canViewGate(gate.getVisibilityLevel())) {
+                continue;
+            }
+
+            gateList.add(gate);
+        }
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
     @Override
     public void onGateToggle(Gate gate, int position) {
+        if ("blacklisted".equals(currentListStatus)) {
+            Toast.makeText(requireContext(), "blacklisted", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (!gate.isClickable()) return;
         if (!SessionManager.canControlGate(gate.getControlLevel())) {
             Toast.makeText(requireContext(), "You don't have permission to control this gate", Toast.LENGTH_SHORT).show();

@@ -242,20 +242,38 @@ public class AdminGatePermissionSheet extends BottomSheetDialogFragment {
     }
 
     private void loadUsers() {
-        DatabaseReference permsRef = FirebaseDatabase.getInstance()
-                .getReference("gate-permissions").child(gateId).child("users");
+        DatabaseReference gateRef = FirebaseDatabase.getInstance()
+                .getReference("gates").child(gateId);
 
-        permsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        gateRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 userList.clear();
-                for (DataSnapshot userSnap : snapshot.getChildren()) {
-                    String safeEmail = userSnap.getKey();
-                    Integer grantedLevel = userSnap.child("grantedLevel").getValue(Integer.class);
-                    if (safeEmail == null || grantedLevel == null) continue;
-                    lookupUserInfo(safeEmail, grantedLevel);
+
+                // Read allowedUsers (view permission)
+                DataSnapshot usersSnap = snapshot.child("allowedUsers");
+                if (usersSnap.exists()) {
+                    for (DataSnapshot userSnap : usersSnap.getChildren()) {
+                        String username = userSnap.getKey();
+                        if (username != null && Boolean.TRUE.equals(userSnap.getValue(Boolean.class))) {
+                            lookupUserInfo(username, 1);
+                        }
+                    }
                 }
-                if (!snapshot.hasChildren()) {
+
+                // Read allowedAdmins (control permission)
+                DataSnapshot adminsSnap = snapshot.child("allowedAdmins");
+                if (adminsSnap.exists()) {
+                    for (DataSnapshot adminSnap : adminsSnap.getChildren()) {
+                        String username = adminSnap.getKey();
+                        if (username != null && Boolean.TRUE.equals(adminSnap.getValue(Boolean.class))) {
+                            lookupUserInfo(username, 2);
+                        }
+                    }
+                }
+
+                if ((!usersSnap.exists() || !usersSnap.hasChildren())
+                        && (!adminsSnap.exists() || !adminsSnap.hasChildren())) {
                     adapter.notifyDataSetChanged();
                 }
             }
@@ -265,25 +283,34 @@ public class AdminGatePermissionSheet extends BottomSheetDialogFragment {
         });
     }
 
-    private void lookupUserInfo(String safeEmail, int grantedLevel) {
-        FirebaseDatabase.getInstance().getReference("users").child(safeEmail)
+    private void lookupUserInfo(String username, int grantedLevel) {
+        // Search for user by username in /users/ (iterate to find matching username)
+        FirebaseDatabase.getInstance().getReference("users")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String username = snapshot.child("username").getValue(String.class);
-                        Integer roleLevel = snapshot.child("roleLevel").getValue(Integer.class);
-                        if (username == null) username = safeEmail;
-                        userList.add(new UserPermissionEntry(
-                                safeEmail, username,
-                                roleLevel != null ? roleLevel : 0,
-                                grantedLevel
-                        ));
+                        for (DataSnapshot child : snapshot.getChildren()) {
+                            String un = child.child("username").getValue(String.class);
+                            if (username.equals(un)) {
+                                String safeEmail = child.getKey();
+                                Integer roleLevel = child.child("roleLevel").getValue(Integer.class);
+                                userList.add(new UserPermissionEntry(
+                                        safeEmail, username,
+                                        roleLevel != null ? roleLevel : 0,
+                                        grantedLevel
+                                ));
+                                adapter.notifyDataSetChanged();
+                                return;
+                            }
+                        }
+                        // Username not found in users list
+                        userList.add(new UserPermissionEntry("", username, 0, grantedLevel));
                         adapter.notifyDataSetChanged();
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        userList.add(new UserPermissionEntry(safeEmail, safeEmail, 0, grantedLevel));
+                        userList.add(new UserPermissionEntry("", username, 0, grantedLevel));
                         adapter.notifyDataSetChanged();
                     }
                 });

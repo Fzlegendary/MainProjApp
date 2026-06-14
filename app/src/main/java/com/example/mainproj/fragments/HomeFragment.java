@@ -12,6 +12,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.mainproj.R;
 import com.example.mainproj.adapters.SubNavPagerAdapter;
+import com.example.mainproj.auth.SessionManager;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -37,23 +38,23 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupSubNav() {
-        SubNavPagerAdapter adapter = new SubNavPagerAdapter(requireActivity());
+        boolean isAdmin = SessionManager.isAdmin();
+        SubNavPagerAdapter adapter = new SubNavPagerAdapter(requireActivity(), isAdmin);
         subNavPager.setAdapter(adapter);
 
         new TabLayoutMediator(tabLayout, subNavPager, (tab, position) -> {
-            switch (position) {
-                case 0:
-                    tab.setText("Gate Control");
-                    break;
-                case 1:
-                    tab.setText("Server Settings");
-                    break;
-                case 2:
-                    tab.setText("Account Mgmt");
-                    break;
-                case 3:
-                    tab.setText("Blacklist");
-                    break;
+            if (isAdmin) {
+                switch (position) {
+                    case 0: tab.setText("Gate Control"); break;
+                    case 1: tab.setText("Server Settings"); break;
+                    case 2: tab.setText("Account Mgmt"); break;
+                    case 3: tab.setText("Blacklist"); break;
+                }
+            } else {
+                switch (position) {
+                    case 0: tab.setText("Gate Control"); break;
+                    case 1: tab.setText("Server Settings"); break;
+                }
             }
         }).attach();
     }

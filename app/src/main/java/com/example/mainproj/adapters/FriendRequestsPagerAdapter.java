@@ -1,8 +1,11 @@
-package com.example.mainproj.fragments;
+package com.example.mainproj.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+
+import com.example.mainproj.fragments.IncomingRequestsFragment;
+import com.example.mainproj.fragments.OutgoingRequestsFragment;
 
 public class FriendRequestsPagerAdapter extends FragmentStateAdapter {
 

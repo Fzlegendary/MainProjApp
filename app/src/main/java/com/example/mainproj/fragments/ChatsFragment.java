@@ -1,7 +1,6 @@
 package com.example.mainproj.fragments;
 
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.os.Bundle;
@@ -20,12 +19,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
-import com.example.mainproj.messaging.ChatAdapter;
+import com.example.mainproj.adapters.ChatAdapter;
+import com.example.mainproj.adapters.FriendRequestsPagerAdapter;
 import com.example.mainproj.messaging.ChatCacheApplication;
 import com.example.mainproj.messaging.ChatCacheManager;
 import com.example.mainproj.messaging.ChatMetadataManager;
 import com.example.mainproj.messaging.ChatModel;
-import com.example.mainproj.messaging.MessagingActivity;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.messaging.NetworkMonitor;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -36,12 +35,9 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 
 public class ChatsFragment extends Fragment {

@@ -23,18 +23,17 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
-import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestion;
-import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestionAdapter;
+import com.example.mainproj.adapters.SearchSuggestionAdapter;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.lists.ListRequestManager;
-import com.example.mainproj.lists.ListsPagerAdapter;
+import com.example.mainproj.adapters.ListsPagerAdapter;
+import com.example.mainproj.lists.FragmentBaseList;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
 
 public class BlacklistFragment extends Fragment {
@@ -87,6 +86,14 @@ public class BlacklistFragment extends Fragment {
         btnFilter = view.findViewById(R.id.btnFilter);
         filterBadge = view.findViewById(R.id.filterBadge);
 
+        // Admin guard — only admins can access the blacklist/whitelist
+        if (!SessionManager.isAdmin()) {
+            view.findViewById(R.id.accessDenied).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.searchContainer).setVisibility(View.GONE);
+            view.findViewById(R.id.pagerCard).setVisibility(View.GONE);
+            return;
+        }
+
         // Get the shared ViewModel — scoped to the Activity so it persists
         // across the Whitelist/Blacklist tabs. Both tabs observe this same query.
         searchViewModel = new ViewModelProvider(requireActivity()).get(ListsSearchViewModel.class);
@@ -126,41 +133,6 @@ public class BlacklistFragment extends Fragment {
                 searchViewModel.setSearchQuery(newText);
                 // Recount active filters and update badge
                 updateFilterBadge();
-
-                // Known users that appear as suggestions after "by:"
-                // In production this could come from a server or contacts list
-                List<String> knownUsers = List.of("System");
-
-                // Check if the query contains "by:" to trigger username suggestions
-                if (newText.toLowerCase().contains("by:")) {
-                    // Extract everything after "by:"
-                    String afterBy = newText.substring(
-                            newText.toLowerCase().lastIndexOf("by:") + 3
-                    ).trim();
-
-                    // Build a list of suggestions matching what the user typed
-                    List<SearchSuggestion> suggestions = new ArrayList<>();
-                    for (String user : knownUsers) {
-                        // Case-insensitive prefix match
-                        if (user.toLowerCase().startsWith(afterBy.toLowerCase())) {
-                            suggestions.add(new SearchSuggestion(user, user));
-                        }
-                    }
-
-                    // Show dropdown if there are suggestions, hide otherwise
-                    suggestionAdapter.setItems(suggestions);
-                    searchSuggestions.setVisibility(
-                            suggestions.isEmpty() ? View.GONE : View.VISIBLE
-                    );
-
-                    // Hide suggestions once the user has fully typed a known username
-                    if (knownUsers.contains(afterBy)) {
-                        searchSuggestions.setVisibility(View.GONE);
-                    }
-                } else {
-                    // No "by:" in query — hide suggestions
-                    searchSuggestions.setVisibility(View.GONE);
-                }
             }
 
             @Override
@@ -212,7 +184,7 @@ public class BlacklistFragment extends Fragment {
             // Iterate over both list fragments in the ViewPager
             for (int i = 0; i < adapter.getItemCount(); i++) {
                 // Get the fragment at position (Whitelist or Blacklist)
-                com.example.mainproj.lists.FragmentBaseList fragment = adapter.getFragmentAt(i);
+                FragmentBaseList fragment = adapter.getFragmentAt(i);
                 if (fragment != null) {
                     // Apply the search/filter logic:
                     // - Extract free text, by:user, expires/added dates from query

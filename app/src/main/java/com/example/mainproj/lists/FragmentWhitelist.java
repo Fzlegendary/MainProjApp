@@ -2,7 +2,6 @@ package com.example.mainproj.lists;
 
 import android.app.AlertDialog;
 import android.app.job.JobScheduler;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -23,7 +22,6 @@ import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListFilter;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
 import com.example.mainproj.messaging.AdminNotificationHelper;
-import com.example.mainproj.messaging.DeletionJobService;
 import com.example.mainproj.messaging.ExpirationReceiver;
 import com.example.mainproj.messaging.NotificationHelper;
 import com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter;
@@ -152,67 +150,94 @@ public class FragmentWhitelist extends FragmentBaseList {
                 .setPositiveButton("Add", (dialog, which) -> {
                     String name = etName.getText() != null ? etName.getText().toString().trim() : "";
                     String reason = etReason.getText() != null ? etReason.getText().toString().trim() : "";
+                    int selectedPos = spinnerExpiry.getSelectedItemPosition();
 
                     if (name.isEmpty()) {
                         Toast.makeText(requireContext(), "Name is required", Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    String byWho = "unknown";
-                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                        byWho = FirebaseAuth.getInstance().getCurrentUser().getEmail();
-                    }
+                    // Check if the name is an admin — admins cannot be added to lists
+                    DatabaseReference userCheckRef = FirebaseDatabase.getInstance().getReference("users");
+                    userCheckRef.orderByChild("username").equalTo(name)
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    if (snapshot.exists()) {
+                                        for (DataSnapshot child : snapshot.getChildren()) {
+                                            Integer rl = child.child("roleLevel").getValue(Integer.class);
+                                            if (rl != null && rl >= 1) {
+                                                Toast.makeText(requireContext(), "Admins cannot be added to the whitelist", Toast.LENGTH_SHORT).show();
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    // Not an admin — proceed to add
+                                    proceedAddToWhitelist(name, reason, selectedPos);
+                                }
 
-                    long now = System.currentTimeMillis();
-                    int selectedPos = spinnerExpiry.getSelectedItemPosition();
-                    long timestampExpiresAt;
-                    switch (selectedPos) {
-                        case 1:
-                            timestampExpiresAt = now + 86400000L;
-                            break;
-                        case 2:
-                            timestampExpiresAt = now + 604800000L;
-                            break;
-                        case 3:
-                            timestampExpiresAt = now + 2592000000L;
-                            break;
-                        default:
-                            timestampExpiresAt = -1L;
-                    }
-
-                    PlaceholderContent.PlaceholderItem item = new PlaceholderContent.PlaceholderItem(
-                            null,
-                            false,
-                            now,
-                            name,
-                            byWho,
-                            reason,
-                            timestampExpiresAt,
-                            false,
-                            -1L
-                    );
-
-                    String newKey = whitelistRef.push().getKey();
-                    item.id = newKey;
-                    whitelistRef.child(newKey).setValue(item);
-
-                    if (timestampExpiresAt != -1L) {
-                        Intent expIntent = new Intent(requireContext(), ExpirationReceiver.class);
-                        expIntent.putExtra("pushId", newKey);
-                        expIntent.putExtra("listType", "whitelist");
-                        expIntent.putExtra("itemName", name);
-                        expIntent.putExtra("byWho", byWho);
-                        expIntent.putExtra("reason", reason);
-                        expIntent.putExtra("timestampWhenAdded", now);
-                        expIntent.putExtra("timestampExpiresAt", timestampExpiresAt);
-                        NotificationHelper.scheduleAlarm(requireContext(), newKey.hashCode(), timestampExpiresAt, expIntent);
-                        Log.d("FragmentWhitelist", "Item added with expiry: id=" + newKey + ", expiresAt=" + timestampExpiresAt + ", alarm scheduled");
-                    }
-
-                    Toast.makeText(requireContext(), "Item added", Toast.LENGTH_SHORT).show();
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    Toast.makeText(requireContext(), "Firebase error", Toast.LENGTH_SHORT).show();
+                                }
+                            });
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void proceedAddToWhitelist(String name, String reason, int selectedPos) {
+        String byWho = "unknown";
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            byWho = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+        }
+
+        long now = System.currentTimeMillis();
+        long timestampExpiresAt;
+        switch (selectedPos) {
+            case 1:
+                timestampExpiresAt = now + 86400000L;
+                break;
+            case 2:
+                timestampExpiresAt = now + 604800000L;
+                break;
+            case 3:
+                timestampExpiresAt = now + 2592000000L;
+                break;
+            default:
+                timestampExpiresAt = -1L;
+        }
+
+        PlaceholderContent.PlaceholderItem item = new PlaceholderContent.PlaceholderItem(
+                null,
+                false,
+                now,
+                name,
+                byWho,
+                reason,
+                timestampExpiresAt,
+                false,
+                -1L
+        );
+
+        String newKey = whitelistRef.push().getKey();
+        item.id = newKey;
+        whitelistRef.child(newKey).setValue(item);
+
+        if (timestampExpiresAt != -1L) {
+            Intent expIntent = new Intent(requireContext(), ExpirationReceiver.class);
+            expIntent.putExtra("pushId", newKey);
+            expIntent.putExtra("listType", "whitelist");
+            expIntent.putExtra("itemName", name);
+            expIntent.putExtra("byWho", byWho);
+            expIntent.putExtra("reason", reason);
+            expIntent.putExtra("timestampWhenAdded", now);
+            expIntent.putExtra("timestampExpiresAt", timestampExpiresAt);
+            NotificationHelper.scheduleAlarm(requireContext(), newKey.hashCode(), timestampExpiresAt, expIntent);
+            Log.d("FragmentWhitelist", "Item added with expiry: id=" + newKey + ", expiresAt=" + timestampExpiresAt + ", alarm scheduled");
+        }
+
+        Toast.makeText(requireContext(), "Item added", Toast.LENGTH_SHORT).show();
     }
 
     private void showDeleteConfirmation(int position, PlaceholderContent.PlaceholderItem item) {
@@ -239,6 +264,34 @@ public class FragmentWhitelist extends FragmentBaseList {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void proceedAddToWhitelist(String name, String reason) {
+        String byWho = "unknown";
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            byWho = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+        }
+
+        long now = System.currentTimeMillis();
+        long timestampExpiresAt = -1L;
+
+        PlaceholderContent.PlaceholderItem item = new PlaceholderContent.PlaceholderItem(
+                null,
+                false,
+                now,
+                name,
+                byWho,
+                reason,
+                timestampExpiresAt,
+                false,
+                -1L
+        );
+
+        String newKey = whitelistRef.push().getKey();
+        item.id = newKey;
+        whitelistRef.child(newKey).setValue(item);
+
+        Toast.makeText(requireContext(), "Item added", Toast.LENGTH_SHORT).show();
     }
 
     private void refreshFilteredList() {

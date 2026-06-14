@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.friendRequest.SentRequest;
-import com.example.mainproj.messaging.friendRequest.SentRequestAdapter;
+import com.example.mainproj.adapters.SentRequestAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;

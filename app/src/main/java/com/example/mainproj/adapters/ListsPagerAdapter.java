@@ -1,8 +1,13 @@
-package com.example.mainproj.lists;
+package com.example.mainproj.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+
+import com.example.mainproj.lists.FragmentBaseList;
+import com.example.mainproj.lists.FragmentBlacklist;
+import com.example.mainproj.lists.FragmentWhitelist;
+import com.example.mainproj.lists.ListRequestManager;
 
 import java.util.HashMap;
 import java.util.Map;

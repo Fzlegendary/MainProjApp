@@ -1,4 +1,4 @@
-package com.example.mainproj.SearchModule.suggestionsModule;
+package com.example.mainproj.adapters;
 
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -6,6 +6,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestion;
 
 import java.util.ArrayList;
 import java.util.List;

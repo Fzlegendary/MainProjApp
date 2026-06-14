@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
+import com.example.mainproj.adapters.UserManagementAdapter;
 import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.messaging.AdminNotificationHelper;
 import com.example.mainproj.userSystem.UserProfileActivity;
