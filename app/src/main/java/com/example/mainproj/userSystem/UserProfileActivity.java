@@ -266,7 +266,7 @@ public class UserProfileActivity extends AppCompatActivity {
                                             if (child.getKey() != null) names.add(child.getKey());
                                         }
                                         if (names.isEmpty()) {
-                                            new AlertDialog.Builder(UserProfileActivity.this)
+                                                new AlertDialog.Builder(UserProfileActivity.this)
                                                     .setTitle("Friends")
                                                     .setMessage("No friends yet.")
                                                     .setPositiveButton("OK", null).show();

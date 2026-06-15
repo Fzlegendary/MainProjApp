@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.mainproj.MainActivity;
+import com.example.mainproj.messaging.MessagingActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -33,7 +34,8 @@ public class MessageNotificationService extends Service {
     private static final int FOREGROUND_NOTIFICATION_ID = 999999;
     private static final String CHANNEL_ID_FOREGROUND = "message_service_channel";
 
-    private DatabaseReference chatsRef;
+    private DatabaseReference userChatsRef;
+    private ValueEventListener userChatsListener;
     private Map<String, ChildEventListener> chatListeners = new HashMap<>();
     private final Map<String, Boolean> listenerReady = new HashMap<>();
     private String currentUserSafeEmail;
@@ -76,25 +78,23 @@ public class MessageNotificationService extends Service {
     }
 
     private void startListeningToChats() {
-        chatsRef = FirebaseDatabase.getInstance().getReference("chats");
-        
-        chatsRef.addValueEventListener(new ValueEventListener() {
+        userChatsRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(currentUserSafeEmail).child("chats");
+
+        userChatsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 for (DataSnapshot chatSnap : snapshot.getChildren()) {
                     String chatId = chatSnap.getKey();
                     if (chatId == null) continue;
 
-                    if (!chatSnap.hasChild("participants")) continue;
-
-                    DataSnapshot participants = chatSnap.child("participants");
-                    if (!participants.hasChild(currentUserSafeEmail)) continue;
-
                     if (chatListeners.containsKey(chatId)) continue;
 
+                    String partnerNickname = chatSnap.child("nickname").getValue(String.class);
                     String partnerUsername = chatSnap.child("username").getValue(String.class);
+                    String displayName = partnerNickname != null ? partnerNickname : (partnerUsername != null ? partnerUsername : "Unknown");
 
-                    ChildEventListener listener = buildMessageListener(chatId, partnerUsername);
+                    ChildEventListener listener = buildMessageListener(chatId, displayName);
                     chatListeners.put(chatId, listener);
 
                     FirebaseDatabase.getInstance()
@@ -118,7 +118,9 @@ public class MessageNotificationService extends Service {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+
+        userChatsRef.addValueEventListener(userChatsListener);
     }
 
     private ChildEventListener buildMessageListener(String chatId, String senderUsername) {
@@ -188,8 +190,9 @@ public class MessageNotificationService extends Service {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
-                    intent.putExtra("tab_position", 1);
+                    Intent intent = new Intent(foregroundActivity, MessagingActivity.class);
+                    intent.putExtra("chatId", chatId);
+                    intent.putExtra("username", senderUsername);
                     foregroundActivity.startActivity(intent);
                 })
                 .setNeutralButton("Dismiss", null)
@@ -233,6 +236,9 @@ public class MessageNotificationService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (userChatsRef != null && userChatsListener != null) {
+            userChatsRef.removeEventListener(userChatsListener);
+        }
         for (Map.Entry<String, ChildEventListener> entry : chatListeners.entrySet()) {
             FirebaseDatabase.getInstance()
                     .getReference("chats").child(entry.getKey()).child("messages")

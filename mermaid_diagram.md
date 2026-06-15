@@ -54,7 +54,6 @@ classDiagram
     class FriendsListFragment
     class IncomingRequestsFragment
     class OutgoingRequestsFragment
-    class MessagesFragment
     class FragmentSignUpEntry
     class FragmentStep1Phone
     class FragmentStep2Username
@@ -67,7 +66,6 @@ classDiagram
     DialogFragment <|-- FriendsListFragment
     Fragment <|-- IncomingRequestsFragment
     Fragment <|-- OutgoingRequestsFragment
-    Fragment <|-- MessagesFragment
     Fragment <|-- FragmentSignUpEntry
     Fragment <|-- FragmentStep1Phone
     Fragment <|-- FragmentStep2Username
@@ -261,7 +259,6 @@ classDiagram
 
     %% Interface Implementations
     MessagingActivity ..|> OnMessageDeleteListener
-    MessagesFragment ..|> OnMessageDeleteListener
     GateControlFragment ..|> OnGateClickListener
     IncomingRequestsFragment ..|> OnRequestActionListener
 
@@ -275,7 +272,6 @@ classDiagram
     ListAdapter o-- PlaceholderItem
 
     ChatsFragment *-- ChatAdapter
-    MessagesFragment *-- MessageAdapter
     GateControlFragment *-- GateAdapter
     IncomingRequestsFragment *-- FriendRequestAdapter
     OutgoingRequestsFragment *-- SentRequestAdapter

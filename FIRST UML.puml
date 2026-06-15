@@ -497,39 +497,6 @@ class com.example.mainproj.messaging.friendRequest.Friend {
 }
 
 
-class com.example.mainproj.messaging.MessagesFragment {
-- DrawerLayout drawerLayout
-- RecyclerView messagesRecyclerView
-- MessageAdapter messageAdapter
-- ArrayList<MessageModel> messagesList
-- EditText messageInput
-- FloatingActionButton sendButton
-- String chatId
-- String partnerUsername
-- String currentUsername
-- String currentUserSafeEmail
-- DatabaseReference messagesRef
-- ValueEventListener messagesListener
-- ConnectivityManager.NetworkCallback networkRecoveryCallback
-- ImageView profileImage
-- TextView profileName
-- TextView tvChatName
-+ void onCreate(Bundle)
-+ View onCreateView(LayoutInflater,ViewGroup,Bundle)
-+ void onViewCreated(View,Bundle)
-+ void onStart()
-+ void onStop()
-- void loadCurrentUsername()
-- void loadCachedMessages()
-- void registerNetworkRecoveryCallback()
-- void unregisterNetworkRecoveryCallback()
-- void attachMessagesListener()
-- void sendMessage()
-+ void onDeleteMessage(MessageModel)
-- void loadUserProfile()
-- String formatDateMessage(long)
-}
-
 
 class com.example.mainproj.userSystem.Login_activity {
 - {static} String PREFS_NAME
@@ -1587,8 +1554,7 @@ androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentStep
 com.example.mainproj.userSystem.FragmentStep3Age +.. com.example.mainproj.userSystem.FragmentStep3Age$OnAgeCompleteListener
 androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.OutgoingRequestsFragment
 com.google.firebase.messaging.FirebaseMessagingService <|-- com.example.mainproj.messaging.NotificationHandlerService
-com.example.mainproj.messaging.OnMessageDeleteListener <|.. com.example.mainproj.messaging.MessagesFragment
-androidx.fragment.app.Fragment <|-- com.example.mainproj.messaging.MessagesFragment
+
 androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.userSystem.Login_activity
 com.example.mainproj.shared_lists_adapter_placeholder.Adapter <|-- com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter
 com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter +.. com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$OnDeleteClickListener

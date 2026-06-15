@@ -3,6 +3,7 @@ package com.example.mainproj.messaging;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -14,6 +15,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class NotificationActionReceiver extends BroadcastReceiver {
+
+    private static final String TAG = "NotificationActionRcvr";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -39,6 +42,22 @@ public class NotificationActionReceiver extends BroadcastReceiver {
     }
 
     private void handleMarkAsRead(Context context, String chatId, String messageKey) {
+        if (chatId == null || messageKey == null) return;
+
+        DatabaseReference messageRef = FirebaseDatabase.getInstance()
+                .getReference("chats")
+                .child(chatId)
+                .child("messages")
+                .child(messageKey)
+                .child("read");
+
+        messageRef.setValue(true).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                Log.d(TAG, "Message marked as read: " + messageKey);
+            } else {
+                Log.e(TAG, "Failed to mark message as read", task.getException());
+            }
+        });
     }
 
     private void handleReply(Context context, String chatId, String senderUsername, String replyText) {
