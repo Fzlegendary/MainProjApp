@@ -3,4 +3,21 @@
     <string name="default_web_client_id">182056717412-ngejd56t1uaa3pir67uc3u4tttvrncsg.apps.googleusercontent.com</string>
     <string name="open">Open navigation drawer</string>
     <string name="close">Close navigation drawer</string>
+
+    <!-- Account Management Fragment -->
+    <string name="pending_deletions_count">Items Pending Deletion (%1$d)</string>
+    <string name="no_pending_deletions">No items pending deletion</string>
+    <string name="items_pending_deletion_title">Items Pending Deletion</string>
+    <string name="close_button">Close</string>
+    <string name="expired_prefix">Expired %1$s</string>
+    <string name="deleting_in_prefix">Deleting in %1$s</string>
+    <string name="undo">UNDO</string>
+    <string name="item_restored">%1$s restored</string>
+    <string name="undo_failed">Undo failed</string>
+    <string name="time_just_now">just now</string>
+    <string name="time_m_ago">%1$dm ago</string>
+    <string name="time_h_m_ago">%1$dh %2$dm ago</string>
+    <string name="time_any_moment">any moment</string>
+    <string name="time_m">%1$dm</string>
+    <string name="time_h_m">%1$dh %2$dm</string>
 </resources>

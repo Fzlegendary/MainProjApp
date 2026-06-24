@@ -37,6 +37,7 @@
     <color name="colorFab">#4A8EC9</color>
     <color name="colorFabIcon">#FFFFFF</color>
     <color name="colorDeleteFab">#BF616A</color>
+    <color name="colorRestoreFab">#E08A4E</color>
     <color name="colorAddFab">#5A8F6B</color>
     <color name="colorCardShadow">#1A000000</color>
     <color name="colorAvatarBackground">#DBEAFE</color>

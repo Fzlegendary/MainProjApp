@@ -57,6 +57,9 @@
         <activity
             android:name=".userSystem.UserProfileActivity"
             android:exported="false" />
+        <activity
+            android:name=".GateLogActivity"
+            android:exported="false" />
 
         <service
             android:name=".messaging.MessageNotificationService"

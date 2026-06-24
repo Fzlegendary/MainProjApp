@@ -1,6 +1,7 @@
 package com.example.mainproj.fragments.subnav;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -15,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.mainproj.GateLogActivity;
 import com.example.mainproj.R;
 import com.example.mainproj.admin.AdminGatePermissionSheet;
 import com.example.mainproj.auth.SessionManager;
@@ -79,6 +81,7 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
         setupFirebase();
         checkUserListStatus();
         setupTestButton(view);
+        setupLogsButton(view);
     }
 
     private void setupOkHttpClient() {
@@ -149,6 +152,17 @@ public class GateControlFragment extends Fragment implements GateAdapter.OnGateC
     private void setupTestButton(View view) {
         MaterialButton btnTest = view.findViewById(R.id.sendToServer);
         btnTest.setOnClickListener(v -> testServerConnection());
+    }
+
+    private void setupLogsButton(View view) {
+        MaterialButton btnLogs = view.findViewById(R.id.btnViewGateLogs);
+        if (SessionManager.isAdmin()) {
+            btnLogs.setVisibility(View.VISIBLE);
+        }
+        btnLogs.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), GateLogActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void testServerConnection() {

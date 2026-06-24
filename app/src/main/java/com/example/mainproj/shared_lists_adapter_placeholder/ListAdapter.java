@@ -16,21 +16,22 @@ import androidx.annotation.NonNull;
 
 public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
 
-    public interface OnDeleteClickListener {
+    public interface OnItemActionClickListener {
         void onDelete(int position, PlaceholderContent.PlaceholderItem item);
+        void onRestore(int position, PlaceholderContent.PlaceholderItem item);
     }
 
     private final List<PlaceholderContent.PlaceholderItem> fullList;
     private final List<PlaceholderContent.PlaceholderItem> visibleList = new ArrayList<>();
-    private OnDeleteClickListener deleteListener;
+    private OnItemActionClickListener actionListener;
 
     public ListAdapter(List<PlaceholderContent.PlaceholderItem> items) {
         this.fullList = new ArrayList<>(items);
         visibleList.addAll(items);
     }
 
-    public void setOnDeleteClickListener(OnDeleteClickListener listener) {
-        this.deleteListener = listener;
+    public void setOnItemActionClickListener(OnItemActionClickListener listener) {
+        this.actionListener = listener;
     }
 
     @Override
@@ -61,6 +62,15 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
             holder.expiresAt.setTextColor(Color.parseColor("#BF616A"));
 
             holder.itemView.setAlpha(0.7f);
+
+            holder.actionButton.setBackgroundResource(R.drawable.bg_fab_restore);
+            holder.actionButton.setImageResource(R.drawable.ic_restore);
+            holder.actionButton.setContentDescription("Restore item");
+            holder.actionButton.setOnClickListener(v -> {
+                if (actionListener != null) {
+                    actionListener.onRestore(holder.getAdapterPosition(), item);
+                }
+            });
         } else {
             holder.name.setPaintFlags(0);
             holder.name.setAlpha(1f);
@@ -74,13 +84,16 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
             holder.expiresAt.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.colorTextHint));
 
             holder.itemView.setAlpha(item.isRemoved ? 0.5f : 1f);
-        }
 
-        holder.deleteButton.setOnClickListener(v -> {
-            if (deleteListener != null) {
-                deleteListener.onDelete(holder.getAdapterPosition(), item);
-            }
-        });
+            holder.actionButton.setBackgroundResource(R.drawable.bg_fab_delete);
+            holder.actionButton.setImageResource(R.drawable.ic_delete);
+            holder.actionButton.setContentDescription("Delete item");
+            holder.actionButton.setOnClickListener(v -> {
+                if (actionListener != null) {
+                    actionListener.onDelete(holder.getAdapterPosition(), item);
+                }
+            });
+        }
     }
 
     @Override
@@ -117,7 +130,7 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
 
     static class VH extends RecyclerView.ViewHolder {
         TextView name, byWho, reason, timestampAdded, expiresAt;
-        ImageButton deleteButton;
+        ImageButton actionButton;
 
         VH(View v) {
             super(v);
@@ -126,7 +139,7 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
             reason = v.findViewById(R.id.item_reason);
             timestampAdded = v.findViewById(R.id.item_added);
             expiresAt = v.findViewById(R.id.item_expires);
-            deleteButton = v.findViewById(R.id.btnDelete);
+            actionButton = v.findViewById(R.id.btnDelete);
         }
     }
 }

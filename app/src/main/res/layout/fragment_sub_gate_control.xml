@@ -37,10 +37,29 @@
 
     </LinearLayout>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnViewGateLogs"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="4dp"
+        android:backgroundTint="@color/colorPurple"
+        android:text="View Gate Logs"
+        android:textColor="@color/colorTextOnPrimary"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:cornerRadius="12dp"
+        app:icon="@android:drawable/ic_menu_view"
+        app:iconTint="@color/colorTextOnPrimary"
+        app:layout_constraintTop_toBottomOf="@id/headerSection"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/headerSection"
+        app:layout_constraintTop_toBottomOf="@id/btnViewGateLogs"
         app:layout_constraintBottom_toTopOf="@id/sendToServer"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

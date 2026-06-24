@@ -57,7 +57,17 @@ public class FragmentWhitelist extends FragmentBaseList {
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         adapter = new ListAdapter(fullList);
-        adapter.setOnDeleteClickListener(this::showDeleteConfirmation);
+        adapter.setOnItemActionClickListener(new ListAdapter.OnItemActionClickListener() {
+            @Override
+            public void onDelete(int position, PlaceholderContent.PlaceholderItem item) {
+                showDeleteConfirmation(position, item);
+            }
+
+            @Override
+            public void onRestore(int position, PlaceholderContent.PlaceholderItem item) {
+                showRestoreDialog(position, item);
+            }
+        });
         rv.setAdapter(adapter);
 
         ListsSearchViewModel vm =
@@ -135,7 +145,7 @@ public class FragmentWhitelist extends FragmentBaseList {
         TextInputEditText etReason = dialogView.findViewById(R.id.etReason);
         Spinner spinnerExpiry = dialogView.findViewById(R.id.spinnerExpiry);
 
-        String[] expiryOptions = {"Never", "1 Day", "1 Week", "1 Month"};
+        String[] expiryOptions = {"Never", "When minute changes", "1 Day", "1 Week", "1 Month"};
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
@@ -196,12 +206,15 @@ public class FragmentWhitelist extends FragmentBaseList {
         long timestampExpiresAt;
         switch (selectedPos) {
             case 1:
-                timestampExpiresAt = now + 86400000L;
+                timestampExpiresAt = now + 3000L;
                 break;
             case 2:
-                timestampExpiresAt = now + 604800000L;
+                timestampExpiresAt = now + 86400000L;
                 break;
             case 3:
+                timestampExpiresAt = now + 604800000L;
+                break;
+            case 4:
                 timestampExpiresAt = now + 2592000000L;
                 break;
             default:
@@ -261,6 +274,60 @@ public class FragmentWhitelist extends FragmentBaseList {
                         Toast.makeText(requireContext(), "Item removed locally", Toast.LENGTH_SHORT).show();
                     }
                     refreshFilteredList();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showRestoreDialog(int position, PlaceholderContent.PlaceholderItem oldItem) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_item, null);
+        TextInputEditText etName = dialogView.findViewById(R.id.etName);
+        TextInputEditText etReason = dialogView.findViewById(R.id.etReason);
+        Spinner spinnerExpiry = dialogView.findViewById(R.id.spinnerExpiry);
+
+        etName.setText(oldItem.name);
+        etReason.setText(oldItem.reason);
+
+        String[] expiryOptions = {"Never", "When minute changes", "1 Day", "1 Week", "1 Month"};
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_item,
+                expiryOptions
+        );
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerExpiry.setAdapter(spinnerAdapter);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Restore item")
+                .setView(dialogView)
+                .setPositiveButton("Restore", (dialog, which) -> {
+                    String name = etName.getText() != null ? etName.getText().toString().trim() : "";
+                    String reason = etReason.getText() != null ? etReason.getText().toString().trim() : "";
+                    int selectedPos = spinnerExpiry.getSelectedItemPosition();
+
+                    if (name.isEmpty()) {
+                        Toast.makeText(requireContext(), "Name is required", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    proceedAddToWhitelist(name, reason, selectedPos);
+
+                    if (oldItem.id != null) {
+                        whitelistRef.child(oldItem.id).removeValue()
+                                .addOnCompleteListener(task -> {
+                                    if (oldItem.isExpired) {
+                                        JobScheduler scheduler = (JobScheduler) requireContext()
+                                                .getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                                        if (scheduler != null) {
+                                            scheduler.cancel(("del_" + oldItem.id).hashCode());
+                                        }
+                                        AdminNotificationHelper.removeNotifications(oldItem.id);
+                                    }
+                                    Toast.makeText(requireContext(), "Item restored", Toast.LENGTH_SHORT).show();
+                                });
+                    } else {
+                        Toast.makeText(requireContext(), "Item restored", Toast.LENGTH_SHORT).show();
+                    }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
