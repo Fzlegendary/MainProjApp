@@ -1,4 +1,4 @@
-package com.example.mainproj.gates;
+package com.example.mainproj.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.auth.SessionManager;
+import com.example.mainproj.gates.Gate;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging;
+package com.example.mainproj.adapters;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -18,6 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
+import com.example.mainproj.messaging.ChatCacheApplication;
+import com.example.mainproj.messaging.ChatCacheManager;
+import com.example.mainproj.messaging.ChatMetadataManager;
+import com.example.mainproj.messaging.ChatModel;
+import com.example.mainproj.messaging.NetworkMonitor;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -84,24 +89,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         holder.tvName.setText(displayName);
 
         String chatId = chat.getChatId();
-        boolean isGemini = chatId != null && chatId.endsWith("_gemini_ai");
-
-        if (isGemini) {
-            holder.imgProfile.setImageResource(R.drawable.ic_gemini);
-            holder.onlineIndicator.setVisibility(View.VISIBLE);
-            holder.unreadBadge.setVisibility(View.GONE);
-            holder.tvLastMessage.setText(chat.getLastMessage() != null ? chat.getLastMessage() : "");
-            holder.tvTime.setText("");
-
-            holder.itemView.setOnClickListener(v -> {
-                Intent intent = new Intent(context, com.example.mainproj.messaging.MessagingActivity.class);
-                intent.putExtra("chatId", chat.getChatId());
-                intent.putExtra("username", chat.getUsername());
-                context.startActivity(intent);
-            });
-            holder.itemView.setOnLongClickListener(null);
-            return;
-        }
 
         if (chat.getImageUrl() != null && !chat.getImageUrl().isEmpty()) {
             Glide.with(holder.itemView.getContext())

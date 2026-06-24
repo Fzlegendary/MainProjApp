@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -23,6 +24,7 @@ import java.util.Locale;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -52,7 +54,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-public class MainActivity extends BaseActivity {
+public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "MainProjPrefs";
     private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
@@ -67,6 +69,7 @@ public class MainActivity extends BaseActivity {
     private AlertDialog offlineDialog;
     private boolean wasOfflineDialogShown = false;
     private boolean isCaching = false;
+    private View loadingOverlay;
     private final Handler connectivityHandler = new Handler(Looper.getMainLooper());
     private final Runnable connectivityCheckRunnable = () -> checkConnectivityAndShowDialog();
 
@@ -78,6 +81,8 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        loadingOverlay = findViewById(R.id.loadingOverlay);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -184,6 +189,22 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private void showLoadingOverlay() {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void hideLoadingOverlay() {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.GONE);
+            }
+        });
+    }
+
     private void cacheAllData() {
         if (isCaching) return;
         if (!NetworkMonitor.getInstance(this).isConnected()) return;
@@ -192,6 +213,7 @@ public class MainActivity extends BaseActivity {
         if (firebaseUser == null || firebaseUser.getEmail() == null) return;
 
         isCaching = true;
+        showLoadingOverlay();
         String safeEmail = firebaseUser.getEmail().replace(".", "_");
 
         DatabaseReference userRef = FirebaseDatabase.getInstance()
@@ -340,11 +362,13 @@ public class MainActivity extends BaseActivity {
                             });
                         }
                         isCaching = false;
+                        hideLoadingOverlay();
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
                         isCaching = false;
+                        hideLoadingOverlay();
                     }
                 });
             }
@@ -352,6 +376,7 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 isCaching = false;
+                hideLoadingOverlay();
             }
         });
     }

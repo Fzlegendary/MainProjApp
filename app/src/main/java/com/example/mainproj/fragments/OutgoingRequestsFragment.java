@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.friendRequest.SentRequest;
-import com.example.mainproj.messaging.friendRequest.SentRequestAdapter;
+import com.example.mainproj.adapters.SentRequestAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -33,6 +33,7 @@ public class OutgoingRequestsFragment extends Fragment {
     private List<SentRequest> requests = new ArrayList<>();
     private DatabaseReference sentRef;
     private ValueEventListener sentListener;
+    private View loadingState;
 
     @Nullable
     @Override
@@ -45,6 +46,7 @@ public class OutgoingRequestsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         recyclerView = view.findViewById(R.id.recyclerView);
+        loadingState = view.findViewById(R.id.loadingState);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new SentRequestAdapter(requireContext(), requests);
         recyclerView.setAdapter(adapter);
@@ -65,6 +67,7 @@ public class OutgoingRequestsFragment extends Fragment {
         sentListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 requests.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     if (!"pending".equals(snap.child("status").getValue(String.class))) continue;
@@ -79,6 +82,7 @@ public class OutgoingRequestsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 Toast.makeText(requireContext(), "Error loading sent requests", Toast.LENGTH_SHORT).show();
             }
         };

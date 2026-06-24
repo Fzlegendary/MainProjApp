@@ -1,4 +1,4 @@
-package com.example.mainproj.fragments.subnav;
+package com.example.mainproj.adapters;
 
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;

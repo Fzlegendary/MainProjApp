@@ -41,8 +41,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
-    // CircleImageView
-    implementation("de.hdodenhof:circleimageview:3.1.0")
+    // PhotoView for zoomable images
+    implementation("com.github.chrisbanes:photoview:2.3.0")
     //m
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth:24.0.1")
@@ -61,11 +61,9 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.firebase.database)
-    implementation("com.google.firebase:firebase-storage:21.0.0")
     implementation("com.google.firebase:firebase-messaging:24.1.1")
     implementation(libs.legacy.support.v4)
     implementation(libs.ui.graphics)
-    implementation(libs.firebase.storage)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

@@ -7,14 +7,11 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.example.mainproj.MainActivity;
+import com.example.mainproj.messaging.MessagingActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
@@ -92,8 +89,9 @@ public class NotificationHandlerService extends FirebaseMessagingService {
                 .setTitle(displayTitle)
                 .setMessage(displayMessage)
                 .setPositiveButton("View Chat", (dialog, which) -> {
-                    Intent intent = new Intent(foregroundActivity, MainActivity.class);
-                    intent.putExtra("tab_position", 1);
+                    Intent intent = new Intent(foregroundActivity, MessagingActivity.class);
+                    intent.putExtra("chatId", chatId);
+                    intent.putExtra("username", senderUsername);
                     foregroundActivity.startActivity(intent);
                 })
                 .setNeutralButton("Dismiss", null)
@@ -102,27 +100,6 @@ public class NotificationHandlerService extends FirebaseMessagingService {
     }
 
     private boolean isMessageFromCurrentUser(String senderUsername) {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || user.getEmail() == null) {
-            return false;
-        }
-
-        String safeEmail = user.getEmail().replace(".", "_");
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("users").child(safeEmail);
-
-        final boolean[] isFromCurrentUser = {false};
-
-        try {
-            Thread thread = new Thread(() -> {
-                // This is a synchronous check - in production you'd want to use a callback
-            });
-            thread.start();
-            thread.join(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         return senderUsername != null && senderUsername.equals(ChatCacheApplication.getCurrentUsername());
     }
 

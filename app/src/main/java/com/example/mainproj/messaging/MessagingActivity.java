@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.Uri;
@@ -35,8 +37,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
+import com.example.mainproj.adapters.MessageAdapter;
 import com.example.mainproj.auth.SessionManager;
-import com.example.mainproj.messaging.ChatUtils;
 import com.example.mainproj.userSystem.Login_activity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -47,9 +49,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -57,18 +56,28 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import android.content.res.ColorStateList;
-import android.graphics.Typeface;
-import android.view.ViewGroup;
+import android.util.Log;
 
-import com.google.android.material.button.MaterialButton;
+import com.google.android.gms.tasks.Task;
+
+import android.content.SharedPreferences;
+
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 
 
@@ -106,15 +115,22 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
     private ImageButton btnCamera;
     private ImageButton btnGallery;
 
+    private static final String PREFS_NAME = "MainProjPrefs";
+    private static final String KEY_HOST = "server_host";
+    private static final String KEY_PORT = "server_port";
+
+    private String getServerBaseUrl() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String host = prefs.getString(KEY_HOST, "localhost");
+        String port = prefs.getString(KEY_PORT, "8080");
+        return "http://" + host + ":" + port;
+    }
+
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<String> cameraPermissionLauncher;
 
-    private StorageReference storageRef;
     private String currentMessagesPath;
-
-    private LinearLayout archiveContainer;
-    private View archiveDivider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,7 +151,7 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         tvChatName = findViewById(R.id.tvChatName);
 
-        if (partnerUsername != null && !isAiMode()) {
+        if (partnerUsername != null) {
             tvChatName.setText(partnerUsername);
         }
 
@@ -150,22 +166,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
         btnRemovePhoto = findViewById(R.id.btnRemovePhoto);
 
-        if (isAiMode()) {
-            tvChatName.setText("AI Assistant");
-            btnCamera.setVisibility(View.GONE);
-            btnGallery.setVisibility(View.GONE);
-            messageInput.setHint("Ask Gemini...");
-            ImageView ivAvatar = findViewById(R.id.ivUserAvatar);
-            if (ivAvatar != null) ivAvatar.setImageResource(R.drawable.ic_gemini);
-            TextView tvStatus = findViewById(R.id.tvUserStatus);
-            if (tvStatus != null) tvStatus.setText("Online");
-            findViewById(R.id.btnNewConversation).setVisibility(View.VISIBLE);
-            findViewById(R.id.clearChatsButton).setVisibility(View.GONE);
-            findViewById(R.id.clearCacheButton).setVisibility(View.GONE);
-        }
-
-        archiveContainer = findViewById(R.id.archiveContainer);
-        archiveDivider = findViewById(R.id.archiveDivider);
 
         messagesList = new ArrayList<>();
         messageAdapter = new MessageAdapter(messagesList, this);
@@ -178,8 +178,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             currentUserSafeEmail = firebaseUser.getEmail().replace(".", "_");
         }
 
-        storageRef = FirebaseStorage.getInstance().getReference();
-
         profileImage = findViewById(R.id.profileImage);
         profileName = findViewById(R.id.profileName);
         profileUsername = findViewById(R.id.profileUsername);
@@ -187,24 +185,22 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
         loadUserProfile();
 
-        if (!isAiMode()) {
-            findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
-                UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
-                        partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
-                );
-                sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
-                    @Override
-                    public void onSendMessage(String username) {}
-                    @Override
-                    public void onViewProfile(String username) {
-                        Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
-                        intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
-                        startActivity(intent);
-                    }
-                });
-                sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        findViewById(R.id.userInfoContainer).setOnClickListener(v -> {
+            UserProfileBottomSheet sheet = UserProfileBottomSheet.newInstance(
+                    partnerUsername != null ? partnerUsername : "Unknown", "", 0L, false
+            );
+            sheet.setActionListener(new UserProfileBottomSheet.ProfileActionListener() {
+                @Override
+                public void onSendMessage(String username) {}
+                @Override
+                public void onViewProfile(String username) {
+                    Intent intent = new Intent(MessagingActivity.this, com.example.mainproj.userSystem.UserProfileActivity.class);
+                    intent.putExtra(com.example.mainproj.userSystem.UserProfileActivity.EXTRA_USERNAME, username);
+                    startActivity(intent);
+                }
             });
-        }
+            sheet.show(getSupportFragmentManager(), UserProfileBottomSheet.TAG);
+        });
 
         findViewById(R.id.logoutButton).setOnClickListener(v -> {
             SessionManager.clearAllPrefs(this);
@@ -272,37 +268,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             Toast.makeText(this, "Cache cleared", Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnNewConversation).setOnClickListener(v -> {
-            if (messagesList == null || messagesList.isEmpty()) return;
-            new AlertDialog.Builder(this)
-                    .setTitle("New Conversation")
-                    .setMessage("Archive the current chat and start fresh?")
-                    .setPositiveButton("Archive & Start New", (dialog, which) -> {
-                        ArrayList<MessageModel> snapshot = new ArrayList<>(messagesList);
-                        GeminiManager.getInstance(this).archiveConversation(
-                                currentUsername, chatId, snapshot,
-                                new GeminiManager.ArchiveCallback() {
-                                    @Override
-                                    public void onComplete(String archiveChatId) {
-                                        runOnUiThread(() -> {
-                                            messagesList.clear();
-                                            messageAdapter.notifyDataSetChanged();
-                                            loadArchivedChats();
-                                            Toast.makeText(MessagingActivity.this,
-                                                    "Archived", Toast.LENGTH_SHORT).show();
-                                        });
-                                    }
-                                    @Override
-                                    public void onError(String error) {
-                                        runOnUiThread(() -> Toast.makeText(MessagingActivity.this,
-                                                "Archive failed: " + error, Toast.LENGTH_SHORT).show());
-                                    }
-                                });
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-        });
-
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
                 result -> {
@@ -351,7 +316,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
             messagesRef = FirebaseDatabase.getInstance().getReference(currentMessagesPath);
         }
         loadMessages();
-        loadArchivedChats();
     }
 
     public void loadMessages() {
@@ -546,13 +510,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         if (currentUsername == null) return;
         if (text.isEmpty() && pendingImageFile == null) return;
 
-        if (isAiMode()) {
-            sendAIMessage(text);
-            return;
-        }
-
         if (pendingImageFile != null) {
-            uploadPhotoAndSend(text);
+            sendImageViaServer(text);
         } else {
             sendTextMessageOnly(text);
         }
@@ -779,49 +738,83 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         });
     }
 
-    private void uploadPhotoAndSend(String caption) {
+    private void sendImageViaServer(String caption) {
         if (pendingImageFile == null || currentUsername == null) return;
+        Log.d("imageUpload", "sendImageViaServer: starting, file=" + pendingImageFile.getName() + " size=" + pendingImageFile.length());
         if (chatId == null && partnerUsername != null) {
             chatId = ChatUtils.generateChatId(currentUsername, partnerUsername);
             messagesRef = FirebaseDatabase.getInstance().getReference("chats").child(chatId).child("messages");
+            Log.d("imageUpload", "sendImageViaServer: created new chatId=" + chatId);
             setupNewChat();
         }
-        if (chatId == null) return;
-
-        if (!NetworkMonitor.getInstance(this).isConnected()) {
-            Toast.makeText(this, "Cannot send images offline", Toast.LENGTH_SHORT).show();
+        if (chatId == null) {
+            Log.d("imageUpload", "sendImageViaServer: chatId is null, aborting");
             return;
         }
 
         sendButton.setEnabled(false);
-        String fileName = "chat_" + chatId + "/" + UUID.randomUUID() + ".jpg";
-        StorageReference fileRef = storageRef.child("chat_images").child(fileName);
 
         byte[] imageBytes = compressImage(pendingImageFile);
         if (imageBytes == null) {
+            Log.d("imageUpload", "sendImageViaServer: compressImage returned null");
             Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show();
             sendButton.setEnabled(true);
             return;
         }
+        Log.d("imageUpload", "sendImageViaServer: compressed to " + imageBytes.length + " bytes");
 
-        fileRef.putBytes(imageBytes)
-                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl()
-                        .addOnSuccessListener(uri -> {
-                            String imageUrl = uri.toString();
-                            sendImageMessage(caption, imageUrl);
-                        })
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(this, "Failed to get image URL", Toast.LENGTH_SHORT).show();
-                            sendButton.setEnabled(true);
-                        }))
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+        String url = getServerBaseUrl() + "/chat/upload-image";
+
+        OkHttpClient client = new OkHttpClient();
+
+        RequestBody body = RequestBody.create(imageBytes, MediaType.parse("image/jpeg"));
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("imageUpload", "sendImageViaServer: onFailure " + e.getMessage());
+                runOnUiThread(() -> {
                     sendButton.setEnabled(true);
+                    Toast.makeText(MessagingActivity.this, "Upload failed", Toast.LENGTH_SHORT).show();
                 });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String res = response.body() != null ? response.body().string() : "";
+
+                if (!response.isSuccessful()) {
+                    Log.d("imageUpload", "sendImageViaServer: HTTP " + response.code() + " " + res);
+                    runOnUiThread(() -> {
+                        sendButton.setEnabled(true);
+                        Toast.makeText(MessagingActivity.this, "Server error: " + response.code(), Toast.LENGTH_SHORT).show();
+                    });
+                    return;
+                }
+
+                try {
+                    JSONObject json = new JSONObject(res);
+                    String imageUrl = json.getString("imageUrl");
+                    Log.d("imageUpload", "sendImageViaServer: got imageUrl=" + imageUrl);
+                    runOnUiThread(() -> sendImageMessage(caption, imageUrl));
+                } catch (Exception e) {
+                    Log.d("imageUpload", "sendImageViaServer: parse error " + e.getMessage());
+                    runOnUiThread(() -> {
+                        sendButton.setEnabled(true);
+                        Toast.makeText(MessagingActivity.this, "Bad server response", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 
     private void sendImageMessage(String caption, String imageUrl) {
-        String text = caption != null && !caption.isEmpty() ? caption : "";
+        String text = caption != null && !caption.isEmpty() ? caption : "Photo";
+        Log.d("imageUpload", "sendImageMessage: text='" + text + "' imageUrl=" + imageUrl);
 
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("text", text);
@@ -829,14 +822,34 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
         messageData.put("timestamp", ServerValue.TIMESTAMP);
         messageData.put("imageUrl", imageUrl);
 
-        messagesRef.push().setValue(messageData).addOnCompleteListener(task -> {
+        DatabaseReference msgRef = messagesRef.push();
+        Log.d("imageUpload", "sendImageMessage: push key=" + msgRef.getKey());
+
+        Task<Void> dbTask = msgRef.setValue(messageData);
+
+        dbTask.addOnSuccessListener(aVoid -> {
+            Log.d("imageUpload", "sendImageMessage: setValue SUCCESS");
+        }).addOnFailureListener(e -> {
+            Log.d("imageUpload", "sendImageMessage: setValue FAILED error=" + e.getMessage());
+        });
+
+        dbTask.addOnCompleteListener(task -> {
             sendButton.setEnabled(true);
             if (task.isSuccessful()) {
+                Log.d("imageUpload", "sendImageMessage: onComplete isSuccessful=true");
                 messageInput.setText("");
                 removePhotoPreview();
 
-                String displayText = text.isEmpty() ? "Photo" : text;
                 long now = System.currentTimeMillis();
+                String textVal = text != null ? text : "";
+                MessageModel localMsg = new MessageModel(textVal, currentUsername, now, true);
+                localMsg.setMessageId(msgRef.getKey());
+                localMsg.setImageUrl(imageUrl);
+                messagesList.add(localMsg);
+                messageAdapter.notifyDataSetChanged();
+                messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
+
+                String displayText = text.isEmpty() ? "Photo" : text;
                 Map<String, Object> lastMessageUpdate = new HashMap<>();
                 lastMessageUpdate.put("lastMessage/text", displayText);
                 lastMessageUpdate.put("lastMessage/senderUsername", currentUsername);
@@ -855,6 +868,8 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                     incrementMessageCount();
                 }
             } else {
+                Log.d("imageUpload", "sendImageMessage: onComplete isSuccessful=false error="
+                        + (task.getException() != null ? task.getException().getMessage() : "unknown"));
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
             }
         });
@@ -896,175 +911,6 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
                 .child(chatId).child("messages")
                 .child(message.getMessageId())
                 .removeValue();
-    }
-
-    private boolean isAiMode() {
-        return chatId != null && chatId.endsWith("_gemini_ai");
-    }
-
-    private void switchToChat(String newMessagesPath) {
-        if (messagesRef != null && messagesListener != null) {
-            messagesRef.removeEventListener(messagesListener);
-            messagesListener = null;
-        }
-
-        currentMessagesPath = newMessagesPath;
-        messagesRef = FirebaseDatabase.getInstance().getReference(currentMessagesPath);
-
-        if (newMessagesPath.startsWith("gemini_ai/")) {
-            String label = newMessagesPath.replaceAll(".*/(chat\\d+)/.*", "$1");
-            tvChatName.setText(label);
-        } else {
-            tvChatName.setText("AI Assistant");
-        }
-
-        messagesList.clear();
-        messageAdapter.notifyDataSetChanged();
-        attachMessagesListener();
-        drawerLayout.closeDrawer(GravityCompat.START);
-        loadArchivedChats();
-    }
-
-    private void loadArchivedChats() {
-        if (!isAiMode() || currentUsername == null) return;
-
-        archiveContainer.removeAllViews();
-        archiveContainer.setVisibility(View.VISIBLE);
-        archiveDivider.setVisibility(View.VISIBLE);
-
-        TextView header = new TextView(this);
-        header.setText("Saved Conversations");
-        header.setTextSize(14);
-        header.setTypeface(null, Typeface.BOLD);
-        header.setTextColor(ContextCompat.getColor(this, R.color.colorTextPrimary));
-        header.setPadding(0, 8, 0, 12);
-        archiveContainer.addView(header);
-
-        String activePath = "chats/" + chatId + "/messages";
-        DatabaseReference archiveRef = FirebaseDatabase.getInstance()
-                .getReference("gemini_ai/" + currentUsername);
-
-        archiveRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<String> chatKeys = new ArrayList<>();
-                for (DataSnapshot child : snapshot.getChildren()) {
-                    chatKeys.add(child.getKey());
-                }
-                Collections.sort(chatKeys);
-
-                for (String key : chatKeys) {
-                    String archivePath = "gemini_ai/" + currentUsername + "/" + key + "/messages";
-                    boolean isActive = archivePath.equals(currentMessagesPath);
-
-                    MaterialButton btn = new MaterialButton(MessagingActivity.this);
-                    btn.setText(key);
-                    btn.setLayoutParams(new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                    btn.setCornerRadius(14);
-                    btn.setMinimumHeight(0);
-                    btn.setMinimumWidth(0);
-                    btn.setPadding(16, 12, 16, 12);
-                    btn.setStrokeWidth(0);
-
-                    if (isActive) {
-                        btn.setBackgroundTintList(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorPrimary)));
-                        btn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextOnPrimary));
-                    } else {
-                        btn.setBackgroundTintList(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBackground)));
-                        btn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextPrimary));
-                        btn.setStrokeWidth(1);
-                        btn.setStrokeColor(ColorStateList.valueOf(
-                                ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBorder)));
-                    }
-
-                    btn.setOnClickListener(v -> switchToChat(archivePath));
-
-                    LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) btn.getLayoutParams();
-                    params.bottomMargin = 8;
-                    btn.setLayoutParams(params);
-                    archiveContainer.addView(btn);
-                }
-
-                boolean isActive = activePath.equals(currentMessagesPath);
-                MaterialButton currentBtn = new MaterialButton(MessagingActivity.this);
-                currentBtn.setText(isActive ? "Current Conversation \u2713" : "Current Conversation");
-                currentBtn.setLayoutParams(new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                currentBtn.setCornerRadius(14);
-                currentBtn.setMinimumHeight(0);
-                currentBtn.setMinimumWidth(0);
-                currentBtn.setPadding(16, 12, 16, 12);
-                currentBtn.setStrokeWidth(0);
-
-                if (isActive) {
-                    currentBtn.setBackgroundTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorPrimary)));
-                    currentBtn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextOnPrimary));
-                } else {
-                    currentBtn.setBackgroundTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBackground)));
-                    currentBtn.setTextColor(ContextCompat.getColor(MessagingActivity.this, R.color.colorTextPrimary));
-                    currentBtn.setStrokeWidth(1);
-                    currentBtn.setStrokeColor(ColorStateList.valueOf(
-                            ContextCompat.getColor(MessagingActivity.this, R.color.colorCardBorder)));
-                }
-
-                currentBtn.setOnClickListener(v -> switchToChat(activePath));
-                archiveContainer.addView(currentBtn);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(MessagingActivity.this,
-                        "Failed to load archives", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void sendAIMessage(String text) {
-        if (currentUsername == null) return;
-
-        ArrayList<MessageModel> historySnapshot = new ArrayList<>(messagesList);
-
-        long now = System.currentTimeMillis();
-        String localId = "local_" + UUID.randomUUID().toString();
-        MessageModel userMsg = new MessageModel(text, currentUsername, now, true);
-        userMsg.setMessageId(localId);
-        messagesList.add(userMsg);
-        messageAdapter.notifyDataSetChanged();
-        messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-        messageInput.setText("");
-
-        GeminiManager.getInstance(this).saveMessageToFirebase(userMsg, currentMessagesPath);
-
-        sendButton.setEnabled(false);
-        GeminiManager.getInstance(this).sendMessage(text, historySnapshot, currentUsername, new GeminiManager.GeminiCallback() {
-            @Override
-            public void onResponse(String replyText) {
-                runOnUiThread(() -> {
-                    MessageModel aiMsg = new MessageModel(replyText, "Gemini", System.currentTimeMillis(), false);
-                    String aiLocalId = "local_" + UUID.randomUUID().toString();
-                    aiMsg.setMessageId(aiLocalId);
-                    messagesList.add(aiMsg);
-                    messageAdapter.notifyDataSetChanged();
-                    messagesRecyclerView.scrollToPosition(messagesList.size() - 1);
-
-                    GeminiManager.getInstance(MessagingActivity.this).saveMessageToFirebase(aiMsg, currentMessagesPath);
-                    sendButton.setEnabled(true);
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    Toast.makeText(MessagingActivity.this, error, Toast.LENGTH_SHORT).show();
-                    sendButton.setEnabled(true);
-                });
-            }
-        });
     }
 
     private void loadUserProfile() {
@@ -1171,26 +1017,62 @@ public class MessagingActivity extends AppCompatActivity implements MessageAdapt
 
     private byte[] compressImage(File imageFile) {
         try {
+            long fileSize = imageFile.length();
+            Log.d("imageUpload", "compressImage: fileSize=" + fileSize);
+
+            // Always decode and re-encode — never pass raw bytes through
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+            Log.d("imageUpload", "compressImage: dimensions=" + opts.outWidth + "x" + opts.outHeight);
 
-            int maxDimension = 1024;
-            int sampleSize = 1;
-            while (opts.outWidth / sampleSize > maxDimension
-                    || opts.outHeight / sampleSize > maxDimension) {
-                sampleSize *= 2;
-            }   
+            // Scale down so the longest side is at most 1024px
+            int maxDim = 1440;
+            opts.inSampleSize = 1;
+            int w = opts.outWidth;
+            int h = opts.outHeight;
+            while (Math.max(w, h) / opts.inSampleSize > maxDim) {
+                opts.inSampleSize *= 2;
+            }
 
             opts.inJustDecodeBounds = false;
-            opts.inSampleSize = sampleSize;
             Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), opts);
+            if (bitmap == null) {
+                Log.d("imageUpload", "compressImage: decodeFile returned null");
+                return null;
+            }
 
+            // Fix EXIF rotation
+            try {
+                ExifInterface exif = new ExifInterface(imageFile.getAbsolutePath());
+                int orientation = exif.getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+                if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+                    Matrix matrix = new Matrix();
+                    switch (orientation) {
+                        case ExifInterface.ORIENTATION_ROTATE_90:  matrix.postRotate(90);  break;
+                        case ExifInterface.ORIENTATION_ROTATE_180: matrix.postRotate(180); break;
+                        case ExifInterface.ORIENTATION_ROTATE_270: matrix.postRotate(270); break;
+                    }
+                    bitmap = Bitmap.createBitmap(
+                            bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                    Log.d("imageUpload", "compressImage: applied EXIF rotation " + orientation);
+                }
+            } catch (Exception e) {
+                Log.d("imageUpload", "compressImage: EXIF error=" + e.getMessage());
+            }
+
+            // Compress at quality 80 — good visuals, well under 500KB for most photos
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, baos);
             bitmap.recycle();
-            return baos.toByteArray();
+
+            byte[] result = baos.toByteArray();
+            Log.d("imageUpload", "compressImage: final size=" + result.length + " bytes");
+            return result;
+
         } catch (Exception e) {
+            Log.d("imageUpload", "compressImage: exception=" + e.getMessage());
             return null;
         }
     }

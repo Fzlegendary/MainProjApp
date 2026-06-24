@@ -1,0 +1,1641 @@
+@startuml
+class com.example.mainproj.adapters.SentRequestAdapter {
+- Context context
+- List<SentRequest> requests
++ SentRequestViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(SentRequestViewHolder,int)
++ int getItemCount()
+}
+
+
+class com.example.mainproj.adapters.SentRequestAdapter$SentRequestViewHolder {
+~ ImageView ivProfilePicture
+~ TextView tvUsername
+~ TextView tvStatus
+}
+
+class com.example.mainproj.auth.PermissionLogicTest {
+- {static} boolean canViewGate(int,int)
+- {static} boolean canControlGate(int,int)
+- {static} boolean isAdmin(int)
+- {static} boolean isSuperAdmin(int)
+- {static} boolean canModifyUser(int,int)
++ void canViewGate_role0_gate0()
++ void canViewGate_role0_gate1()
++ void canViewGate_role1_gate1()
++ void canViewGate_role2_gate2()
++ void canViewGate_role1_gate2()
++ void canControlGate_role0_gate1()
++ void canControlGate_role1_gate1()
++ void canControlGate_role2_gate0()
++ void isAdmin_role0()
++ void isAdmin_role1()
++ void isAdmin_role2()
++ void isSuperAdmin_role0()
++ void isSuperAdmin_role1()
++ void isSuperAdmin_role2()
++ void canModifyUser_lowerLevel()
++ void canModifyUser_equalLevel()
++ void canModifyUser_higherLevel()
+}
+
+class com.example.mainproj.adapters.MainPagerAdapter {
++ Fragment getItem(int)
++ int getCount()
+}
+
+class com.example.mainproj.fragments.FriendsListFragment {
+- RecyclerView recyclerView
+- FriendsAdapter adapter
+- List<Friend> friends
+- DatabaseReference friendsRef
+- ValueEventListener friendsListener
+- String currentUserSafeEmail
+- View loadingState
++ Dialog onCreateDialog(Bundle)
+- void loadFriends()
+- void openChat(Friend)
+- void showRemoveFriendDialog(Friend)
+- void removeFriend(Friend)
++ void onDestroy()
+}
+
+
+class com.example.mainproj.adapters.MessageAdapter {
+- {static} int VIEW_TYPE_DATE_SEPARATOR
+- {static} int VIEW_TYPE_SENT
+- {static} int VIEW_TYPE_RECEIVED
+- {static} int VIEW_TYPE_IMAGE_SENT
+- {static} int VIEW_TYPE_IMAGE_RECEIVED
+- ArrayList<MessageModel> messages
+- Context context
+- OnMessageDeleteListener deleteListener
++ void setOnMessageDeleteListener(OnMessageDeleteListener)
++ int getItemViewType(int)
++ long getItemId(int)
++ RecyclerView.ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(RecyclerView.ViewHolder,int)
+- void showImageFullscreen(String)
+- String formatTime(long)
+- void loadImage(ImageView,String)
++ int getItemCount()
+}
+
+
+interface com.example.mainproj.adapters.MessageAdapter$OnMessageDeleteListener {
+~ void onDeleteMessage(MessageModel)
+}
+
+class com.example.mainproj.adapters.MessageAdapter$DateSeparatorViewHolder {
+~ TextView tvDate
+}
+
+class com.example.mainproj.adapters.MessageAdapter$SentViewHolder {
+~ TextView tvMessage
+}
+
+class com.example.mainproj.adapters.MessageAdapter$ReceivedViewHolder {
+~ TextView tvMessageNickname
+}
+
+class com.example.mainproj.adapters.MessageAdapter$ImageSentViewHolder {
+~ ImageView ivMessageImage
+~ TextView tvMessageCaption
+}
+
+class com.example.mainproj.adapters.MessageAdapter$ImageReceivedViewHolder {
+~ TextView tvMessageNickname
+~ ImageView ivMessageImage
+~ TextView tvMessageCaption
+}
+
+class com.example.mainproj.messaging.BootReceiver {
+- {static} String TAG
++ void onReceive(Context,Intent)
+- void rescheduleAlarms(Context,PendingResult)
+}
+
+
+class com.example.mainproj.ExampleInstrumentedTest {
++ void useAppContext()
+}
+
+class com.example.mainproj.messaging.MessagingActivity {
+- DrawerLayout drawerLayout
+- RecyclerView messagesRecyclerView
+- MessageAdapter messageAdapter
+- ArrayList<MessageModel> messagesList
+- EditText messageInput
+- FloatingActionButton sendButton
+- String chatId
+- String partnerUsername
+- String partnerSafeEmail
+- String currentUsername
+- String currentUserSafeEmail
+- DatabaseReference messagesRef
+- ValueEventListener messagesListener
+- ConnectivityManager.NetworkCallback networkRecoveryCallback
+- ImageView profileImage
+- TextView profileName
+- TextView tvChatName
+- File pendingImageFile
+- LinearLayout photoPreviewContainer
+- ImageView ivPhotoPreview
+- ImageButton btnRemovePhoto
+- ImageButton btnCamera
+- ImageButton btnGallery
+- {static} String PREFS_NAME
+- {static} String KEY_HOST
+- {static} String KEY_PORT
+- ActivityResultLauncher<Uri> cameraLauncher
+- ActivityResultLauncher<String> galleryLauncher
+- ActivityResultLauncher<String> cameraPermissionLauncher
+- String currentMessagesPath
+- String getServerBaseUrl()
+# void onCreate(Bundle)
++ void loadMessages()
+- void unregisterNetworkRecoveryCallback()
+# void onStart()
+# void onStop()
++ void onBackPressed()
+- void attachMessagesListener()
+- void sendMessage()
+- void setupNewChat()
+- void sendTextMessageOnly(String)
+- void incrementMessageCount()
+- void createAndEnrichChatAsync()
+- void sendImageViaServer(String)
+- void sendImageMessage(String,String)
++ void onDeleteMessage(MessageModel)
+- void loadUserProfile()
+- String formatDateMessage(long)
+- void openCamera()
+- void launchCameraInternal()
+- void openGallery()
+- void copyGalleryUriToCache(Uri)
+- void showPhotoPreview(File)
+- void removePhotoPreview()
+- byte[] compressImage(File)
+}
+
+
+class com.example.mainproj.fragments.subnav.ServerSettingsFragment {
+- {static} String PREFS_NAME
+- {static} String KEY_HOST
+- {static} String KEY_PORT
+- {static} String KEY_SHUTDOWN_KEY
+- {static} String KEY_LOCAL_OVERRIDE
+- {static} String FB_SERVER_CONFIG
+- SharedPreferences prefs
+- OkHttpClient client
+- TextInputEditText etHost
+- TextInputEditText etPort
+- TextInputEditText etShutdownKey
+- MaterialButton btnStatus
+- MaterialButton btnToggle
+- MaterialButton btnSaveLocal
+- MaterialButton btnPushToFirebase
+- MaterialButton btnClearLocalOverride
+- TextView tvStatus
+- TextView tvConfigSource
+- View loadingState
+- boolean serverEnabled
+- int currentUserRoleLevel
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void loadRoleLevelThenConfig()
+- void loadConfig()
+- void saveLocalOverride()
+- void clearLocalOverride()
+- void pushToFirebase()
+- void updateRoleBasedUI()
+- void setConfigSource(String)
+- String getBaseUrl()
+- String getShutdownKey()
+- void addUserIdentity(JSONObject)
+- void setStatus(String)
+- void flushFields()
+- void checkStatus()
+- void updateToggleButton()
+- void onToggleClicked()
+- void sendControlAction(String)
+}
+
+
+class com.example.mainproj.messaging.NotificationHelper {
+- {static} String TAG
++ {static} String CHANNEL_ID_MESSAGES
++ {static} String CHANNEL_NAME_MESSAGES
++ {static} String CHANNEL_ID_EXPIRATION
++ {static} String ACTION_MARK_AS_READ
++ {static} String ACTION_REPLY
++ {static} String EXTRA_CHAT_ID
++ {static} String EXTRA_SENDER_USERNAME
++ {static} String EXTRA_MESSAGE_TEXT
++ {static} String EXTRA_MESSAGE_KEY
++ {static} String REPLY_LABEL
+- {static} int NOTIFICATION_ID_BASE
++ {static} void createChannel(Context)
++ {static} void showMessageNotification(Context,String,String,String,String,String)
++ {static} void cancelNotification(Context,String)
++ {static} String getMessageTextFromIntent(Intent)
++ {static} void createExpirationChannel(Context)
++ {static} void scheduleAlarm(Context,int,long,Intent)
++ {static} void cancelAlarm(Context,int,Intent)
+}
+
+
+class com.example.mainproj.messaging.MessageModel {
+- String text
+- String senderUsername
+- long timestamp
+- boolean sentByMe
+- String messageId
+- String imageUrl
++ String getText()
++ String getSenderUsername()
++ long getTimestamp()
++ boolean isSentByMe()
++ String getMessageId()
++ void setMessageId(String)
++ String getImageUrl()
++ void setImageUrl(String)
+}
+
+
+class com.example.mainproj.messaging.friendRequest.FriendRequest {
+- String key
+- String from
+- String fromUsername
+- String fromImageUrl
+- long timestamp
+- String status
++ String getKey()
++ void setKey(String)
++ String getFrom()
++ void setFrom(String)
++ String getFromUsername()
++ void setFromUsername(String)
++ String getFromImageUrl()
++ void setFromImageUrl(String)
++ long getTimestamp()
++ void setTimestamp(long)
++ String getStatus()
++ void setStatus(String)
+}
+
+
+class com.example.mainproj.userSystem.FragmentStep4Verify {
+- TextView tvPhoneNumber
+- MaterialButton btnSendSms
+- TextInputEditText etVerificationCode
+- ProgressBar progressBar
+- String phoneNumber
+- String verificationId
+- boolean isVerified
+- OnVerificationCompleteListener listener
++ void setOnVerificationCompleteListener(OnVerificationCompleteListener)
++ void setPhoneNumber(String)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void sendVerificationSms()
+- void verifyCode()
+- void showVerifiedState()
+}
+
+
+interface com.example.mainproj.userSystem.FragmentStep4Verify$OnVerificationCompleteListener {
+~ void onVerificationComplete(boolean)
+}
+
+class com.example.mainproj.fragments.ProfileFragment {
+- boolean showingSettings
+- View profileView
+- View settingsView
+- TextView tvUsername
+- EditText etBioInput
+- MaterialButton btnSaveBio
+- ImageView ivAvatar
+- View loadingState
+- String safeEmail
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void setupProfile()
+- void loadBio()
+- void saveBio()
+- void setupSettings()
++ void showProfile()
++ void showSettingsInstead()
++ boolean isShowingSettings()
++ void onTabReselected()
+}
+
+
+class com.example.mainproj.messaging.MessageNotificationService {
+- {static} int FOREGROUND_NOTIFICATION_ID
+- {static} String CHANNEL_ID_FOREGROUND
+- DatabaseReference chatsRef
+- Map<String,ChildEventListener> chatListeners
+- Map<String,Boolean> listenerReady
+- String currentUserSafeEmail
+- String currentUsername
++ void onCreate()
+- void initializeUserAndStartListening()
+- void startListeningToChats()
+- ChildEventListener buildMessageListener(String,String)
+- void showInAppDialog(String,String,String)
+- Notification buildForegroundNotification()
++ int onStartCommand(Intent,int,int)
++ IBinder onBind(Intent)
++ void onDestroy()
++ {static} void startService(android.content.Context)
++ {static} void stopService(android.content.Context)
+}
+
+
+class com.example.mainproj.fragments.subnav.GateControlFragment {
+- {static} String TAG
+- {static} String PREFS_NAME
+- RecyclerView recyclerView
+- List<Gate> gateList
+- List<Gate> rawGates
+- GateAdapter adapter
+- DatabaseReference gatesRef
+- ValueEventListener gatesListener
+- View loadingState
+- OkHttpClient client
+- String currentListStatus
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void setupOkHttpClient()
+- String getGateControlUrl()
+- void setupFirebase()
+- void setupTestButton(View)
+- void testServerConnection()
+- void checkUserListStatus()
+- void applyListStatusFilter()
++ void onGateToggle(Gate,int)
++ void onGateAdminSettings(Gate,int)
+- void sendCommand(String,String,int)
++ void onDestroyView()
+}
+
+
+class com.example.mainproj.messaging.DeletionJobService {
+- {static} String TAG
++ boolean onStartJob(JobParameters)
++ boolean onStopJob(JobParameters)
+}
+
+
+class com.example.mainproj.messaging.ChatUtils {
++ {static} String generateChatId(String,String)
+}
+
+class com.example.mainproj.ExampleUnitTest {
++ void addition_isCorrect()
+}
+
+class com.example.mainproj.userSystem.sign_up_activity {
+- ProgressBar progressBar
+- TextView tvStepIndicator
+- FirebaseAuth mAuth
+- CredentialManager credentialManager
+- int currentStep
+- String email
+- String phone
+- boolean phoneSkipped
+- String username
+- String nickname
+- int age
+- boolean phoneVerified
+# void onCreate(Bundle)
+- void updateProgress(int)
+- void showEntryScreen()
++ void onEmailPasswordContinue(String,String)
++ void onGoogleSignUp()
+- void handleGoogleCredential(GetCredentialResponse)
+- void firebaseAuthWithGoogle(String)
+- void checkIfUserExistsAndProceed()
++ void onLoginClick()
+- void startStep1Phone()
++ void onPhoneNext(String)
++ void onPhoneSkip()
+- void startStep2Username()
++ void onUsernameNext(String,String)
+- void startStep3Age()
++ void onAgeNext(int)
+- void startStep4Verify()
++ void onVerificationComplete(boolean)
+- void saveUserData()
+}
+
+
+class com.example.mainproj.userSystem.FragmentStep3Age {
+- TextView tvBirthdate
+- MaterialCardView cardBirthdate
+- MaterialButton btnNext
+- Calendar selectedDate
+- int calculatedAge
+- OnAgeCompleteListener listener
++ void setOnAgeCompleteListener(OnAgeCompleteListener)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void showDatePicker()
+- int calculateAge(Calendar)
+}
+
+
+interface com.example.mainproj.userSystem.FragmentStep3Age$OnAgeCompleteListener {
+~ void onAgeNext(int)
+}
+
+class com.example.mainproj.fragments.OutgoingRequestsFragment {
+- RecyclerView recyclerView
+- SentRequestAdapter adapter
+- List<SentRequest> requests
+- DatabaseReference sentRef
+- ValueEventListener sentListener
+- View loadingState
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void loadSentRequests()
++ void onDestroyView()
+}
+
+
+class com.example.mainproj.messaging.NotificationHandlerService {
+- {static} String TAG
++ void onNewToken(String)
++ void onMessageReceived(RemoteMessage)
+- boolean isChatCurrentlyOpen(String)
+- void showInAppDialog(String,String,String)
+- boolean isMessageFromCurrentUser(String)
+- void sendTokenToServer(String)
+}
+
+
+class com.example.mainproj.messaging.friendRequest.Friend {
+- String username
+- String safeEmail
+- String nickname
+- String imageUrl
+- String chatId
+- long addedAt
++ String getUsername()
++ void setUsername(String)
++ String getSafeEmail()
++ void setSafeEmail(String)
++ String getNickname()
++ void setNickname(String)
++ String getImageUrl()
++ void setImageUrl(String)
++ String getChatId()
++ void setChatId(String)
++ long getAddedAt()
++ void setAddedAt(long)
+}
+
+
+
+class com.example.mainproj.userSystem.Login_activity {
+- {static} String PREFS_NAME
+- {static} String KEY_LOGGED_IN_EMAIL
+- TextInputEditText etEmail
+- MaterialButton btnLogin
+- TextView tvSignUp
+- FirebaseAuth mAuth
+- CredentialManager credentialManager
+- SharedPreferences prefs
+# void onCreate(Bundle)
+- void signInWithGoogle()
+- void handleGoogleCredential(GetCredentialResponse)
+- void loginWithEmail()
+- void firebaseAuthWithGoogle(String)
+- void checkGoogleUserAndProceed(String)
+- void ensureUserNodeAndProceed(String,boolean)
+- void showVerificationToast()
+}
+
+
+class com.example.mainproj.gates.GateAdapterLogicTest {
++ String gateNumber
++ String expectedDisplayName
++ {static} Collection<Object[]> data()
++ void displayNameFormatting()
++ void busyState_detectedFromActionStatus()
++ void visibility_hiddenWhenDisabledAndNotSuperAdmin()
++ void visibility_hiddenWhenVisibilityLevelExceedsRoleLevel()
++ void adminGear_visibleForSufficientRole()
++ void toggleButton_enabledOnlyWhenNotBusyAndClickable()
+- {static} boolean containsBusyState(String)
+- {static} boolean shouldHideGate(boolean,int,int)
+- {static} boolean shouldShowAdminGear(int,int)
+- {static} boolean isToggleEnabled(boolean,boolean)
+}
+
+
+class com.example.mainproj.auth.SessionManager {
+- {static} String currentSafeEmail
+- {static} String currentUsername
+- {static} String role
+- {static} int roleLevel
++ {static} void init()
++ {static} void refresh()
++ {static} boolean isAdmin()
++ {static} boolean isSuperAdmin()
++ {static} boolean canViewGate(int)
++ {static} boolean canControlGate(int)
++ {static} boolean canModifyUser(int)
++ {static} String getCurrentSafeEmail()
++ {static} String getCurrentUsername()
++ {static} int getRoleLevel()
++ {static} void setRoleLevel(int)
++ {static} String getRole()
++ {static} void setUserRole(String,String,int)
++ {static} void setGateLevels(String,int,int)
++ {static} void setGateDisabled(String,boolean)
++ {static} void sendFriendRequest(String,String)
++ {static} void clearAllPrefs(Context)
+}
+
+
+class com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter {
+- List<PlaceholderContent.PlaceholderItem> fullList
+- List<PlaceholderContent.PlaceholderItem> visibleList
+- OnDeleteClickListener deleteListener
++ void setOnDeleteClickListener(OnDeleteClickListener)
++ VH onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(VH,int)
++ int getItemCount()
++ void update(List<PlaceholderContent.PlaceholderItem>)
++ void removeItem(int)
+- String formatTimestamp(long)
+- String formatTimeRemaining(long)
+}
+
+
+interface com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$OnDeleteClickListener {
+~ void onDelete(int,PlaceholderContent.PlaceholderItem)
+}
+
+class com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$VH {
+~ TextView name
+~ ImageButton deleteButton
+}
+
+class com.example.mainproj.MainActivity {
+- {static} String PREFS_NAME
+- {static} String KEY_LOGGED_IN_EMAIL
+- ViewPager viewPager
+- BottomNavigationView bottomNav
+- FirebaseAuth mAuth
+- SharedPreferences prefs
+- MainPagerAdapter pagerAdapter
+- boolean isInSettingsNav
+- ConnectivityManager.NetworkCallback offlineDialogCallback
+- AlertDialog offlineDialog
+- boolean wasOfflineDialogShown
+- boolean isCaching
+- View loadingOverlay
+- Handler connectivityHandler
+- Runnable connectivityCheckRunnable
+- ImageView profileImage
+- TextView profileName
+# void onCreate(Bundle)
+# void onResume()
+# void onPause()
+# void onDestroy()
+- void showLoadingOverlay()
+- void hideLoadingOverlay()
+- void cacheAllData()
+- void checkConnectivityAndShowDialog()
+- String formatDateMessage(long)
+- void setupViewPager()
+- void setupBottomNav()
+- void updateBottomNavSelection(int)
+- ProfileFragment getProfileFragment()
++ void onBackPressed()
+- void requestNotificationPermission()
++ void onRequestPermissionsResult(int,String[],int[])
+- void loadUserProfile()
+}
+
+
+class com.example.mainproj.lists.FragmentBlacklist {
+- ListAdapter adapter
+- List<PlaceholderContent.PlaceholderItem> fullList
+- DatabaseReference blacklistRef
+- ValueEventListener blacklistListener
+- View loadingState
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onDestroyView()
+- PlaceholderContent.PlaceholderItem parseItem(DataSnapshot)
+- void showAddDialog()
+- void proceedAddToBlacklist(String,String,int)
+- void showDeleteConfirmation(int,PlaceholderContent.PlaceholderItem)
+- void refreshFilteredList()
++ List<PlaceholderContent.PlaceholderItem> getFullList()
++ void updateList(List<PlaceholderContent.PlaceholderItem>)
+}
+
+
+class com.example.mainproj.messaging.friendRequest.SentRequest {
+- String key
+- String to
+- String toUsername
+- String toImageUrl
+- long timestamp
+- String status
++ String getKey()
++ void setKey(String)
++ String getTo()
++ void setTo(String)
++ String getToUsername()
++ void setToUsername(String)
++ String getToImageUrl()
++ void setToImageUrl(String)
++ long getTimestamp()
++ void setTimestamp(long)
++ String getStatus()
++ void setStatus(String)
+}
+
+
+class com.example.mainproj.messaging.ChatMetadataManager {
+- {static} String PREFS_NAME
+- {static} char KEY_SEPARATOR
+- {static} ChatMetadataManager instance
+- {static} boolean cachingEnabled
+- SharedPreferences prefs
++ {static} ChatMetadataManager getInstance(Context)
++ {static} boolean isCachingEnabled()
++ {static} void setCachingEnabled(boolean)
++ void saveChat(String,ChatModel)
++ ArrayList<ChatModel> loadAllChats(String)
++ void clearChat(String,String)
++ void clearAllForUser(String)
+- String buildKey(String,String)
+- String extractChatId(String,String)
+- ChatModel loadChatFromKey(String,String)
+}
+
+
+class com.example.mainproj.messaging.UserProfileBottomSheet {
++ {static} String TAG
+- {static} String ARG_USERNAME
+- {static} String ARG_BIO
+- {static} String ARG_IS_ONLINE
+- {static} String ARG_SAFE_EMAIL
+- {static} String ARG_ROLE_LEVEL
+- {static} String ARG_LAST_SEEN_TIMESTAMP
+- ProfileActionListener actionListener
++ {static} UserProfileBottomSheet newInstance(String,String,long,boolean)
++ {static} UserProfileBottomSheet newInstance(String,String,long,boolean,String,int)
++ void setActionListener(ProfileActionListener)
++ Dialog onCreateDialog(Bundle)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- String formatLastSeen(long)
+}
+
+
+interface com.example.mainproj.messaging.UserProfileBottomSheet$ProfileActionListener {
+~ void onSendMessage(String)
+~ void onViewProfile(String)
+~ void onManageRole(String,String)
+~ void onManageGatePermissions(String,String)
+}
+
+abstract class com.example.mainproj.lists.FragmentBaseList {
+# ListRequestManager apiClient
++ void setApiClient(ListRequestManager)
++ {abstract}List<PlaceholderContent.PlaceholderItem> getFullList()
++ {abstract}void updateList(List<PlaceholderContent.PlaceholderItem>)
+}
+
+
+class com.example.mainproj.userSystem.UserGatePermissionSheet {
++ {static} String TAG
+- {static} String ARG_USERNAME
+- {static} int MODE_USERS
+- {static} int MODE_ADMINS
+- String targetUsername
+- int currentMode
+- TextView tvTitle
+- TabLayout tabLayout
+- RecyclerView recyclerGates
+- MaterialButton btnSave
+- View loadingState
+- List<GateCheckEntry> gateList
+- GateCheckAdapter adapter
++ {static} UserGatePermissionSheet newInstance(String)
++ Dialog onCreateDialog(Bundle)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void loadGates()
+- void savePermissions()
+}
+
+
+class com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckEntry {
+~ String gateId
+~ String state
+~ boolean disabled
+~ boolean isChecked
+}
+
+class com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter {
+- List<GateCheckEntry> items
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+
+class com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter$ViewHolder {
+~ CheckedTextView checkedText
+}
+
+class com.example.mainproj.SharedPrefDisplayerActivity {
+- RecyclerView recyclerView
+- TreeAdapter adapter
+- List<TreeNode> rootNodes
+- List<TreeNode> visibleNodes
+- TextView tvPath
+# void onCreate(Bundle)
+- void loadAllPrefs()
+- void loadPrefIntoNode(String,TreeNode)
+- TreeNode tryParseJson(String,String,int)
+- void addJsonChild(TreeNode,String,Object,int)
+- void rebuildVisibleList()
+- void addChildrenRecursive(TreeNode)
+- void toggleNode(TreeNode)
+}
+
+
+class com.example.mainproj.SharedPrefDisplayerActivity$TreeNode {
+~ String name
+~ String value
+~ boolean isFolder
+~ boolean isExpanded
+~ int depth
+~ List<TreeNode> children
+}
+
+class com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter {
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+class com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter$ViewHolder {
+~ ImageView ivArrow
+~ TextView tvName
+~ TextView tvValue
+~ void bind(TreeNode)
+}
+
+
+class com.example.mainproj.messaging.NotificationActionReceiver {
++ void onReceive(Context,Intent)
+- void handleMarkAsRead(Context,String,String)
+- void handleReply(Context,String,String,String)
+- void sendReplyMessage(Context,String,String,String)
+}
+
+class com.example.mainproj.SearchModule.ListsSearchViewModel {
+- MutableLiveData<String> searchQuery
++ LiveData<String> getSearchQuery()
++ void setSearchQuery(String)
+}
+
+
+class com.example.mainproj.messaging.AdminNotificationHelper {
+- {static} String TAG
++ {static} void notifyAdmins(String,String,String,long)
++ {static} void removeNotifications(String)
+}
+
+
+class com.example.mainproj.fragments.subnav.AccountMgmtFragment {
+- {static} String TAG
+- {static} long UPDATE_INTERVAL_MS
+- Button btnPendingDeletions
+- DatabaseReference listsRef
+- ValueEventListener expiredListener
+- List<PendingItem> pendingItems
+- Handler countdownHandler
+- AlertDialog activeDialog
+- LinearLayout dialogContainer
+- Runnable countdownRunnable
+- View accessDenied
+- EditText searchInput
+- ChipGroup chipGroup
+- RecyclerView recyclerView
+- MaterialButton btnSortName
+- UserManagementAdapter adapter
+- List<UserManagementAdapter.UserListItem> allUsers
+- List<UserManagementAdapter.UserListItem> filteredUsers
+- ChildEventListener usersListener
+- DatabaseReference usersRef
+- String currentQuery
+- int currentRoleFilter
+- SortOption currentSort
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
++ void onDestroyView()
+- void updateSortButtons()
+- void loadUsers()
+- void applyFilters()
+- void updatePendingButton()
+- void showPendingDeletionsDialog()
+- void buildDialogRows()
+- void performUndo(PendingItem)
+- String formatTimeAgo(long)
+- String formatTimeRemaining(long)
+}
+
+
+enum com.example.mainproj.fragments.subnav.SortOption {
++  NAME
++  ROLE_LEVEL
++  NEWEST
+}
+
+class com.example.mainproj.fragments.subnav.AccountMgmtFragment$PendingItem {
+~ String pushId
+~ String listType
+~ String name
+~ long deleteAt
+~ long timestampExpiresAt
+}
+
+class com.example.mainproj.adapters.ChatAdapter {
+- List<ChatModel> chatList
+- List<ChatModel> fullList
+- Context context
+- String safeEmail
++ void updateFullList(List<ChatModel>)
++ void filter(String)
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
+- void showEditNameDialog(ChatModel,int)
++ int getItemCount()
+- String formatTimestamp(long)
+}
+
+
+class com.example.mainproj.adapters.ChatAdapter$ViewHolder {
+~ ImageView imgProfile
+~ TextView tvName
+~ View onlineIndicator
+~ TextView unreadBadge
+}
+
+class com.example.mainproj.adapters.UserManagementAdapter {
+- Context context
+- List<UserListItem> items
+- OnUserClickListener listener
++ void setItems(List<UserListItem>)
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+- String formatLastSeen(long)
+}
+
+
+class com.example.mainproj.adapters.UserManagementAdapter$UserListItem {
++ String safeEmail
++ String username
++ String email
++ String phone
++ String bio
++ String profileImageUrl
++ String role
++ int roleLevel
++ boolean online
++ long lastSeen
++ long createdAt
+}
+
+interface com.example.mainproj.adapters.UserManagementAdapter$OnUserClickListener {
+~ void onUserClick(UserListItem)
+}
+
+class com.example.mainproj.adapters.UserManagementAdapter$ViewHolder {
+~ ImageView ivAvatar
+~ TextView tvUsername
+~ View statusDot
+}
+
+class com.example.mainproj.adapters.GateAdapter {
+- List<Gate> gates
+- OnGateClickListener listener
++ GateViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(GateViewHolder,int)
++ int getItemCount()
++ void updateGate(int,Gate)
+}
+
+
+interface com.example.mainproj.adapters.GateAdapter$OnGateClickListener {
+~ void onGateToggle(Gate,int)
+~ void onGateAdminSettings(Gate,int)
+}
+
+class com.example.mainproj.adapters.GateAdapter$GateViewHolder {
+~ TextView tvGateNumber
+~ Button btnToggleGate
+~ ImageButton btnGateAdminSettings
+}
+
+class com.example.mainproj.adapters.FriendRequestsPagerAdapter {
++ Fragment createFragment(int)
++ int getItemCount()
+}
+
+class com.example.mainproj.fragments.subnav.BlacklistFragment {
+- ViewPager2 viewPager
+- TabLayout tabLayout
+- ListsPagerAdapter adapter
+- ListRequestManager apiClient
+- ImageButton btnFilter
+- TextView filterBadge
+- EditText searchView
+- ListsSearchViewModel searchViewModel
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void setupViewPager()
+- void setupFilterButton(View)
+- void showFilterMenu(View)
+- void showByUserDialog()
+- void showDateFilterDialog(String)
+- void appendFilter(String)
+- void clearFilters()
+- void updateFilterBadge()
++ void onDestroyView()
+}
+
+
+class com.example.mainproj.messaging.ChatCacheApplication {
+- {static} int activityCount
+- {static} String currentOpenChatId
+- {static} String currentUsername
+- {static} Activity currentForegroundActivity
++ void onCreate()
+- void fetchFCMToken()
++ {static} void setCurrentOpenChatId(String)
++ {static} String getCurrentOpenChatId()
++ {static} void setCurrentUsername(String)
++ {static} String getCurrentUsername()
++ {static} void setCurrentForegroundActivity(Activity)
++ {static} Activity getCurrentForegroundActivity()
++ {static} boolean isAppInForeground()
++ void onActivityCreated(Activity,Bundle)
++ void onActivityStarted(Activity)
++ void onActivityResumed(Activity)
++ void onActivityPaused(Activity)
++ void onActivityStopped(Activity)
++ void onActivitySaveInstanceState(Activity,Bundle)
++ void onActivityDestroyed(Activity)
+}
+
+
+class com.example.mainproj.SearchModule.ListFilter {
+- {static} SimpleDateFormat DATE
++ {static} List<PlaceholderContent.PlaceholderItem> apply(List<PlaceholderContent.PlaceholderItem>,String)
+- {static} Long safeParse(String)
+- {static} List<PlaceholderContent.PlaceholderItem> filterByWho(List<PlaceholderContent.PlaceholderItem>,String)
+- {static} List<PlaceholderContent.PlaceholderItem> filterExpiresBefore(List<PlaceholderContent.PlaceholderItem>,long)
+- {static} List<PlaceholderContent.PlaceholderItem> filterExpiresAfter(List<PlaceholderContent.PlaceholderItem>,long)
+- {static} List<PlaceholderContent.PlaceholderItem> filterExpiresOn(List<PlaceholderContent.PlaceholderItem>,long)
+- {static} List<PlaceholderContent.PlaceholderItem> filterExpired(List<PlaceholderContent.PlaceholderItem>,boolean)
+- {static} List<PlaceholderContent.PlaceholderItem> filterAddedBefore(List<PlaceholderContent.PlaceholderItem>,long)
+- {static} List<PlaceholderContent.PlaceholderItem> filterAddedAfter(List<PlaceholderContent.PlaceholderItem>,long)
+- {static} List<PlaceholderContent.PlaceholderItem> filterAddedOn(List<PlaceholderContent.PlaceholderItem>,long)
+}
+
+
+class com.example.mainproj.userSystem.UserProfileActivity {
++ {static} String EXTRA_USERNAME
++ {static} String EXTRA_SAFE_EMAIL
++ {static} String EXTRA_ROLE_LEVEL
+- MaterialToolbar toolbar
+- ImageView ivProfilePicture
+- TextView tvUsername
+- TextView tvJoinedDate
+- View statusDot
+- MaterialButton btnSendMessage
+- LinearLayout adminSection
+- MaterialButton btnManageRole
+- View loadingState
+- String username
+- String safeEmail
+- int roleLevel
+# void onCreate(Bundle)
+- void loadUserData()
+- void setRoleBadge(int)
+- void showRoleChangeDialog()
+- String formatLastSeen(long)
+}
+
+
+class com.example.mainproj.lists.FragmentWhitelist {
+- ListAdapter adapter
+- List<PlaceholderContent.PlaceholderItem> fullList
+- DatabaseReference whitelistRef
+- ValueEventListener whitelistListener
+- View loadingState
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onDestroyView()
+- PlaceholderContent.PlaceholderItem parseItem(DataSnapshot)
+- void showAddDialog()
+- void proceedAddToWhitelist(String,String,int)
+- void showDeleteConfirmation(int,PlaceholderContent.PlaceholderItem)
+- void proceedAddToWhitelist(String,String)
+- void refreshFilteredList()
++ List<PlaceholderContent.PlaceholderItem> getFullList()
++ void updateList(List<PlaceholderContent.PlaceholderItem>)
+}
+
+
+class com.example.mainproj.messaging.DeletionReceiver {
+- {static} String TAG
++ void onReceive(Context,Intent)
+}
+
+
+class com.example.mainproj.userSystem.FragmentStep2Username {
+- TextInputEditText etUsername
+- MaterialButton btnNext
+- TextView tvUsernameError
+- boolean isUsernameValid
+- OnUsernameCompleteListener listener
++ void setOnUsernameCompleteListener(OnUsernameCompleteListener)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void validateUsername(String)
+}
+
+
+interface com.example.mainproj.userSystem.FragmentStep2Username$OnUsernameCompleteListener {
+~ void onUsernameNext(String,String)
+}
+
+class com.example.mainproj.gates.Gate {
+- String gateNumber
+- String state
+- String actionStatus
+- long lastAckAt
+- String lastCommandId
+- boolean isClickable
+- int visibilityLevel
+- int controlLevel
+- boolean disabled
+- Map<String,Boolean> allowedUsers
+- Map<String,Boolean> allowedAdmins
++ String getGateNumber()
++ String getState()
++ String getActionStatus()
++ long getLastAckAt()
++ String getLastCommandId()
++ void setState(String)
++ void setActionStatus(String)
++ void setLastAckAt(long)
++ void setLastCommandId(String)
++ int getVisibilityLevel()
++ void setVisibilityLevel(int)
++ int getControlLevel()
++ void setControlLevel(int)
++ boolean isDisabled()
++ void setDisabled(boolean)
++ boolean isOpen()
++ boolean isClickable()
++ void setClickable(boolean)
++ Map<String,Boolean> getAllowedUsers()
++ void setAllowedUsers(Map<String,Boolean>)
++ Map<String,Boolean> getAllowedAdmins()
++ void setAllowedAdmins(Map<String,Boolean>)
+}
+
+
+class com.example.mainproj.LoadingScreenActivity {
+- {static} long SPLASH_DELAY_MS
+# void onCreate(Bundle)
+}
+
+
+class com.example.mainproj.fragments.IncomingRequestsFragment {
+- RecyclerView recyclerView
+- FriendRequestAdapter adapter
+- List<FriendRequest> requests
+- DatabaseReference requestsRef
+- ValueEventListener requestsListener
+- View loadingState
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void loadRequests()
++ void onAccept(FriendRequest)
+- void checkAndCreateChat(String,String,String,String,String,String,String)
+- void createNewChat(String,String,String,String,String,String,String)
++ void onReject(FriendRequest)
++ void onDestroyView()
+}
+
+
+class com.example.mainproj.messaging.ExpirationReceiver {
+- {static} String TAG
++ void onReceive(Context,Intent)
+}
+
+
+class com.example.mainproj.gates.GateTest {
++ void constructor_5args_setsFields()
++ void constructor_8args_setsFields()
++ void isOpen_returnsTrueForOpenIgnoreCase()
++ void isOpen_returnsFalseForClosed()
++ void isOpen_returnsFalseForNullState()
++ void setState_updatesState()
++ void setActionStatus_updatesActionStatus()
++ void clickable_defaultTrue()
++ void setClickable_false_disablesClick()
++ void disabled_defaultFalse()
++ void setDisabled_changesDisabled()
++ void setLevels_updatesCorrectly()
++ void setLastAckAt_updatesTimestamp()
++ void setLastCommandId_updatesCommandId()
+}
+
+class com.example.mainproj.messaging.NetworkMonitor {
+- {static} NetworkMonitor instance
+- ConnectivityManager connectivityManager
++ {static} NetworkMonitor getInstance(Context)
++ boolean isConnected()
++ void registerNetworkCallback(ConnectivityManager.NetworkCallback)
++ void unregisterNetworkCallback(ConnectivityManager.NetworkCallback)
+}
+
+
+class com.example.mainproj.messaging.ChatModel {
+- String chatId
+- String username
+- String nickname
+- String lastMessage
+- String bio
+- boolean online
+- String imageUrl
+- Long unreadCount
+- Long createdAt
+- Long lastSeen
+- Long timestamp
++ String getTime()
++ String getLastSeenFormatted()
++ String getChatId()
++ String getUsername()
++ String getNickname()
++ String getLastMessage()
++ String getBio()
++ boolean isOnline()
++ String getImageUrl()
++ Long getUnreadCount()
++ Long getCreatedAt()
++ Long getLastSeen()
++ Long getTimestamp()
++ void setChatId(String)
++ void setUsername(String)
++ void setNickname(String)
++ void setLastMessage(String)
++ void setBio(String)
++ void setOnline(boolean)
++ void setImageUrl(String)
++ void setUnreadCount(Long)
++ void setCreatedAt(Long)
++ void setLastSeen(Long)
++ void setTimestamp(Long)
+}
+
+
+class com.example.mainproj.messaging.friendRequest.FriendsAdapter {
+- List<Friend> friends
+- Context context
+- OnFriendClickListener listener
++ void setFriends(List<Friend>)
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+
+interface com.example.mainproj.messaging.friendRequest.FriendsAdapter$OnFriendClickListener {
+~ void onFriendClick(Friend)
+~ void onFriendLongClick(Friend)
+}
+
+class com.example.mainproj.messaging.friendRequest.FriendsAdapter$ViewHolder {
+~ ImageView ivProfilePicture
+~ TextView tvUsername
+}
+
+class com.example.mainproj.messaging.ChatCacheManager {
+- {static} String TAG
+- {static} String PREFS_NAME
+- {static} String KEY_PREFIX
+- {static} ChatCacheManager instance
+- {static} boolean cachingEnabled
+- SharedPreferences prefs
++ {static} ChatCacheManager getInstance(Context)
++ {static} boolean isCachingEnabled()
++ {static} void setCachingEnabled(boolean)
++ void saveMessages(String,ArrayList<MessageModel>)
++ ArrayList<MessageModel> loadMessages(String)
++ void clearAll()
++ void clearChat(String)
+}
+
+
+class com.example.mainproj.userSystem.FragmentStep1Phone {
+- TextInputEditText etPhone
+- MaterialButton btnNext
+- OnPhoneCompleteListener listener
++ void setOnPhoneCompleteListener(OnPhoneCompleteListener)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+}
+
+
+interface com.example.mainproj.userSystem.FragmentStep1Phone$OnPhoneCompleteListener {
+~ void onPhoneNext(String)
+~ void onPhoneSkip()
+}
+
+class com.example.mainproj.messaging.ImageViewerActivity {
++ {static} String EXTRA_IMAGE_URL
+# void onCreate(Bundle)
+- Bitmap decodeSampledBitmap(byte[],int,int)
+- int calculateInSampleSize(BitmapFactory.Options,int,int)
+}
+
+
+class com.example.mainproj.adapters.ListsPagerAdapter {
+- Map<Integer,FragmentBaseList> fragmentMap
+- ListRequestManager apiClient
++ FragmentBaseList createFragment(int)
++ int getItemCount()
++ FragmentBaseList getFragmentAt(int)
+}
+
+
+class com.example.mainproj.userSystem.FragmentSignUpEntry {
+- TextInputEditText etEmail
+- MaterialButton btnContinue
+- TextView tvLogin
+- OnEntryCompleteListener listener
++ void setOnEntryCompleteListener(OnEntryCompleteListener)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+}
+
+
+interface com.example.mainproj.userSystem.FragmentSignUpEntry$OnEntryCompleteListener {
+~ void onEmailPasswordContinue(String,String)
+~ void onGoogleSignUp()
+~ void onLoginClick()
+}
+
+class com.example.mainproj.lists.ListRequestManager {
+- {static} String TAG
+- String baseUrl
+- ExecutorService executor
+- Handler mainHandler
++ void addItem(String,PlaceholderContent.PlaceholderItem,String,ListCallback)
++ void removeItem(String,String,String,ListCallback)
++ void updateItem(String,String,Map<String,Object>,String,ListCallback)
+- void executeRequest(String,JSONObject,ListCallback,String)
+- void postSuccess(ListCallback,String,String)
+- void postRejected(ListCallback,String,String)
+- void postError(ListCallback,String)
+}
+
+
+interface com.example.mainproj.lists.ListRequestManager$ListCallback {
+~ void onSuccess(String,String)
+~ void onRejected(String,String)
+~ void onError(String)
+}
+
+class com.example.mainproj.admin.AdminGatePermissionSheet {
++ {static} String TAG
+- {static} String ARG_GATE_ID
+- {static} String ARG_VIS_LEVEL
+- {static} String ARG_CTRL_LEVEL
+- {static} String ARG_DISABLED
+- String gateId
+- int currentVisLevel
+- int currentCtrlLevel
+- boolean currentDisabled
+- TextView tvTitle
+- View gateLevelControls
+- Spinner spinnerVis
+- SwitchCompat switchDisable
+- MaterialButton btnSaveLevels
+- RecyclerView recyclerUsers
+- MaterialButton btnAddUser
+- DatabaseReference userRef
+- ValueEventListener userListener
+- List<UserPermissionEntry> userList
+- UserPermissionAdapter adapter
++ {static} AdminGatePermissionSheet newInstance(String,int,int,boolean)
++ Dialog onCreateDialog(Bundle)
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
++ void onDestroyView()
+- void updateUIVisibility()
+- void setupSpinnerAdapter(Spinner,int)
+- void loadUsers()
+- void lookupUserInfo(String,int)
+- void saveGateLevels()
+- void showRoleChangeDialog(String,String,int)
+}
+
+
+class com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionEntry {
++ String safeEmail
++ String username
++ int roleLevel
++ int grantedLevel
+}
+
+class com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter {
+- List<UserPermissionEntry> items
+- OnUserClickListener listener
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+
+interface com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter$OnUserClickListener {
+~ void onUserClick(UserPermissionEntry)
+}
+
+class com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter$ViewHolder {
+~ TextView text1
+}
+
+class com.example.mainproj.adapters.FriendRequestAdapter {
+- List<FriendRequest> requests
+- OnRequestActionListener listener
+- Context context
++ void setRequests(List<FriendRequest>)
++ ViewHolder onCreateViewHolder(ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+
+interface com.example.mainproj.adapters.FriendRequestAdapter$OnRequestActionListener {
+~ void onAccept(FriendRequest)
+~ void onReject(FriendRequest)
+}
+
+class com.example.mainproj.adapters.FriendRequestAdapter$ViewHolder {
+~ ImageView ivProfilePicture
+~ TextView tvUsername
+~ Button btnAccept
+}
+
+class com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent {
+}
+class com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent$PlaceholderItem {
++ String id
++ boolean isRemoved
++ long timestampWhenAdded
++ String name
++ String byWho
++ String reason
++ long timestampExpiresAt
++ boolean isExpired
++ long deleteAt
++ void onExpired()
+}
+
+
+class com.example.mainproj.adapters.SubNavPagerAdapter {
+- boolean isAdmin
++ Fragment createFragment(int)
++ int getItemCount()
+}
+
+
+class com.example.mainproj.fragments.ChatsFragment {
+- RecyclerView chatRecyclerView
+- ChatAdapter chatAdapter
+- ArrayList<ChatModel> chatList
+- ArrayList<ChatModel> filteredChatList
+- View loadingState
+- EditText searchChats
+- FloatingActionButton addChatButton
+- View btnFriendRequests
+- View btnFriends
+- DatabaseReference chatsRef
+- ChildEventListener chatsListener
+- String currentUserSafeEmail
+- ConnectivityManager.NetworkCallback networkCallback
+- boolean isFirebaseListenerAttached
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void setupRecyclerView()
+- void setupSearch()
+- void filterChats(String)
+- String formatLastMessage(DataSnapshot)
+- void setupClickListeners()
+- void loadChats()
+- void attachFirebaseListener()
+- void registerNetworkCallback()
+- void showAddUserDialog()
+- void sendFriendRequest(String)
+- void proceedWithFriendRequest(String,String,String,String)
+- void sendRequestToUser(String,String,String,String,String)
+- void showFriendRequestsDialog()
+- void showFriendsDialog()
++ void onDestroyView()
+}
+
+
+class com.example.mainproj.fragments.HomeFragment {
+- TabLayout tabLayout
+- ViewPager2 subNavPager
++ View onCreateView(LayoutInflater,ViewGroup,Bundle)
++ void onViewCreated(View,Bundle)
+- void setupSubNav()
+}
+
+
+class com.example.mainproj.admin.PermissionEditorDialog {
+- Context context
+- String gateId
+- Runnable onSaved
+- AlertDialog dialog
+- com.google.android.material.textfield.TextInputEditText etSearch
+- RecyclerView recyclerResults
+- TextView tvNoResults
+- Spinner spinnerPerm
+- List<SearchResult> results
+- SearchResultAdapter adapter
+- SearchResult selectedUser
+- void build()
++ void show()
+- void searchUsers(String)
+- void grantPermission()
+}
+
+
+class com.example.mainproj.admin.PermissionEditorDialog$SearchResult {
+~ String safeEmail
+~ String username
+~ int roleLevel
+}
+
+class com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter {
+- List<SearchResult> items
+- OnResultClickListener listener
++ ViewHolder onCreateViewHolder(android.view.ViewGroup,int)
++ void onBindViewHolder(ViewHolder,int)
++ int getItemCount()
+}
+
+
+interface com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter$OnResultClickListener {
+~ void onResultClick(SearchResult)
+}
+
+class com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter$ViewHolder {
+~ TextView text1
+}
+
+
+
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.SentRequestAdapter
+com.example.mainproj.adapters.SentRequestAdapter +.. com.example.mainproj.adapters.SentRequestAdapter$SentRequestViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.SentRequestAdapter$SentRequestViewHolder
+androidx.fragment.app.FragmentPagerAdapter <|-- com.example.mainproj.adapters.MainPagerAdapter
+androidx.fragment.app.DialogFragment <|-- com.example.mainproj.fragments.FriendsListFragment
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.MessageAdapter
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$OnMessageDeleteListener
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$DateSeparatorViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.MessageAdapter$DateSeparatorViewHolder
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$SentViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.MessageAdapter$SentViewHolder
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$ReceivedViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.MessageAdapter$ReceivedViewHolder
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$ImageSentViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.MessageAdapter$ImageSentViewHolder
+com.example.mainproj.adapters.MessageAdapter +.. com.example.mainproj.adapters.MessageAdapter$ImageReceivedViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.MessageAdapter$ImageReceivedViewHolder
+android.content.BroadcastReceiver <|-- com.example.mainproj.messaging.BootReceiver
+com.example.mainproj.messaging.OnMessageDeleteListener <|.. com.example.mainproj.messaging.MessagingActivity
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.messaging.MessagingActivity
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.subnav.ServerSettingsFragment
+androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentStep4Verify
+com.example.mainproj.userSystem.FragmentStep4Verify +.. com.example.mainproj.userSystem.FragmentStep4Verify$OnVerificationCompleteListener
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.ProfileFragment
+android.app.Service <|-- com.example.mainproj.messaging.MessageNotificationService
+com.example.mainproj.fragments.subnav.OnGateClickListener <|.. com.example.mainproj.fragments.subnav.GateControlFragment
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.subnav.GateControlFragment
+android.app.job.JobService <|-- com.example.mainproj.messaging.DeletionJobService
+com.example.mainproj.userSystem.OnEntryCompleteListener <|.. com.example.mainproj.userSystem.sign_up_activity
+com.example.mainproj.userSystem.OnPhoneCompleteListener <|.. com.example.mainproj.userSystem.sign_up_activity
+com.example.mainproj.userSystem.OnUsernameCompleteListener <|.. com.example.mainproj.userSystem.sign_up_activity
+com.example.mainproj.userSystem.OnAgeCompleteListener <|.. com.example.mainproj.userSystem.sign_up_activity
+com.example.mainproj.userSystem.OnVerificationCompleteListener <|.. com.example.mainproj.userSystem.sign_up_activity
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.userSystem.sign_up_activity
+androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentStep3Age
+com.example.mainproj.userSystem.FragmentStep3Age +.. com.example.mainproj.userSystem.FragmentStep3Age$OnAgeCompleteListener
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.OutgoingRequestsFragment
+com.google.firebase.messaging.FirebaseMessagingService <|-- com.example.mainproj.messaging.NotificationHandlerService
+
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.userSystem.Login_activity
+com.example.mainproj.shared_lists_adapter_placeholder.Adapter <|-- com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter
+com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter +.. com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$OnDeleteClickListener
+com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter +.. com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$VH
+com.example.mainproj.shared_lists_adapter_placeholder.ViewHolder <|-- com.example.mainproj.shared_lists_adapter_placeholder.ListAdapter$VH
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.MainActivity
+com.example.mainproj.lists.FragmentBaseList <|-- com.example.mainproj.lists.FragmentBlacklist
+com.google.android.material.bottomsheet.BottomSheetDialogFragment <|-- com.example.mainproj.messaging.UserProfileBottomSheet
+com.example.mainproj.messaging.UserProfileBottomSheet +.. com.example.mainproj.messaging.UserProfileBottomSheet$ProfileActionListener
+androidx.fragment.app.Fragment <|-- com.example.mainproj.lists.FragmentBaseList
+com.google.android.material.bottomsheet.BottomSheetDialogFragment <|-- com.example.mainproj.userSystem.UserGatePermissionSheet
+com.example.mainproj.userSystem.UserGatePermissionSheet +.. com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckEntry
+com.example.mainproj.userSystem.UserGatePermissionSheet +.. com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter
+com.example.mainproj.userSystem.Adapter <|-- com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter
+com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter +.. com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter$ViewHolder
+com.example.mainproj.userSystem.ViewHolder <|-- com.example.mainproj.userSystem.UserGatePermissionSheet$GateCheckAdapter$ViewHolder
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.SharedPrefDisplayerActivity
+com.example.mainproj.SharedPrefDisplayerActivity +.. com.example.mainproj.SharedPrefDisplayerActivity$TreeNode
+com.example.mainproj.SharedPrefDisplayerActivity +.. com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter
+com.example.mainproj.Adapter <|-- com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter
+com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter +.. com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter$ViewHolder
+com.example.mainproj.ViewHolder <|-- com.example.mainproj.SharedPrefDisplayerActivity$TreeAdapter$ViewHolder
+android.content.BroadcastReceiver <|-- com.example.mainproj.messaging.NotificationActionReceiver
+androidx.lifecycle.ViewModel <|-- com.example.mainproj.SearchModule.ListsSearchViewModel
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.subnav.AccountMgmtFragment
+com.example.mainproj.fragments.subnav.AccountMgmtFragment +.. com.example.mainproj.fragments.subnav.AccountMgmtFragment$PendingItem
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.ChatAdapter
+com.example.mainproj.adapters.ChatAdapter +.. com.example.mainproj.adapters.ChatAdapter$ViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.ChatAdapter$ViewHolder
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.UserManagementAdapter
+com.example.mainproj.adapters.UserManagementAdapter +.. com.example.mainproj.adapters.UserManagementAdapter$UserListItem
+com.example.mainproj.adapters.UserManagementAdapter +.. com.example.mainproj.adapters.UserManagementAdapter$OnUserClickListener
+com.example.mainproj.adapters.UserManagementAdapter +.. com.example.mainproj.adapters.UserManagementAdapter$ViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.UserManagementAdapter$ViewHolder
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.GateAdapter
+com.example.mainproj.adapters.GateAdapter +.. com.example.mainproj.adapters.GateAdapter$OnGateClickListener
+com.example.mainproj.adapters.GateAdapter +.. com.example.mainproj.adapters.GateAdapter$GateViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.GateAdapter$GateViewHolder
+androidx.viewpager2.adapter.FragmentStateAdapter <|-- com.example.mainproj.adapters.FriendRequestsPagerAdapter
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.subnav.BlacklistFragment
+com.example.mainproj.messaging.ActivityLifecycleCallbacks <|.. com.example.mainproj.messaging.ChatCacheApplication
+android.app.Application <|-- com.example.mainproj.messaging.ChatCacheApplication
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.userSystem.UserProfileActivity
+com.example.mainproj.lists.FragmentBaseList <|-- com.example.mainproj.lists.FragmentWhitelist
+android.content.BroadcastReceiver <|-- com.example.mainproj.messaging.DeletionReceiver
+androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentStep2Username
+com.example.mainproj.userSystem.FragmentStep2Username +.. com.example.mainproj.userSystem.FragmentStep2Username$OnUsernameCompleteListener
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.LoadingScreenActivity
+com.example.mainproj.fragments.OnRequestActionListener <|.. com.example.mainproj.fragments.IncomingRequestsFragment
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.IncomingRequestsFragment
+android.content.BroadcastReceiver <|-- com.example.mainproj.messaging.ExpirationReceiver
+com.example.mainproj.messaging.friendRequest.Adapter <|-- com.example.mainproj.messaging.friendRequest.FriendsAdapter
+com.example.mainproj.messaging.friendRequest.FriendsAdapter +.. com.example.mainproj.messaging.friendRequest.FriendsAdapter$OnFriendClickListener
+com.example.mainproj.messaging.friendRequest.FriendsAdapter +.. com.example.mainproj.messaging.friendRequest.FriendsAdapter$ViewHolder
+com.example.mainproj.messaging.friendRequest.ViewHolder <|-- com.example.mainproj.messaging.friendRequest.FriendsAdapter$ViewHolder
+androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentStep1Phone
+com.example.mainproj.userSystem.FragmentStep1Phone +.. com.example.mainproj.userSystem.FragmentStep1Phone$OnPhoneCompleteListener
+androidx.appcompat.app.AppCompatActivity <|-- com.example.mainproj.messaging.ImageViewerActivity
+androidx.viewpager2.adapter.FragmentStateAdapter <|-- com.example.mainproj.adapters.ListsPagerAdapter
+androidx.fragment.app.Fragment <|-- com.example.mainproj.userSystem.FragmentSignUpEntry
+com.example.mainproj.userSystem.FragmentSignUpEntry +.. com.example.mainproj.userSystem.FragmentSignUpEntry$OnEntryCompleteListener
+com.example.mainproj.lists.ListRequestManager +.. com.example.mainproj.lists.ListRequestManager$ListCallback
+com.google.android.material.bottomsheet.BottomSheetDialogFragment <|-- com.example.mainproj.admin.AdminGatePermissionSheet
+com.example.mainproj.admin.AdminGatePermissionSheet +.. com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionEntry
+com.example.mainproj.admin.AdminGatePermissionSheet +.. com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter
+com.example.mainproj.admin.Adapter <|-- com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter
+com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter +.. com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter$OnUserClickListener
+com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter +.. com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter$ViewHolder
+com.example.mainproj.admin.ViewHolder <|-- com.example.mainproj.admin.AdminGatePermissionSheet$UserPermissionAdapter$ViewHolder
+com.example.mainproj.adapters.Adapter <|-- com.example.mainproj.adapters.FriendRequestAdapter
+com.example.mainproj.adapters.FriendRequestAdapter +.. com.example.mainproj.adapters.FriendRequestAdapter$OnRequestActionListener
+com.example.mainproj.adapters.FriendRequestAdapter +.. com.example.mainproj.adapters.FriendRequestAdapter$ViewHolder
+com.example.mainproj.adapters.ViewHolder <|-- com.example.mainproj.adapters.FriendRequestAdapter$ViewHolder
+com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent +.. com.example.mainproj.shared_lists_adapter_placeholder.PlaceholderContent$PlaceholderItem
+androidx.viewpager2.adapter.FragmentStateAdapter <|-- com.example.mainproj.adapters.SubNavPagerAdapter
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.ChatsFragment
+androidx.fragment.app.Fragment <|-- com.example.mainproj.fragments.HomeFragment
+com.example.mainproj.admin.PermissionEditorDialog +.. com.example.mainproj.admin.PermissionEditorDialog$SearchResult
+com.example.mainproj.admin.PermissionEditorDialog +.. com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter
+com.example.mainproj.admin.Adapter <|-- com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter
+com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter +.. com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter$OnResultClickListener
+com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter +.. com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter$ViewHolder
+com.example.mainproj.admin.ViewHolder <|-- com.example.mainproj.admin.PermissionEditorDialog$SearchResultAdapter$ViewHolder
+@enduml

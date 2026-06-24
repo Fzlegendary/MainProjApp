@@ -23,18 +23,16 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.mainproj.R;
 import com.example.mainproj.SearchModule.ListsSearchViewModel;
-import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestion;
-import com.example.mainproj.SearchModule.suggestionsModule.SearchSuggestionAdapter;
+import com.example.mainproj.auth.SessionManager;
 import com.example.mainproj.lists.ListRequestManager;
-import com.example.mainproj.lists.ListsPagerAdapter;
+import com.example.mainproj.adapters.ListsPagerAdapter;
+import com.example.mainproj.lists.FragmentBaseList;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
 
 public class BlacklistFragment extends Fragment {
@@ -56,9 +54,6 @@ public class BlacklistFragment extends Fragment {
     // The search field for typing queries (free text or filter commands)
     private EditText searchView;
     // RecyclerView showing suggestion dropdown when typing "by:"
-    private RecyclerView searchSuggestions;
-    // Adapter that provides suggestion items to the RecyclerView
-    private SearchSuggestionAdapter suggestionAdapter;
     // ViewModel holding the current search query as LiveData
     // Shared across all list fragments so they all filter together
     private ListsSearchViewModel searchViewModel;
@@ -74,45 +69,30 @@ public class BlacklistFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Base URL for the API (SSL bypass enabled for local dev)
-        String baseUrl = "https://localhost:8080";
+        // Base URL for the API
+        String baseUrl = "http://localhost:8080";
         // Initialize the API client for list operations
-        apiClient = new ListRequestManager(baseUrl, true);
+        apiClient = new ListRequestManager(baseUrl);
 
         // Bind UI elements from the layout
         tabLayout = view.findViewById(R.id.tabLayout);
         viewPager = view.findViewById(R.id.listViewPager);
         searchView = view.findViewById(R.id.searchView);
-        searchSuggestions = view.findViewById(R.id.searchSuggestions);
         btnFilter = view.findViewById(R.id.btnFilter);
         filterBadge = view.findViewById(R.id.filterBadge);
+
+        // Admin guard — only admins can access the blacklist/whitelist
+        if (!SessionManager.isAdmin()) {
+            view.findViewById(R.id.accessDenied).setVisibility(View.VISIBLE);
+            view.findViewById(R.id.searchContainer).setVisibility(View.GONE);
+            view.findViewById(R.id.pagerCard).setVisibility(View.GONE);
+            return;
+        }
 
         // Get the shared ViewModel — scoped to the Activity so it persists
         // across the Whitelist/Blacklist tabs. Both tabs observe this same query.
         searchViewModel = new ViewModelProvider(requireActivity()).get(ListsSearchViewModel.class);
 
-        // Initialize the suggestion adapter — callback fires when user taps a suggestion
-        suggestionAdapter = new SearchSuggestionAdapter(s -> {
-            // Get whatever the user has typed so far
-            String current = searchView.getText().toString();
-            // Find where "by:" starts in the query
-            int byIndex = current.toLowerCase().lastIndexOf("by:");
-            if (byIndex >= 0) {
-                // Keep everything before "by:" (including "by:")
-                // Replace what comes after with the suggestion value
-                String prefix = current.substring(0, byIndex + 3);
-                searchView.setText(prefix + s.value + " ");
-                searchView.setSelection(searchView.getText().length());
-            } else {
-                // No "by:" found — just append the suggestion as the new query
-                searchView.setText(s.value + " ");
-                searchView.setSelection(searchView.getText().length());
-            }
-        });
-
-        // Set up the RecyclerView to show suggestions as a vertical list
-        searchSuggestions.setLayoutManager(new LinearLayoutManager(requireContext()));
-        searchSuggestions.setAdapter(suggestionAdapter);
 
         // Listen for text changes — update live as user types
         searchView.addTextChangedListener(new TextWatcher() {
@@ -126,41 +106,6 @@ public class BlacklistFragment extends Fragment {
                 searchViewModel.setSearchQuery(newText);
                 // Recount active filters and update badge
                 updateFilterBadge();
-
-                // Known users that appear as suggestions after "by:"
-                // In production this could come from a server or contacts list
-                List<String> knownUsers = List.of("System");
-
-                // Check if the query contains "by:" to trigger username suggestions
-                if (newText.toLowerCase().contains("by:")) {
-                    // Extract everything after "by:"
-                    String afterBy = newText.substring(
-                            newText.toLowerCase().lastIndexOf("by:") + 3
-                    ).trim();
-
-                    // Build a list of suggestions matching what the user typed
-                    List<SearchSuggestion> suggestions = new ArrayList<>();
-                    for (String user : knownUsers) {
-                        // Case-insensitive prefix match
-                        if (user.toLowerCase().startsWith(afterBy.toLowerCase())) {
-                            suggestions.add(new SearchSuggestion(user, user));
-                        }
-                    }
-
-                    // Show dropdown if there are suggestions, hide otherwise
-                    suggestionAdapter.setItems(suggestions);
-                    searchSuggestions.setVisibility(
-                            suggestions.isEmpty() ? View.GONE : View.VISIBLE
-                    );
-
-                    // Hide suggestions once the user has fully typed a known username
-                    if (knownUsers.contains(afterBy)) {
-                        searchSuggestions.setVisibility(View.GONE);
-                    }
-                } else {
-                    // No "by:" in query — hide suggestions
-                    searchSuggestions.setVisibility(View.GONE);
-                }
             }
 
             @Override
@@ -172,7 +117,6 @@ public class BlacklistFragment extends Fragment {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 String query = searchView.getText().toString();
                 searchViewModel.setSearchQuery(query);
-                searchSuggestions.setVisibility(View.GONE);
                 updateFilterBadge();
                 return true;
             }
@@ -212,7 +156,7 @@ public class BlacklistFragment extends Fragment {
             // Iterate over both list fragments in the ViewPager
             for (int i = 0; i < adapter.getItemCount(); i++) {
                 // Get the fragment at position (Whitelist or Blacklist)
-                com.example.mainproj.lists.FragmentBaseList fragment = adapter.getFragmentAt(i);
+                FragmentBaseList fragment = adapter.getFragmentAt(i);
                 if (fragment != null) {
                     // Apply the search/filter logic:
                     // - Extract free text, by:user, expires/added dates from query

@@ -49,6 +49,10 @@ public class ListFilter {
             } else if (part.startsWith("added:")) {
                 Long d = safeParse(part.substring(6));
                 if (d != null) out = filterAddedOn(out, d);
+            } else if (part.equals("expired:true")) {
+                out = filterExpired(out, true);
+            } else if (part.equals("expired:false")) {
+                out = filterExpired(out, false);
             } else {
                 // Free-text search → filter by name
                 String lower = part.toLowerCase();
@@ -127,6 +131,16 @@ public class ListFilter {
                     i.timestampExpiresAt >= day && i.timestampExpiresAt < next) {
                 out.add(i);
             }
+        }
+        return out;
+    }
+
+    // ---------- FILTER EXPIRED ----------
+    private static List<PlaceholderContent.PlaceholderItem> filterExpired(
+            List<PlaceholderContent.PlaceholderItem> src, boolean expired) {
+        List<PlaceholderContent.PlaceholderItem> out = new ArrayList<>();
+        for (var i : src) {
+            if (i.isExpired == expired) out.add(i);
         }
         return out;
     }

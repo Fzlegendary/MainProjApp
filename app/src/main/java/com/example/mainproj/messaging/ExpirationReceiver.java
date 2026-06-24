@@ -1,12 +1,14 @@
 package com.example.mainproj.messaging;
 
-import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
+import android.os.PersistableBundle;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -32,25 +34,40 @@ public class ExpirationReceiver extends BroadcastReceiver {
 
         if (pushId == null || listType == null) return;
 
-        long deleteAt = System.currentTimeMillis() + 3 * 3600 * 1000L;
+        long now = System.currentTimeMillis();
+        long deleteAt = now + 3 * 3600 * 1000L;
 
-        Map<String, Object> data = new HashMap<>();
-        data.put("name", intent.getStringExtra("itemName"));
-        data.put("byWho", intent.getStringExtra("byWho"));
-        data.put("reason", intent.getStringExtra("reason"));
-        data.put("timestampWhenAdded", intent.getLongExtra("timestampWhenAdded", 0L));
-        data.put("timestampExpiresAt", intent.getLongExtra("timestampExpiresAt", 0L));
-        data.put("deleteAt", deleteAt);
-
-        DatabaseReference scheduledRef = FirebaseDatabase.getInstance()
-                .getReference("scheduledForDeletion").child(listType).child(pushId);
-        scheduledRef.setValue(data);
-        Log.d(TAG, "Moved to scheduledForDeletion: pushId=" + pushId + ", deleteAt=" + deleteAt);
-
-        DatabaseReference listRef = FirebaseDatabase.getInstance()
+        // STEP 1: Mark item as expired in the active list (keeps it visible)
+        DatabaseReference itemRef = FirebaseDatabase.getInstance()
                 .getReference("lists").child(listType).child(pushId);
-        listRef.removeValue();
 
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("isExpired", true);
+        updates.put("deleteAt", deleteAt);
+        itemRef.updateChildren(updates);
+        Log.d(TAG, "Marked item as expired: pushId=" + pushId);
+
+        // STEP 2: Schedule deletion via JobScheduler (3 hours later)
+        ComponentName component = new ComponentName(context, DeletionJobService.class);
+        PersistableBundle extras = new PersistableBundle();
+        extras.putString("pushId", pushId);
+        extras.putString("listType", listType);
+
+        int jobId = ("del_" + pushId).hashCode();
+        JobInfo jobInfo = new JobInfo.Builder(jobId, component)
+                .setMinimumLatency(3 * 3600 * 1000L)
+                .setOverrideDeadline(3 * 3600 * 1000L + 60000L)
+                .setPersisted(true)
+                .setExtras(extras)
+                .build();
+
+        JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        if (scheduler != null) {
+            scheduler.schedule(jobInfo);
+            Log.d(TAG, "Deletion job scheduled for: " + deleteAt + " (jobId=" + jobId + ")");
+        }
+
+        // STEP 3: Show notification on current device
         Intent mainIntent = new Intent(context, MainActivity.class);
         mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
@@ -73,23 +90,7 @@ public class ExpirationReceiver extends BroadcastReceiver {
             Log.d(TAG, "Notification shown for: " + itemName);
         }
 
-        Intent delIntent = new Intent(context, DeletionReceiver.class);
-        delIntent.putExtra("pushId", pushId);
-        delIntent.putExtra("listType", listType);
-        int delRequestId = (pushId + "_del").hashCode();
-
-        PendingIntent delPendingIntent = PendingIntent.getBroadcast(
-                context, delRequestId, delIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(deleteAt, null), delPendingIntent);
-            } else {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, deleteAt, delPendingIntent);
-            }
-            Log.d(TAG, "Deletion alarm scheduled for: " + deleteAt);
-        }
+        // STEP 4: Notify all admins via Firebase DB
+        AdminNotificationHelper.notifyAdmins(pushId, listType, itemName, deleteAt);
     }
 }

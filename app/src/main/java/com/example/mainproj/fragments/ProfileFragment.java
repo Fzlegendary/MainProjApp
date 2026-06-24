@@ -35,6 +35,7 @@ public class ProfileFragment extends Fragment {
     private EditText etBioInput;
     private MaterialButton btnSaveBio;
     private ImageView ivAvatar;
+    private View loadingState;
 
     private String safeEmail;
 
@@ -53,6 +54,7 @@ public class ProfileFragment extends Fragment {
         tvUsername = view.findViewById(R.id.tvUsername);
         tvEmail = view.findViewById(R.id.tvEmail);
         tvBio = view.findViewById(R.id.tvBio);
+        loadingState = view.findViewById(R.id.loadingState);
         ivAvatar = view.findViewById(R.id.ivAvatar);
         etBioInput = view.findViewById(R.id.etBioInput);
         btnSaveBio = view.findViewById(R.id.btnSaveBio);
@@ -94,6 +96,7 @@ public class ProfileFragment extends Fragment {
         bioRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 String bio = snapshot.getValue(String.class);
                 if (bio != null && !bio.isEmpty()) {
                     tvBio.setText(bio);
@@ -102,7 +105,9 @@ public class ProfileFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
+            }
         });
     }
 

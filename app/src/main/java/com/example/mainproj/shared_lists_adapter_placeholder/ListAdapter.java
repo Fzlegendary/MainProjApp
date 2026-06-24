@@ -1,8 +1,11 @@
 package com.example.mainproj.shared_lists_adapter_placeholder;
 
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.view.*;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.mainproj.R;
 
@@ -45,10 +48,33 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
         holder.byWho.setText("By: " + item.byWho);
         holder.reason.setText("Reason: " + item.reason);
         holder.timestampAdded.setText("Added: " + formatTimestamp(item.timestampWhenAdded));
-        holder.expiresAt.setText(item.timestampExpiresAt == -1
-                ? "Expires: Never"
-                : "Expires: " + formatTimestamp(item.timestampExpiresAt));
-        holder.itemView.setAlpha(item.isRemoved ? 0.5f : 1f);
+
+        if (item.isExpired) {
+            holder.name.setPaintFlags(holder.name.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            holder.name.setAlpha(0.6f);
+            holder.byWho.setAlpha(0.6f);
+            holder.reason.setAlpha(0.6f);
+            holder.timestampAdded.setAlpha(0.6f);
+
+            long remaining = item.deleteAt - System.currentTimeMillis();
+            holder.expiresAt.setText("Expired \u2014 deleting in " + formatTimeRemaining(Math.max(0, remaining)));
+            holder.expiresAt.setTextColor(Color.parseColor("#BF616A"));
+
+            holder.itemView.setAlpha(0.7f);
+        } else {
+            holder.name.setPaintFlags(0);
+            holder.name.setAlpha(1f);
+            holder.byWho.setAlpha(1f);
+            holder.reason.setAlpha(1f);
+            holder.timestampAdded.setAlpha(1f);
+
+            holder.expiresAt.setText(item.timestampExpiresAt == -1
+                    ? "Expires: Never"
+                    : "Expires: " + formatTimestamp(item.timestampExpiresAt));
+            holder.expiresAt.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.colorTextHint));
+
+            holder.itemView.setAlpha(item.isRemoved ? 0.5f : 1f);
+        }
 
         holder.deleteButton.setOnClickListener(v -> {
             if (deleteListener != null) {
@@ -78,6 +104,15 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.VH> {
 
     private String formatTimestamp(long timestamp) {
         return new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(new Date(timestamp));
+    }
+
+    private String formatTimeRemaining(long millis) {
+        if (millis <= 0) return "any moment";
+        long minutes = millis / 60000;
+        if (minutes < 60) return minutes + "m";
+        long hours = minutes / 60;
+        minutes = minutes % 60;
+        return hours + "h " + minutes + "m";
     }
 
     static class VH extends RecyclerView.ViewHolder {

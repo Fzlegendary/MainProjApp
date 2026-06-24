@@ -1,4 +1,4 @@
-package com.example.mainproj.messaging.friendRequest;
+package com.example.mainproj.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.mainproj.R;
 import com.example.mainproj.messaging.UserProfileBottomSheet;
+import com.example.mainproj.messaging.friendRequest.FriendRequest;
 
 import java.util.ArrayList;
 import java.util.List;

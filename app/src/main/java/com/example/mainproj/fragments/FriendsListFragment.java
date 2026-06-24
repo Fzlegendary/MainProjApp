@@ -37,6 +37,7 @@ public class FriendsListFragment extends DialogFragment {
     private DatabaseReference friendsRef;
     private ValueEventListener friendsListener;
     private String currentUserSafeEmail;
+    private View loadingState;
 
     @NonNull
     @Override
@@ -48,6 +49,7 @@ public class FriendsListFragment extends DialogFragment {
         builder.setNegativeButton("Close", null);
 
         recyclerView = view.findViewById(R.id.recyclerView);
+        loadingState = view.findViewById(R.id.loadingState);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new FriendsAdapter(requireContext(), new FriendsAdapter.OnFriendClickListener() {
             @Override
@@ -81,6 +83,7 @@ public class FriendsListFragment extends DialogFragment {
         friendsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 friends.clear();
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     Friend friend = snap.getValue(Friend.class);
@@ -94,6 +97,7 @@ public class FriendsListFragment extends DialogFragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                if (loadingState != null) loadingState.setVisibility(View.GONE);
                 Toast.makeText(requireContext(), "Error loading friends", Toast.LENGTH_SHORT).show();
             }
         };
